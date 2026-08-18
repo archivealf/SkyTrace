@@ -1,4 +1,4 @@
-name: Build macOS app
+name: Build SkyTrace V3.2 macOS
 
 on:
   workflow_dispatch:
@@ -33,14 +33,14 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Verify and materialize V3.2 source
+        run: bash scripts/materialize-v3.2.sh
+
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Download current aviation reference data
+      - name: Download free aviation reference data
         run: npm run data
-
-      - name: Materialize frontend source
-        run: npm run source
 
       - name: Build macOS icon
         run: npm run icon:mac
@@ -97,7 +97,7 @@ jobs:
           path: release-assets
           merge-multiple: true
 
-      - name: Publish release
+      - name: Publish V3.2 release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -106,13 +106,13 @@ jobs:
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             TAG="${GITHUB_REF_NAME}"
           else
-            TAG="v3.1.0"
+            TAG="v3.2.0"
           fi
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "SkyTrace $TAG" \
-              --notes "SkyTrace Desktop for macOS. Includes Apple Silicon and Intel builds."
+              --notes "SkyTrace V3.2 Free Stack for macOS. Free live ADS-B, local aircraft data, airport intelligence, aviation weather, telemetry timeline, Apple Silicon and Intel builds."
           fi
           gh release upload "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber
