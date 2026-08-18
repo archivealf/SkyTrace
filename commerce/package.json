@@ -1,0 +1,14 @@
+{
+  "name": "skytrace-commerce",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SkyTrace account, OTP login, entitlements and Stripe Checkout backend.",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=20.18.0"
+  }
+}
