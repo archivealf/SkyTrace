@@ -19,7 +19,6 @@ trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$INSTALL_DIR"
 
 echo "Installing SkyTrace ${VERSION} Free Stack for macOS (${ARCH})..."
-echo "Building the current GitHub version locally (no release download required)."
 
 command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 || {
   echo "Node.js 20.18+ and npm are required."
@@ -32,18 +31,26 @@ if [[ "$NODE_OK" != "true" ]]; then
   exit 1
 fi
 
-SOURCE_ZIP="$TMP/source.zip"
-echo "Downloading SkyTrace source..."
-curl --fail --location --progress-bar \
-  "https://github.com/${OWNER}/${REPO}/archive/refs/heads/main.zip" \
-  --output "$SOURCE_ZIP"
+SOURCE_DIR="$TMP/SkyTrace"
 
-mkdir -p "$TMP/source"
-ditto -x -k "$SOURCE_ZIP" "$TMP/source"
-SOURCE_DIR="$(find "$TMP/source" -maxdepth 1 -type d -name "${REPO}-*" -print -quit)"
-[[ -n "$SOURCE_DIR" ]] || { echo "Could not locate the downloaded SkyTrace source."; exit 1; }
+echo "Getting SkyTrace source..."
+if command -v git >/dev/null 2>&1; then
+  git clone --depth 1 --branch main "https://github.com/${OWNER}/${REPO}.git" "$SOURCE_DIR"
+else
+  echo "git is not available; using GitHub codeload instead..."
+  SOURCE_ZIP="$TMP/source.zip"
+  curl --fail --location --progress-bar \
+    "https://codeload.github.com/${OWNER}/${REPO}/zip/refs/heads/main" \
+    --output "$SOURCE_ZIP"
+  mkdir -p "$TMP/extracted"
+  ditto -x -k "$SOURCE_ZIP" "$TMP/extracted"
+  EXTRACTED="$(find "$TMP/extracted" -maxdepth 1 -type d -name "${REPO}-*" -print -quit)"
+  [[ -n "$EXTRACTED" ]] || { echo "Could not locate the downloaded SkyTrace source."; exit 1; }
+  mv "$EXTRACTED" "$SOURCE_DIR"
+fi
 
 cd "$SOURCE_DIR"
+
 echo "Preparing SkyTrace V3.2..."
 bash scripts/materialize-v3.2.sh
 
