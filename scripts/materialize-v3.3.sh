@@ -28,10 +28,12 @@ mkdir -p "$ROOT/lib"
 cp "$OVERLAY/lib/account.js" "$ROOT/lib/account.js"
 cp "$OVERLAY/lib/config.js" "$ROOT/lib/config.js"
 
-node - "$ROOT/index.html" <<'NODE'
+node - "$ROOT/index.html" "$ROOT/app.v3.js" <<'NODE'
 const fs = require("fs");
-const file = process.argv[2];
-let html = fs.readFileSync(file, "utf8");
+const htmlFile = process.argv[2];
+const appFile = process.argv[3];
+
+let html = fs.readFileSync(htmlFile, "utf8");
 if (!html.includes('/v3.3-glass.css')) {
   html = html.replace('<link rel="stylesheet" href="/styles.v3.css" />', '<link rel="stylesheet" href="/styles.v3.css" />\n  <link rel="stylesheet" href="/v3.3-glass.css" />');
 }
@@ -39,7 +41,29 @@ if (!html.includes('/v3.3-commerce.js')) {
   html = html.replace('<script src="/app.v3.js"></script>', '<script src="/app.v3.js"></script>\n<script src="/v3.3-commerce.js"></script>');
 }
 html = html.replace('window.SKYTRACE_BUILD="3.2.0-free";', 'window.SKYTRACE_BUILD="3.3.0-commerce-glass";');
-fs.writeFileSync(file, html);
+fs.writeFileSync(htmlFile, html);
+
+let app = fs.readFileSync(appFile, "utf8");
+
+// Never let a failed live-feed request trap the whole app behind the startup sheet.
+app = app.replace(
+  '}catch(err){ console.error(err); el.sourceStatus.textContent="Flight feed unavailable"; showToast(err.message,5000); }',
+  '}catch(err){ console.error(err); el.sourceStatus.textContent="Flight feed unavailable"; el.loading.classList.add("done"); showToast(err.message,5000); }'
+);
+
+// Electron does not need the PWA service worker. Avoid Chromium quota/service-worker DB noise.
+app = app.replace(
+  'if("serviceWorker"in navigator)navigator.serviceWorker.register("/service-worker.v3.js", { updateViaCache: "none" }).catch(()=>{});',
+  'if("serviceWorker"in navigator&&!navigator.userAgent.includes("Electron"))navigator.serviceWorker.register("/service-worker.v3.js", { updateViaCache: "none" }).catch(()=>{});'
+);
+
+// If MapLibre/style loading itself stalls, reveal the UI instead of leaving an endless Connecting screen.
+app = app.replace(
+  'function initMap(){\n    state.map=new maplibregl.Map(',
+  'function initMap(){\n    setTimeout(()=>{if(!el.loading.classList.contains("done")){el.loading.querySelector("span").textContent="Aviation data is taking longer than expected";el.loading.classList.add("done");}},10000);\n    state.map=new maplibregl.Map('
+);
+
+fs.writeFileSync(appFile, app);
 NODE
 
 rm -rf "$OVERLAY"
