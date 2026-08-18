@@ -52,53 +52,24 @@ for (const file of configFiles) {
   fs.writeFileSync(file, text);
 }
 
-let electron = fs.readFileSync(electronFile, "utf8");
-electron = replaceRequired(
-  electron,
-`      // Release packages replace DEFAULT_CONFIG's loopback URL at build time.
-      // Preserve every other user setting while moving older installs to that HTTPS backend.
-      if (shouldMigrateCommerce) {
-        existing.commerce = {
-          ...(existing.commerce && typeof existing.commerce === "object" ? existing.commerce : {}),
-          enabled: true,
-          baseUrl: releaseCommerceUrl
-        };
-        fs.writeFileSync(configPath, \`${'${JSON.stringify(existing, null, 2)}'}\\n\`, {
-          mode: 0o600
-        });
-      }`,
-`      // Release packages replace DEFAULT_CONFIG's loopback URL at build time.
-      // Preserve user settings, migrate older installs to HTTPS, and force providers
-      // whose free hosted APIs do not permit commercial use off in packaged builds.
-      let configChanged = false;
-      if (shouldMigrateCommerce) {
-        existing.commerce = {
-          ...(existing.commerce && typeof existing.commerce === "object" ? existing.commerce : {}),
-          enabled: true,
-          baseUrl: releaseCommerceUrl
-        };
-        configChanged = true;
-      }
-
-      const commercialRelease = app.isPackaged && /^https:\\/\\//i.test(releaseCommerceUrl);
-      if (commercialRelease) {
-        existing.providers = {
-          ...(existing.providers && typeof existing.providers === "object" ? existing.providers : {}),
-          openMeteo: false,
-          rainViewer: false
-        };
-        configChanged = true;
-      }
-
-      if (configChanged) {
-        fs.writeFileSync(configPath, \`${'${JSON.stringify(existing, null, 2)}'}\\n\`, {
-          mode: 0o600
-        });
-      }`,
-  "packaged provider migration"
+// In a packaged commercial build these runtime values stay disabled even if an
+// older user config still contains true from a local/non-commercial build.
+let libConfig = fs.readFileSync(libConfigFile, "utf8");
+libConfig = replaceRequired(
+  libConfig,
+  "        openMeteo: raw?.providers?.openMeteo !== false,",
+  "        openMeteo: false,",
+  "Open-Meteo commercial runtime gate"
 );
-fs.writeFileSync(electronFile, electron);
+libConfig = replaceRequired(
+  libConfig,
+  "        rainViewer: raw?.providers?.rainViewer !== false",
+  "        rainViewer: false",
+  "RainViewer commercial runtime gate"
+);
+fs.writeFileSync(libConfigFile, libConfig);
 
+// Do not leave the local Open-Meteo proxy callable when the provider is disabled.
 let server = fs.readFileSync(serverFile, "utf8");
 server = replaceRequired(
   server,
