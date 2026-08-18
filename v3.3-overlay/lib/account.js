@@ -122,7 +122,28 @@ export async function getAccount() {
   const session = readSession();
   if (!session?.token) return { ok: true, authenticated: false, entitlements: [], effectiveEntitlements: [] };
   try {
-    return await remote("/v1/account", { auth: true });
+    let result = await remote("/v1/account", { auth: true });
+    const current = readSession();
+    if (current?.pendingCheckoutId) {
+      try {
+        const confirmed = await remote("/v1/checkout/confirm", {
+          method: "POST",
+          body: { sessionId: current.pendingCheckoutId },
+          auth: true
+        });
+        if (confirmed?.paid) {
+          const next = readSession();
+          if (next?.token) {
+            delete next.pendingCheckoutId;
+            writeSession(next);
+          }
+          result = { ok: true, authenticated: true, ...confirmed };
+        }
+      } catch {
+        // Keep the pending Checkout Session so a later account refresh can retry.
+      }
+    }
+    return result;
   } catch (error) {
     if (error.status === 401) return { ok: true, authenticated: false, entitlements: [], effectiveEntitlements: [] };
     throw error;
@@ -141,9 +162,22 @@ export async function logoutAccount() {
 }
 
 export async function createAccountCheckout(productKey) {
-  return remote("/v1/checkout", { method: "POST", body: { productKey }, auth: true });
+  const result = await remote("/v1/checkout", { method: "POST", body: { productKey }, auth: true });
+  if (result?.sessionId) {
+    const session = readSession();
+    if (session?.token) writeSession({ ...session, pendingCheckoutId: result.sessionId });
+  }
+  return result;
 }
 
 export async function confirmAccountCheckout(sessionId) {
-  return remote("/v1/checkout/confirm", { method: "POST", body: { sessionId }, auth: true });
+  const result = await remote("/v1/checkout/confirm", { method: "POST", body: { sessionId }, auth: true });
+  if (result?.paid) {
+    const session = readSession();
+    if (session?.token) {
+      delete session.pendingCheckoutId;
+      writeSession(session);
+    }
+  }
+  return result;
 }
