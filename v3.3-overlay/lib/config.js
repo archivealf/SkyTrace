@@ -20,7 +20,7 @@ const DEFAULT_CONFIG = Object.freeze({
   },
   commerce: {
     enabled: true,
-    baseUrl: "https://skytrace.duckdns.org"
+    baseUrl: "http://127.0.0.1:8787"
   }
 });
 
@@ -65,7 +65,7 @@ function loadConfig() {
       },
       commerce: {
         enabled: raw?.commerce?.enabled !== false,
-        baseUrl: cleanString(raw?.commerce?.baseUrl) || "https://skytrace.duckdns.org"
+        baseUrl: cleanString(raw?.commerce?.baseUrl) || "http://127.0.0.1:8787"
       }
     };
   } catch (error) {
