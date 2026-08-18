@@ -23,22 +23,100 @@ cp "$OVERLAY/scripts/make-mac-icon.sh" "$ROOT/scripts/make-mac-icon.sh"
 chmod +x "$ROOT/scripts/make-mac-icon.sh"
 node "$ROOT/scripts/generate-skytrace-icon.mjs" "$ROOT/assets/SkyTrace.png"
 
-# GitHub release builds can inject a public HTTPS account/payment backend without
-# committing any Stripe secrets. Local builds keep the loopback default.
+# GitHub release builds inject the public HTTPS account/payment backend without
+# committing secrets. Because these builds are monetized, they also disable the
+# free Open-Meteo and RainViewer integrations. Local/dev builds keep the existing
+# provider defaults for evaluation and prototyping under each provider's terms.
 if [[ -n "${SKYTRACE_COMMERCE_URL:-}" ]]; then
-  node - "$ROOT/electron-main.js" "$ROOT/lib/config.js" "$ROOT/config.example.json" <<'NODE'
+  node - "$ROOT/electron-main.js" "$ROOT/lib/config.js" "$ROOT/config.example.json" "$ROOT/server.js" <<'NODE'
 const fs = require("fs");
-const files = process.argv.slice(2);
+const [electronFile, libConfigFile, exampleConfigFile, serverFile] = process.argv.slice(2);
+const configFiles = [electronFile, libConfigFile, exampleConfigFile];
 const raw = String(process.env.SKYTRACE_COMMERCE_URL || "").trim().replace(/\/+$/, "");
 let url;
 try { url = new URL(raw); } catch { throw new Error("SKYTRACE_COMMERCE_URL must be a valid URL."); }
 if (url.protocol !== "https:") throw new Error("SKYTRACE_COMMERCE_URL must use HTTPS for packaged releases.");
-for (const file of files) {
+
+function replaceRequired(text, before, after, label) {
+  if (!text.includes(before)) throw new Error(`Could not apply ${label} release patch.`);
+  return text.replace(before, after);
+}
+
+for (const file of configFiles) {
   let text = fs.readFileSync(file, "utf8");
   text = text.split("http://127.0.0.1:8787").join(raw);
+  text = text.split("openMeteo: true").join("openMeteo: false");
+  text = text.split("rainViewer: true").join("rainViewer: false");
+  text = text.split('"openMeteo": true').join('"openMeteo": false');
+  text = text.split('"rainViewer": true').join('"rainViewer": false');
   fs.writeFileSync(file, text);
 }
+
+let electron = fs.readFileSync(electronFile, "utf8");
+electron = replaceRequired(
+  electron,
+`      // Release packages replace DEFAULT_CONFIG's loopback URL at build time.
+      // Preserve every other user setting while moving older installs to that HTTPS backend.
+      if (shouldMigrateCommerce) {
+        existing.commerce = {
+          ...(existing.commerce && typeof existing.commerce === "object" ? existing.commerce : {}),
+          enabled: true,
+          baseUrl: releaseCommerceUrl
+        };
+        fs.writeFileSync(configPath, \`${'${JSON.stringify(existing, null, 2)}'}\\n\`, {
+          mode: 0o600
+        });
+      }`,
+`      // Release packages replace DEFAULT_CONFIG's loopback URL at build time.
+      // Preserve user settings, migrate older installs to HTTPS, and force providers
+      // whose free hosted APIs do not permit commercial use off in packaged builds.
+      let configChanged = false;
+      if (shouldMigrateCommerce) {
+        existing.commerce = {
+          ...(existing.commerce && typeof existing.commerce === "object" ? existing.commerce : {}),
+          enabled: true,
+          baseUrl: releaseCommerceUrl
+        };
+        configChanged = true;
+      }
+
+      const commercialRelease = app.isPackaged && /^https:\\/\\//i.test(releaseCommerceUrl);
+      if (commercialRelease) {
+        existing.providers = {
+          ...(existing.providers && typeof existing.providers === "object" ? existing.providers : {}),
+          openMeteo: false,
+          rainViewer: false
+        };
+        configChanged = true;
+      }
+
+      if (configChanged) {
+        fs.writeFileSync(configPath, \`${'${JSON.stringify(existing, null, 2)}'}\\n\`, {
+          mode: 0o600
+        });
+      }`,
+  "packaged provider migration"
+);
+fs.writeFileSync(electronFile, electron);
+
+let server = fs.readFileSync(serverFile, "utf8");
+server = replaceRequired(
+  server,
+`    if (url.pathname === "/api/weather") {
+      return json(res, 200, await getWeather(p.get("lat"), p.get("lon")));
+    }`,
+`    if (url.pathname === "/api/weather") {
+      if (!config.providers.openMeteo) {
+        return json(res, 404, { ok: false, error: "General weather is disabled in this commercial build." });
+      }
+      return json(res, 200, await getWeather(p.get("lat"), p.get("lon")));
+    }`,
+  "commercial weather endpoint guard"
+);
+fs.writeFileSync(serverFile, server);
+
 console.log(`Configured packaged SkyTrace account service: ${raw}`);
+console.log("Commercial release policy: Open-Meteo free API and RainViewer are disabled.");
 NODE
 fi
 
