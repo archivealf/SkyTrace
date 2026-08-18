@@ -15,12 +15,20 @@ Local account and purchase backend for SkyTrace V3.3.
 
 ## Local Mac setup
 
-1. Copy `config.example.json` to `config.json`.
-2. Generate a server pepper with `openssl rand -hex 32` and paste it into `security.pepper`.
-3. Leave `stripe.enabled` as `false` until you are ready to test Checkout.
-4. When ready, put the Stripe secret key in the local `config.json`; never commit it.
-5. Run `npm run check`, then `npm start` from this folder.
-6. Verify the backend with `curl http://127.0.0.1:8787/health`.
+From the `commerce` folder, the easiest start command is:
+
+```bash
+chmod +x start-macos-local.sh
+./start-macos-local.sh
+```
+
+On first run it creates `config.json`, generates a random server pepper, locks down the config permissions, checks the backend syntax, and starts the service. Stripe stays disabled until you deliberately add your server-only Stripe secret and set `stripe.enabled` to `true`.
+
+You can verify it in another Terminal window with:
+
+```bash
+curl http://127.0.0.1:8787/health
+```
 
 `config.json` and `data/store.json` are gitignored and should remain only on the host Mac.
 
