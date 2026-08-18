@@ -9,7 +9,7 @@ import { getWeather } from "./lib/weather.js";
 import { getAirportAviationWeather, getAirportAdvisories, getRecentPilotReports } from "./lib/aviationweather.js";
 import { isOpenSkyAuthenticated } from "./lib/opensky.js";
 import { config } from "./lib/config.js";
-import { getAccountServiceConfig, getAccountCatalog, requestAccountOtp, verifyAccountOtp, getAccount, logoutAccount, createAccountCheckout } from "./lib/account.js";
+import { getAccountServiceConfig, getAccountCatalog, registerAccount, loginAccount, getAccount, logoutAccount, createAccountCheckout, confirmAccountCheckout } from "./lib/account.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const mime = {
@@ -117,14 +117,14 @@ async function api(req, res, url) {
       return json(res, 200, await getAccount());
     }
 
-    if (url.pathname === "/api/account/request-otp" && req.method === "POST") {
+    if (url.pathname === "/api/account/register" && req.method === "POST") {
       const body = await readJsonBody(req);
-      return json(res, 200, await requestAccountOtp(body.email));
+      return json(res, 201, await registerAccount(body));
     }
 
-    if (url.pathname === "/api/account/verify-otp" && req.method === "POST") {
+    if (url.pathname === "/api/account/login" && req.method === "POST") {
       const body = await readJsonBody(req);
-      return json(res, 200, await verifyAccountOtp(body));
+      return json(res, 200, await loginAccount(body));
     }
 
     if (url.pathname === "/api/account/logout" && req.method === "POST") {
@@ -134,6 +134,11 @@ async function api(req, res, url) {
     if (url.pathname === "/api/account/checkout" && req.method === "POST") {
       const body = await readJsonBody(req);
       return json(res, 200, await createAccountCheckout(body.productKey));
+    }
+
+    if (url.pathname === "/api/account/checkout-confirm" && req.method === "POST") {
+      const body = await readJsonBody(req);
+      return json(res, 200, await confirmAccountCheckout(body.sessionId));
     }
 
     if (url.pathname === "/api/config") {
