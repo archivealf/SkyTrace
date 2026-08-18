@@ -1,0 +1,64 @@
+/* V3.3 Commerce + Liquid Glass */
+:root{
+  --glass:rgba(12,15,22,.66);
+  --glass-strong:rgba(10,12,18,.79);
+  --glass-edge:rgba(255,255,255,.16);
+  --glass-highlight:rgba(255,255,255,.09);
+  --glass-shadow:0 24px 80px rgba(0,0,0,.42);
+  --spring:cubic-bezier(.2,.86,.25,1.02);
+}
+.flightdeck-sheet,.command-search,.live-cluster,.brand-orb,.round-button,.flightdeck-rail{
+  background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.012) 42%),var(--glass);
+  border-color:var(--glass-edge);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.075),var(--glass-shadow);
+  backdrop-filter:blur(34px) saturate(1.55);
+  -webkit-backdrop-filter:blur(34px) saturate(1.55);
+}
+.flightdeck-sheet,.command-search,.live-cluster,.flightdeck-rail,.brand-orb{position:relative}
+.flightdeck-sheet:before,.command-search:before,.live-cluster:before,.flightdeck-rail:before,.brand-orb:before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(118deg,rgba(255,255,255,.095),transparent 24%,transparent 72%,rgba(255,255,255,.025));
+  mask:linear-gradient(#000,#000) content-box,linear-gradient(#000,#000);padding:1px;
+  -webkit-mask:linear-gradient(#000,#000) content-box,linear-gradient(#000,#000);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+}
+button,.aircraft-row,.airport-row,.watch-row,.store-card,.metric,.telemetry-row>div,.metadata-item,.awc-card,.advisory-card{
+  transition:transform .28s var(--spring),background-color .25s ease,border-color .25s ease,box-shadow .25s ease,opacity .25s ease;
+}
+button:active{transform:scale(.97)}
+.aircraft-row:hover,.airport-row:hover,.watch-row:hover{transform:translateX(3px);background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.14)}
+.metric:hover,.telemetry-row>div:hover,.metadata-item:hover,.awc-card:hover,.advisory-card:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.16)}
+.side-view.active{animation:glassViewIn .38s var(--spring) both}
+.flight-card:not(.hidden),.airport-panel:not(.hidden){animation:glassPanelIn .42s var(--spring) both;transform-origin:90% 90%}
+.stats-panel:not(.hidden),.account-modal:not(.hidden){animation:glassModalIn .38s var(--spring) both}
+.toast:not(.hidden){animation:toastIn .32s var(--spring) both}
+@keyframes glassViewIn{from{opacity:0;transform:translateX(-8px) scale(.992);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+@keyframes glassPanelIn{from{opacity:0;transform:translateY(16px) scale(.965);filter:blur(7px)}to{opacity:1;transform:none;filter:none}}
+@keyframes glassModalIn{from{opacity:0;transform:translate(-50%,-47%) scale(.94);filter:blur(8px)}to{opacity:1;transform:translate(-50%,-50%) scale(1);filter:none}}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,-8px) scale(.96)}to{opacity:1;transform:translateX(-50%) scale(1)}}
+
+.account-pill{height:36px;border:1px solid var(--border);background:rgba(255,255,255,.045);border-radius:11px;padding:0 10px;display:flex;align-items:center;gap:7px;color:var(--muted);white-space:nowrap}
+.account-pill b{font-size:9px;font-weight:650;max-width:96px;overflow:hidden;text-overflow:ellipsis}
+.account-dot{width:7px;height:7px;border-radius:50%;background:#7f848e;box-shadow:0 0 0 4px rgba(255,255,255,.035)}
+.account-pill.signed-in{color:var(--text);background:rgba(255,255,255,.075)}
+.account-pill.signed-in .account-dot{background:var(--green);box-shadow:0 0 0 4px rgba(103,230,168,.09)}
+
+.store-head{align-items:flex-start}.store-account{font-size:8px;color:var(--muted);max-width:115px;text-align:right;line-height:1.35;margin-top:5px}
+.store-scroll{display:grid;gap:9px;padding:4px 10px 18px}
+.store-card{border:1px solid var(--border);border-radius:17px;padding:13px;background:linear-gradient(145deg,rgba(255,255,255,.06),rgba(255,255,255,.025));box-shadow:inset 0 1px rgba(255,255,255,.045)}
+.store-card:hover{transform:translateY(-2px);border-color:var(--border-bright);box-shadow:0 15px 34px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.07)}
+.store-card-pro{background:radial-gradient(circle at 85% 10%,rgba(141,168,255,.16),transparent 38%),linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025));border-color:rgba(141,168,255,.32)}
+.store-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.store-card h3{font-size:16px;margin:3px 0 0;letter-spacing:-.025em}.store-card-top>strong{font-size:15px}.store-kicker{font-size:7px;color:var(--muted);letter-spacing:.13em;font-weight:750}.store-card p{color:var(--muted);font-size:9px;line-height:1.5;margin:9px 0}.store-features{display:flex;flex-wrap:wrap;gap:5px;margin:9px 0}.store-features span{font-size:7px;padding:5px 7px;border:1px solid var(--border);background:var(--soft);border-radius:999px}.store-buy{width:100%;border:1px solid var(--border-bright);background:rgba(255,255,255,.095);border-radius:11px;padding:9px;font-size:9px;font-weight:700}.store-buy:hover{background:rgba(255,255,255,.15);transform:translateY(-1px)}.store-buy.owned{background:rgba(103,230,168,.09);border-color:rgba(103,230,168,.24);color:#bdf4d6;cursor:default}.store-note{font-size:8px!important;text-align:center;padding:2px 7px 0;margin:0!important}
+.premium-tag{font-style:normal;font-size:6px;letter-spacing:.08em;border:1px solid rgba(141,168,255,.27);color:#b8c5ff;background:rgba(141,168,255,.08);border-radius:5px;padding:2px 4px;margin-left:3px;vertical-align:1px}.premium-unlocked .premium-tag{display:none}
+
+.account-modal{position:absolute;z-index:70;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,calc(100% - 34px));border-radius:28px;padding:20px;background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.015)),rgba(9,11,17,.8)}
+.account-hero{display:flex;gap:13px;align-items:center;padding-right:30px;margin-bottom:18px}.account-hero h2{font-size:24px;letter-spacing:-.04em;margin:3px 0 4px}.account-hero p{font-size:9px;line-height:1.45;color:var(--muted);margin:0}.account-mark,.account-avatar{display:grid;place-items:center;border:1px solid var(--border-bright);background:radial-gradient(circle at 35% 25%,rgba(255,255,255,.13),rgba(141,168,255,.09));box-shadow:inset 0 1px rgba(255,255,255,.08)}.account-mark{width:55px;height:55px;border-radius:18px;font-size:23px}.account-field{display:grid;gap:6px;margin:10px 0}.account-field span{font-size:8px;color:var(--muted);letter-spacing:.05em}.account-field input{height:42px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.05);color:var(--text);padding:0 12px}.account-field input:focus{border-color:rgba(141,168,255,.5);box-shadow:0 0 0 3px rgba(141,168,255,.08)}.account-primary,.account-secondary,.account-logout{width:100%;border-radius:12px;padding:11px;border:1px solid var(--border);font-size:10px}.account-primary{background:rgba(141,168,255,.16);border-color:rgba(141,168,255,.32);font-weight:700;margin-top:4px}.account-primary:hover{background:rgba(141,168,255,.23)}.account-secondary{background:var(--soft-2);margin-top:12px}.account-logout{background:transparent;color:var(--muted);margin-top:7px}.account-fine{color:var(--muted);font-size:8px;line-height:1.45;text-align:center;margin:9px 0 0}.account-profile{display:flex;align-items:center;gap:11px;padding:12px;border:1px solid var(--border);border-radius:15px;background:var(--soft)}.account-avatar{width:38px;height:38px;border-radius:12px}.account-profile strong,.account-profile small{display:block}.account-profile strong{font-size:11px}.account-profile small{color:var(--muted);font-size:8px;margin-top:3px}.account-entitlements{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}.account-entitlements span{border:1px solid rgba(103,230,168,.2);background:rgba(103,230,168,.07);color:#bdeed4;border-radius:999px;padding:6px 8px;font-size:8px}
+
+.flightdeck-rail button.active{box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),0 6px 18px rgba(0,0,0,.15)}
+.detail-tabs{position:relative;overflow:hidden}.detail-tab{transition:color .25s ease,background-color .25s ease,transform .25s var(--spring)}
+.detail-tab:hover{transform:translateY(-1px)}
+
+@media(max-width:900px){.account-pill b{display:none}.account-pill{width:34px;padding:0;justify-content:center}.account-dot{margin:0}.flightdeck-top{width:calc(100% - 112px)}}
+@media(max-width:760px){.account-pill{display:none}.store-scroll{padding-bottom:10px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+@media(prefers-reduced-transparency:reduce){.flightdeck-sheet,.command-search,.live-cluster,.brand-orb,.round-button,.flightdeck-rail,.account-modal{background:#11141b!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}}
