@@ -27,6 +27,10 @@ cp "$OVERLAY/v3.3-glass.css" "$ROOT/v3.3-glass.css"
 mkdir -p "$ROOT/lib"
 cp "$OVERLAY/lib/account.js" "$ROOT/lib/account.js"
 cp "$OVERLAY/lib/config.js" "$ROOT/lib/config.js"
+mkdir -p "$ROOT/scripts"
+cp "$OVERLAY/scripts/generate-skytrace-icon.mjs" "$ROOT/scripts/generate-skytrace-icon.mjs"
+cp "$OVERLAY/scripts/make-mac-icon.sh" "$ROOT/scripts/make-mac-icon.sh"
+chmod +x "$ROOT/scripts/make-mac-icon.sh"
 
 node - "$ROOT/index.html" "$ROOT/app.v3.js" "$ROOT/lib/live.js" <<'NODE'
 const fs = require("fs");
