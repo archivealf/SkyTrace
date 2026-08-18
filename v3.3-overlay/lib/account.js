@@ -75,34 +75,12 @@ async function remote(pathname, { method = "GET", body = null, auth = false } = 
     if (response.status === 401 && auth) clearSession();
     const error = new Error(payload?.error || `Account service request failed (${response.status}).`);
     error.status = response.status;
-    error.retryAfter = payload?.retryAfter || null;
     throw error;
   }
   return payload;
 }
 
-export function getAccountServiceConfig() {
-  return {
-    ok: true,
-    enabled: Boolean(config?.commerce?.enabled && accountBaseUrl()),
-    baseUrl: accountBaseUrl(),
-    login: "email_otp"
-  };
-}
-
-export async function getAccountCatalog() {
-  return remote("/v1/catalog");
-}
-
-export async function requestAccountOtp(email) {
-  return remote("/v1/auth/request-otp", { method: "POST", body: { email } });
-}
-
-export async function verifyAccountOtp({ email, code, challengeId }) {
-  const result = await remote("/v1/auth/verify-otp", {
-    method: "POST",
-    body: { email, code, challengeId }
-  });
+function saveAuthResult(result) {
   if (!result?.token) {
     const error = new Error("Account service did not return a session.");
     error.status = 502;
@@ -111,6 +89,33 @@ export async function verifyAccountOtp({ email, code, challengeId }) {
   writeSession({ token: result.token, savedAt: new Date().toISOString() });
   const { token, ...safe } = result;
   return safe;
+}
+
+export function getAccountServiceConfig() {
+  return {
+    ok: true,
+    enabled: Boolean(config?.commerce?.enabled && accountBaseUrl()),
+    baseUrl: accountBaseUrl(),
+    login: "username_password"
+  };
+}
+
+export async function getAccountCatalog() {
+  return remote("/v1/catalog");
+}
+
+export async function registerAccount({ username, password }) {
+  return saveAuthResult(await remote("/v1/auth/register", {
+    method: "POST",
+    body: { username, password }
+  }));
+}
+
+export async function loginAccount({ username, password }) {
+  return saveAuthResult(await remote("/v1/auth/login", {
+    method: "POST",
+    body: { username, password }
+  }));
 }
 
 export async function getAccount() {
@@ -137,4 +142,8 @@ export async function logoutAccount() {
 
 export async function createAccountCheckout(productKey) {
   return remote("/v1/checkout", { method: "POST", body: { productKey }, auth: true });
+}
+
+export async function confirmAccountCheckout(sessionId) {
+  return remote("/v1/checkout/confirm", { method: "POST", body: { sessionId }, auth: true });
 }
