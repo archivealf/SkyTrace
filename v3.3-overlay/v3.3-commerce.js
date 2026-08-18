@@ -10,7 +10,6 @@
     themes: "Themes"
   };
   const account = { authenticated:false, user:null, entitlements:[], effectiveEntitlements:[] };
-  let otpChallengeId = null;
   let purchasePollTimer = null;
 
   function escapeHtml(value) {
@@ -68,7 +67,7 @@
           <article class="store-card" data-product-card="advanced_aircraft"><div class="store-card-top"><div><span class="store-kicker">AIRCRAFT</span><h3>Advanced Aircraft</h3></div><strong>£1.99</strong></div><p>Enhanced telemetry timeline, analytics and aircraft detail tools.</p><button class="store-buy" data-product="advanced_aircraft">Unlock permanently</button></article>
           <article class="store-card" data-product-card="replay_plus"><div class="store-card-top"><div><span class="store-kicker">REPLAY</span><h3>Replay+</h3></div><strong>£1.99</strong></div><p>Advanced playback controls and longer locally recorded history.</p><button class="store-buy" data-product="replay_plus">Unlock permanently</button></article>
           <article class="store-card" data-product-card="themes"><div class="store-card-top"><div><span class="store-kicker">CUSTOMISE</span><h3>Themes</h3></div><strong>£0.99</strong></div><p>Premium map and interface appearance controls.</p><button class="store-buy" data-product="themes">Unlock permanently</button></article>
-          <p class="store-note">One-time purchases. Sign in with your email to restore purchases on another Mac.</p>
+          <p class="store-note">One-time purchases. Your unlocks stay attached to your SkyTrace username.</p>
         </div>`;
       const footer = sidebar.querySelector("footer.source-row");
       sidebar.insertBefore(section, footer || null);
@@ -83,9 +82,15 @@
       section.setAttribute("aria-labelledby", "accountTitle");
       section.innerHTML = `
         <button class="detail-close" id="accountClose" aria-label="Close">×</button>
-        <div class="account-hero"><div class="account-mark">◇</div><div><div class="eyebrow">SKYTRACE ACCOUNT</div><h2 id="accountTitle">Sign in</h2><p id="accountSubtitle">Use your email to sync permanent purchases across Macs.</p></div></div>
-        <div id="accountSignedOut"><label class="account-field"><span>Email address</span><input id="accountEmail" type="email" autocomplete="email" placeholder="you@example.com"></label><div class="account-code-row hidden" id="accountCodeRow"><label class="account-field"><span>Six-digit code</span><input id="accountCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000"></label></div><button class="account-primary" id="accountSubmit">Send sign-in code</button><p class="account-fine" id="accountMessage">No password. We send a short-lived code to your email.</p></div>
-        <div class="hidden" id="accountSignedIn"><div class="account-profile"><span class="account-avatar">◇</span><div><strong id="accountEmailLabel">—</strong><small>SkyTrace account</small></div></div><div class="account-entitlements" id="accountEntitlements"></div><button class="account-secondary" id="accountOpenStore">Open SkyTrace Store</button><button class="account-logout" id="accountLogout">Sign out</button></div>`;
+        <div class="account-hero"><div class="account-mark">◇</div><div><div class="eyebrow">SKYTRACE ACCOUNT</div><h2 id="accountTitle">Sign in</h2><p id="accountSubtitle">Use a SkyTrace username and password.</p></div></div>
+        <div id="accountSignedOut">
+          <label class="account-field"><span>Username</span><input id="accountUsername" type="text" autocomplete="username" maxlength="32" placeholder="yourname"></label>
+          <label class="account-field"><span>Password</span><input id="accountPassword" type="password" autocomplete="current-password" maxlength="128" placeholder="••••••••••"></label>
+          <button class="account-primary" id="accountSubmit">Sign in</button>
+          <button class="account-secondary" id="accountRegister">Create account</button>
+          <p class="account-fine" id="accountMessage">Passwords are hashed on the SkyTrace backend; plaintext passwords are never stored.</p>
+        </div>
+        <div class="hidden" id="accountSignedIn"><div class="account-profile"><span class="account-avatar">◇</span><div><strong id="accountUsernameLabel">—</strong><small>SkyTrace account</small></div></div><div class="account-entitlements" id="accountEntitlements"></div><button class="account-secondary" id="accountOpenStore">Open SkyTrace Store</button><button class="account-logout" id="accountLogout">Sign out</button></div>`;
       const toast = $("toast");
       toast?.parentElement?.insertBefore(section, toast);
     }
@@ -124,7 +129,7 @@
   function openAccount() {
     $("accountPanel")?.classList.remove("hidden");
     renderAccount();
-    if (!account.authenticated) setTimeout(() => $("accountEmail")?.focus(), 70);
+    if (!account.authenticated) setTimeout(() => $("accountUsername")?.focus(), 70);
   }
   function closeAccount() { $("accountPanel")?.classList.add("hidden"); }
 
@@ -141,7 +146,7 @@
   }
   function renderStore() {
     const label = $("storeAccountLabel");
-    if (label) label.textContent = account.authenticated ? (account.user?.email || "Signed in") : "Sign in to purchase";
+    if (label) label.textContent = account.authenticated ? (account.user?.username || "Signed in") : "Sign in to purchase";
     document.querySelectorAll(".store-buy[data-product]").forEach(button => {
       const key = button.dataset.product;
       const owned = hasEntitlement(key);
@@ -153,18 +158,18 @@
   function renderAccount() {
     const signedIn = account.authenticated;
     $("accountBtn")?.classList.toggle("signed-in", signedIn);
-    if ($("accountBtnLabel")) $("accountBtnLabel").textContent = signedIn ? (account.user?.email?.split("@")[0] || "Account") : "Sign in";
+    if ($("accountBtnLabel")) $("accountBtnLabel").textContent = signedIn ? (account.user?.username || "Account") : "Sign in";
     $("accountSignedOut")?.classList.toggle("hidden", signedIn);
     $("accountSignedIn")?.classList.toggle("hidden", !signedIn);
     if (signedIn) {
-      $("accountEmailLabel").textContent = account.user?.email || "SkyTrace account";
+      $("accountUsernameLabel").textContent = account.user?.username || "SkyTrace account";
       $("accountTitle").textContent = "Your SkyTrace account";
-      $("accountSubtitle").textContent = "Purchases are synced to this email and can be restored on another Mac.";
+      $("accountSubtitle").textContent = "Permanent purchases are attached to this username.";
       const owned = account.entitlements || [];
       $("accountEntitlements").innerHTML = owned.length ? owned.map(key => `<span>${escapeHtml(ENTITLEMENT_LABELS[key] || key)}</span>`).join("") : "<span>Free plan</span>";
     } else {
       $("accountTitle").textContent = "Sign in";
-      $("accountSubtitle").textContent = "Use your email to sync permanent purchases across Macs.";
+      $("accountSubtitle").textContent = "Use a SkyTrace username and password.";
     }
     renderPremiumState();
     renderStore();
@@ -184,43 +189,36 @@
     return account;
   }
 
-  async function submitAccount() {
-    const email = $("accountEmail")?.value.trim() || "";
-    if (!email) return showToast("Enter your email address.");
-    const submit = $("accountSubmit");
+  async function submitAccount(mode = "login") {
+    const username = $("accountUsername")?.value.trim() || "";
+    const password = $("accountPassword")?.value || "";
+    if (!username || !password) return showToast("Enter your username and password.");
+    const submit = mode === "register" ? $("accountRegister") : $("accountSubmit");
     submit.disabled = true;
     try {
-      if (!otpChallengeId) {
-        const payload = await jsonFetch("/api/account/request-otp", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ email }) });
-        otpChallengeId = payload.challengeId;
-        $("accountCodeRow").classList.remove("hidden");
-        submit.textContent = "Verify code";
-        $("accountMessage").textContent = `Code sent to ${email}. It expires in ${Math.round((payload.expiresIn || 600) / 60)} minutes.`;
-        if (payload.devCode) { $("accountCode").value = payload.devCode; $("accountMessage").textContent = "Development OTP loaded automatically."; }
-        setTimeout(() => $("accountCode")?.focus(), 70);
-      } else {
-        const code = $("accountCode")?.value.trim() || "";
-        if (!/^\d{6}$/.test(code)) throw new Error("Enter the six-digit code from your email.");
-        const payload = await jsonFetch("/api/account/verify-otp", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ email, code, challengeId:otpChallengeId }) });
-        account.authenticated = true;
-        account.user = payload.user || null;
-        account.entitlements = payload.entitlements || [];
-        account.effectiveEntitlements = payload.effectiveEntitlements || [];
-        otpChallengeId = null;
-        $("accountCode").value = "";
-        $("accountCodeRow").classList.add("hidden");
-        submit.textContent = "Send sign-in code";
-        renderAccount();
-        showToast("Signed in to SkyTrace.");
-      }
+      const endpoint = mode === "register" ? "/api/account/register" : "/api/account/login";
+      const payload = await jsonFetch(endpoint, {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ username, password })
+      });
+      account.authenticated = true;
+      account.user = payload.user || null;
+      account.entitlements = payload.entitlements || [];
+      account.effectiveEntitlements = payload.effectiveEntitlements || [];
+      $("accountPassword").value = "";
+      $("accountMessage").textContent = mode === "register" ? "Account created successfully." : "Signed in successfully.";
+      renderAccount();
+      showToast(mode === "register" ? "SkyTrace account created." : "Signed in to SkyTrace.");
     } catch (error) {
       $("accountMessage").textContent = error.message;
       showToast(error.message, 5000);
     } finally { submit.disabled = false; }
   }
+
   async function logoutAccount() {
     try { await jsonFetch("/api/account/logout", { method:"POST" }); } catch {}
-    account.authenticated = false; account.user = null; account.entitlements = []; account.effectiveEntitlements = []; otpChallengeId = null;
+    account.authenticated = false; account.user = null; account.entitlements = []; account.effectiveEntitlements = [];
     renderAccount(); showToast("Signed out.");
   }
   function startPurchasePolling() {
@@ -231,8 +229,14 @@
       const before = account.effectiveEntitlements.join("|");
       await loadAccount();
       const after = account.effectiveEntitlements.join("|");
-      if (before !== after) { clearInterval(purchasePollTimer); purchasePollTimer = null; showToast("Purchase unlocked. Welcome to your new SkyTrace features.", 5000); }
-      else if (attempts >= 30) { clearInterval(purchasePollTimer); purchasePollTimer = null; }
+      if (before !== after) {
+        clearInterval(purchasePollTimer);
+        purchasePollTimer = null;
+        showToast("Purchase unlocked. Welcome to your new SkyTrace features.", 5000);
+      } else if (attempts >= 45) {
+        clearInterval(purchasePollTimer);
+        purchasePollTimer = null;
+      }
     }, 4000);
   }
   async function purchaseProduct(productKey) {
@@ -243,7 +247,7 @@
       const payload = await jsonFetch("/api/account/checkout", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ productKey }) });
       if (!payload.checkoutUrl) throw new Error("Checkout URL was not returned.");
       window.open(payload.checkoutUrl, "_blank", "noopener");
-      showToast("Secure Stripe Checkout opened in your browser. SkyTrace will unlock automatically after payment.", 6000);
+      showToast("Secure Stripe Checkout opened in your browser. SkyTrace will verify and unlock the purchase after payment.", 6000);
       startPurchasePolling();
     } catch (error) { showToast(error.message, 5500); }
     finally { renderStore(); }
@@ -252,19 +256,12 @@
   function bindEvents() {
     $("accountBtn")?.addEventListener("click", openAccount);
     $("accountClose")?.addEventListener("click", closeAccount);
-    $("accountSubmit")?.addEventListener("click", submitAccount);
+    $("accountSubmit")?.addEventListener("click", () => submitAccount("login"));
+    $("accountRegister")?.addEventListener("click", () => submitAccount("register"));
     $("accountLogout")?.addEventListener("click", logoutAccount);
     $("accountOpenStore")?.addEventListener("click", () => { closeAccount(); switchStore(); });
-    $("accountCode")?.addEventListener("keydown", event => { if (event.key === "Enter") submitAccount(); });
-    $("accountEmail")?.addEventListener("keydown", event => { if (event.key === "Enter") submitAccount(); });
-    $("accountEmail")?.addEventListener("input", () => {
-      if (!otpChallengeId) return;
-      otpChallengeId = null;
-      $("accountCodeRow").classList.add("hidden");
-      $("accountCode").value = "";
-      $("accountSubmit").textContent = "Send sign-in code";
-      $("accountMessage").textContent = "Email changed. Request a new sign-in code.";
-    });
+    $("accountPassword")?.addEventListener("keydown", event => { if (event.key === "Enter") submitAccount("login"); });
+    $("accountUsername")?.addEventListener("keydown", event => { if (event.key === "Enter") $("accountPassword")?.focus(); });
     document.querySelector('.commerce-mode-tab')?.addEventListener("click", () => switchStore());
     document.querySelectorAll(".store-buy[data-product]").forEach(button => button.addEventListener("click", () => purchaseProduct(button.dataset.product)));
 
