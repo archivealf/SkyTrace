@@ -28,10 +28,11 @@ mkdir -p "$ROOT/lib"
 cp "$OVERLAY/lib/account.js" "$ROOT/lib/account.js"
 cp "$OVERLAY/lib/config.js" "$ROOT/lib/config.js"
 
-node - "$ROOT/index.html" "$ROOT/app.v3.js" <<'NODE'
+node - "$ROOT/index.html" "$ROOT/app.v3.js" "$ROOT/lib/live.js" <<'NODE'
 const fs = require("fs");
 const htmlFile = process.argv[2];
 const appFile = process.argv[3];
+const liveFile = process.argv[4];
 
 let html = fs.readFileSync(htmlFile, "utf8");
 if (!html.includes('/v3.3-glass.css')) {
@@ -64,6 +65,19 @@ app = app.replace(
 );
 
 fs.writeFileSync(appFile, app);
+
+let live = fs.readFileSync(liveFile, "utf8");
+
+// ADSB.lol's point endpoint is limited to 250 NM. On very wide map views,
+// keep using the reliable no-key ADSB.lol feed centered on the viewport rather
+// than switching the whole request to anonymous OpenSky (which can reject or
+// rate-limit the initial request and make the UI report the feed as unavailable).
+live = live.replace(
+  '  if (radius > 245) return null;\n\n  const r = Math.max(1, Math.min(245, radius));',
+  '  const r = Math.max(1, Math.min(245, radius));'
+);
+
+fs.writeFileSync(liveFile, live);
 NODE
 
 rm -rf "$OVERLAY"
