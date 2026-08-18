@@ -24,9 +24,9 @@ chmod +x "$ROOT/scripts/make-mac-icon.sh"
 node "$ROOT/scripts/generate-skytrace-icon.mjs" "$ROOT/assets/SkyTrace.png"
 
 # GitHub release builds inject the public HTTPS account/payment backend without
-# committing secrets. Because these builds are monetized, they also disable the
-# free Open-Meteo and RainViewer integrations. Local/dev builds keep the existing
-# provider defaults for evaluation and prototyping under each provider's terms.
+# committing secrets. Because these builds are monetized, providers whose hosted
+# services require separate commercial permission are disabled. Local/dev builds
+# keep the existing defaults for evaluation and prototyping under provider terms.
 if [[ -n "${SKYTRACE_COMMERCE_URL:-}" ]]; then
   node - "$ROOT/electron-main.js" "$ROOT/lib/config.js" "$ROOT/config.example.json" "$ROOT/server.js" <<'NODE'
 const fs = require("fs");
@@ -45,16 +45,38 @@ function replaceRequired(text, before, after, label) {
 for (const file of configFiles) {
   let text = fs.readFileSync(file, "utf8");
   text = text.split("http://127.0.0.1:8787").join(raw);
+  text = text.split("openSkyFallback: true").join("openSkyFallback: false");
+  text = text.split("adsbdb: true").join("adsbdb: false");
   text = text.split("openMeteo: true").join("openMeteo: false");
   text = text.split("rainViewer: true").join("rainViewer: false");
+  text = text.split('"openSkyFallback": true').join('"openSkyFallback": false');
+  text = text.split('"adsbdb": true').join('"adsbdb": false');
   text = text.split('"openMeteo": true').join('"openMeteo": false');
   text = text.split('"rainViewer": true').join('"rainViewer": false');
   fs.writeFileSync(file, text);
 }
 
-// In a packaged commercial build these runtime values stay disabled even if an
-// older user config still contains true from a local/non-commercial build.
+// Runtime gates keep restricted hosted providers disabled even if an older user
+// config contains values from a local/non-commercial build.
 let libConfig = fs.readFileSync(libConfigFile, "utf8");
+libConfig = replaceRequired(
+  libConfig,
+  '        live: raw?.providers?.live === "opensky" ? "opensky" : "adsblol",',
+  '        live: "adsblol",',
+  "OpenSky primary-provider commercial runtime gate"
+);
+libConfig = replaceRequired(
+  libConfig,
+  "        openSkyFallback: raw?.providers?.openSkyFallback !== false,",
+  "        openSkyFallback: false,",
+  "OpenSky fallback commercial runtime gate"
+);
+libConfig = replaceRequired(
+  libConfig,
+  "        adsbdb: raw?.providers?.adsbdb !== false,",
+  "        adsbdb: false,",
+  "ADSBDB commercial runtime gate"
+);
 libConfig = replaceRequired(
   libConfig,
   "        openMeteo: raw?.providers?.openMeteo !== false,",
@@ -69,8 +91,42 @@ libConfig = replaceRequired(
 );
 fs.writeFileSync(libConfigFile, libConfig);
 
-// Do not leave the local Open-Meteo proxy callable when the provider is disabled.
+// Do not leave restricted provider proxy routes callable in commercial builds.
 let server = fs.readFileSync(serverFile, "utf8");
+server = replaceRequired(
+  server,
+`    if (url.pathname === "/api/aircraft") {
+      return json(
+        res,
+        200,
+        await getAircraftMetadata(p.get("icao"), p.get("callsign") || "")
+      );
+    }`,
+`    if (url.pathname === "/api/aircraft") {
+      if (!config.providers.adsbdb) {
+        return json(res, 404, { ok: false, error: "Aircraft enrichment is disabled in this commercial build." });
+      }
+      return json(
+        res,
+        200,
+        await getAircraftMetadata(p.get("icao"), p.get("callsign") || "")
+      );
+    }`,
+  "commercial aircraft-enrichment endpoint guard"
+);
+server = replaceRequired(
+  server,
+`    if (url.pathname === "/api/route") {
+      return json(res, 200, await getFlightRoute(p.get("callsign")));
+    }`,
+`    if (url.pathname === "/api/route") {
+      if (!config.providers.adsbdb) {
+        return json(res, 404, { ok: false, error: "Route enrichment is disabled in this commercial build." });
+      }
+      return json(res, 200, await getFlightRoute(p.get("callsign")));
+    }`,
+  "commercial route-enrichment endpoint guard"
+);
 server = replaceRequired(
   server,
 `    if (url.pathname === "/api/weather") {
@@ -87,7 +143,7 @@ server = replaceRequired(
 fs.writeFileSync(serverFile, server);
 
 console.log(`Configured packaged SkyTrace account service: ${raw}`);
-console.log("Commercial release policy: Open-Meteo free API and RainViewer are disabled.");
+console.log("Commercial release policy: OpenSky, ADSBDB, Open-Meteo free API and RainViewer are disabled.");
 NODE
 fi
 
