@@ -21,7 +21,7 @@ const DEFAULT_CONFIG = {
     rainViewer: true
   },
   opensky: { clientId: "", clientSecret: "" },
-  commerce: { enabled: true, baseUrl: "https://skytrace.duckdns.org" }
+  commerce: { enabled: true, baseUrl: "http://127.0.0.1:8787" }
 };
 
 function ensureUserConfig() {
@@ -172,15 +172,12 @@ async function boot() {
     }
   }
 
-  // These globals are set before importing the backend so the backend reads
-  // the per-user config file rather than any file inside the application bundle.
   globalThis.__SKYTRACE_CONFIG_PATH__ = configPath;
   globalThis.__SKYTRACE_DATA_DIR__ = userData;
   globalThis.__SKYTRACE_DESKTOP__ = true;
 
   const { startSkyTraceServer } = await import("./server.js");
 
-  // Port 0 asks macOS for an available loopback port, avoiding "port already in use".
   skyTraceServer = await startSkyTraceServer({
     port: 0,
     host: "127.0.0.1",
