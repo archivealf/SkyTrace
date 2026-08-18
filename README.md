@@ -1,32 +1,43 @@
-# SkyTrace V3.2 Free Stack
+# SkyTrace V3.3
 
-SkyTrace is a native-style macOS aviation intelligence app built with Electron. V3.2 keeps the existing radar, airport, watchlist, replay, weather, statistics and desktop features while replacing paid-provider dependencies with free/open data sources and local processing.
+SkyTrace is a native-style macOS aviation intelligence app built with Electron. V3.3 adds username/password accounts, Stripe-backed permanent upgrades and a public HTTPS commerce service while retaining the radar, airport, watchlist, replay, statistics and desktop features.
 
 ## Install
 
-```bash
-bash <(curl -fsSL "https://raw.githubusercontent.com/archivealf/SkyTrace/main/install")
-```
+Public release builds are distributed as Intel (`x64`) and Apple Silicon (`arm64`) macOS packages through GitHub Releases.
 
-The installer detects Intel (`x64`) or Apple Silicon (`arm64`), verifies prebuilt release checksums when available, installs to `~/Applications/SkyTrace.app`, and can build locally as a fallback. It does not disable Gatekeeper.
+## Data stack
 
-## V3.2 data stack
+The local/development build can use:
 
 - ADSB.lol: primary live aircraft positions/telemetry
-- OpenSky: optional free fallback; OAuth credentials are optional
+- OpenSky: optional fallback for non-commercial use where its terms permit
 - OurAirports: airports, runways, frequencies and navaids
 - tar1090/Mictronics aircraft database: local registration/type/operator lookup
-- ADSBDB: free public metadata/route enrichment fallback
+- ADSBDB: optional public metadata/route enrichment for local development where upstream terms permit
 - AviationWeather.gov: METAR, TAF, SIGMET and PIREP/AIREP products
-- Open-Meteo: general airport/weather forecasts
-- RainViewer: optional radar tiles
+- Open-Meteo: optional general weather for non-commercial development
+- RainViewer: optional radar imagery for non-commercial development
 - OpenFreeMap + MapLibre: map rendering
 
-No SkyLink or Airframes key is required. No `.env` file is used.
+### Public commercial V3.3 builds
+
+When `SKYTRACE_COMMERCE_URL` is supplied by the release workflow, the packaged app deliberately uses a stricter provider policy:
+
+- ADSB.lol remains the live aircraft source.
+- OurAirports, local aircraft reference data, AviationWeather.gov and OpenFreeMap/MapLibre remain available.
+- OpenSky REST API use and fallback are disabled unless SkyTrace later obtains the required commercial agreement.
+- ADSBDB hosted aircraft/route enrichment is disabled pending suitable written permission/terms for the release use case.
+- The Open-Meteo free hosted API is disabled; a future build can use its commercial customer endpoint under a paid plan.
+- RainViewer is disabled until commercial integration terms are in place.
+
+These restrictions are enforced at build/runtime rather than relying only on the default config, so an older local configuration cannot silently turn the restricted hosted providers back on in a commercial package. See `ATTRIBUTION.md` for the provider/licence record.
+
+No `.env` file is used.
 
 ## Timeline, not intercepted messages
 
-The old Messages view is now a telemetry-derived Timeline. It records observable flight events such as detection, airborne/on-ground transitions, altitude thresholds, climb/descent, heading changes and squawk changes. Public PIREP/AIREP and SIGMET products are shown separately. SkyTrace does not pretend these are ACARS messages.
+The Messages view is a telemetry-derived Timeline. It records observable flight events such as detection, airborne/on-ground transitions, altitude thresholds, climb/descent, heading changes and squawk changes. Public PIREP/AIREP and SIGMET products are shown separately. SkyTrace does not present these as intercepted ACARS messages.
 
 ## Configuration
 
@@ -36,32 +47,14 @@ SkyTrace creates:
 ~/Library/Application Support/SkyTrace/config.json
 ```
 
-Default configuration:
-
-```json
-{
-  "server": { "port": 3000 },
-  "providers": {
-    "live": "adsblol",
-    "openSkyFallback": true,
-    "adsbdb": true,
-    "aviationWeather": true,
-    "openMeteo": true,
-    "rainViewer": true
-  },
-  "opensky": {
-    "clientId": "",
-    "clientSecret": ""
-  }
-}
-```
+Local/development defaults include optional providers that are automatically restricted in public commercial release builds as described above.
 
 ## Build locally
 
 Requires Node.js 20+ and macOS:
 
 ```bash
-bash scripts/materialize-v3.2.sh
+bash scripts/materialize-v3.3.sh
 npm install
 npm run data
 npm run icon:mac
@@ -82,7 +75,7 @@ SkyTrace-mac-x64.zip
 SkyTrace-mac-x64.dmg
 ```
 
-The source payload stored under `v3.2-bundle/` is SHA-256 verified before it is materialized for builds. Large aviation reference databases are downloaded during the build rather than committed.
+Release builds require the repository variable `SKYTRACE_COMMERCE_URL` to contain the public HTTPS commerce endpoint. Stripe secrets and webhook signing secrets remain server-side and are never embedded in the app.
 
 ## Security
 
@@ -91,3 +84,4 @@ The source payload stored under `v3.2-bundle/` is SHA-256 verified before it is 
 - Electron `nodeIntegration` is disabled.
 - Context isolation, renderer sandboxing and web security are enabled.
 - External navigation is opened in the system browser.
+- Public account/payment traffic uses the configured HTTPS SkyTrace Commerce service.
