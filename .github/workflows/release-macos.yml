@@ -38,13 +38,12 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Require public commerce URL for release builds
-        if: github.event_name != 'pull_request'
+      - name: Require public commerce URL for packaged builds
         shell: bash
         run: |
           set -euo pipefail
           if [[ -z "${SKYTRACE_COMMERCE_URL:-}" ]]; then
-            echo "Repository variable SKYTRACE_COMMERCE_URL is required for public releases."
+            echo "Repository variable SKYTRACE_COMMERCE_URL is required for packaged V3.3 builds."
             exit 1
           fi
           case "$SKYTRACE_COMMERCE_URL" in
@@ -54,6 +53,9 @@ jobs:
 
       - name: Verify and materialize V3.3 source
         run: bash scripts/materialize-v3.3.sh
+
+      - name: Enforce commercial provider isolation
+        run: node scripts/harden-commercial-build.mjs
 
       - name: Verify commerce backend
         run: node --check commerce/server.js
@@ -88,7 +90,6 @@ jobs:
           shasum -a 256 "$ZIP" > "${ZIP}.sha256"
 
       - name: Build DMG
-        continue-on-error: true
         run: npm run make -- --arch=${{ matrix.arch }}
 
       - name: Collect DMG
@@ -96,9 +97,12 @@ jobs:
         run: |
           set -euo pipefail
           DMG="$(find out/make -name '*.dmg' -type f -print -quit || true)"
-          if [[ -n "$DMG" ]]; then
-            cp "$DMG" "SkyTrace-mac-${{ matrix.arch }}.dmg"
+          if [[ -z "$DMG" ]]; then
+            echo "SkyTrace DMG was not produced."
+            find out/make -maxdepth 5 -print || true
+            exit 1
           fi
+          cp "$DMG" "SkyTrace-mac-${{ matrix.arch }}.dmg"
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
@@ -108,7 +112,7 @@ jobs:
             SkyTrace-mac-${{ matrix.arch }}.zip
             SkyTrace-mac-${{ matrix.arch }}.zip.sha256
             SkyTrace-mac-${{ matrix.arch }}.dmg
-          if-no-files-found: warn
+          if-no-files-found: error
 
   release:
     if: github.event_name != 'pull_request'
