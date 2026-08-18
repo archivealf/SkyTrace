@@ -1,0 +1,17 @@
+{
+  "server": {
+    "port": 3000
+  },
+  "opensky": {
+    "clientId": "YOUR_OPENSKY_CLIENT_ID",
+    "clientSecret": "YOUR_OPENSKY_CLIENT_SECRET"
+  },
+  "skylink": {
+    "apiKey": "YOUR_SKYLINK_API_KEY"
+  },
+  "airframes": {
+    "apiKey": "YOUR_AIRFRAMES_API_KEY",
+    "enabled": true,
+    "redactSensitive": true
+  }
+}

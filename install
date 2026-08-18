@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+OWNER="archivealf"
+REPO="SkyTrace"
+APP_NAME="SkyTrace"
+INSTALL_DIR="$HOME/Applications"
+APP_PATH="$INSTALL_DIR/$APP_NAME.app"
+
+case "$(uname -m)" in
+  arm64) ARCH="arm64" ;;
+  x86_64) ARCH="x64" ;;
+  *)
+    echo "Unsupported Mac architecture: $(uname -m)"
+    exit 1
+    ;;
+esac
+
+ASSET="SkyTrace-mac-${ARCH}.zip"
+CHECKSUM="${ASSET}.sha256"
+BASE="https://github.com/${OWNER}/${REPO}/releases/latest/download"
+
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+echo "Installing SkyTrace for macOS (${ARCH})..."
+mkdir -p "$INSTALL_DIR"
+
+curl --fail --location --progress-bar \
+  "${BASE}/${ASSET}" \
+  --output "$TMP/$ASSET"
+
+curl --fail --location --silent --show-error \
+  "${BASE}/${CHECKSUM}" \
+  --output "$TMP/$CHECKSUM"
+
+(
+  cd "$TMP"
+  shasum -a 256 -c "$CHECKSUM"
+)
+
+mkdir -p "$TMP/extracted"
+ditto -x -k "$TMP/$ASSET" "$TMP/extracted"
+
+FOUND_APP="$(find "$TMP/extracted" -maxdepth 3 -name "${APP_NAME}.app" -type d -print -quit)"
+if [[ -z "$FOUND_APP" ]]; then
+  echo "Installer error: ${APP_NAME}.app was not found in the release archive."
+  exit 1
+fi
+
+if [[ -d "$APP_PATH" ]]; then
+  echo "Updating existing installation..."
+  rm -rf "$APP_PATH"
+fi
+
+ditto "$FOUND_APP" "$APP_PATH"
+
+echo
+echo "Installed:"
+echo "  $APP_PATH"
+echo
+echo "Your API configuration is stored separately at:"
+echo "  ~/Library/Application Support/SkyTrace/config.json"
+echo
+echo "Opening SkyTrace..."
+open "$APP_PATH"

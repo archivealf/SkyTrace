@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP="$HOME/Applications/SkyTrace.app"
+CONFIG="$HOME/Library/Application Support/SkyTrace"
+
+if [[ -d "$APP" ]]; then
+  rm -rf "$APP"
+  echo "Removed $APP"
+else
+  echo "SkyTrace.app is not installed in ~/Applications."
+fi
+
+echo
+echo "Your settings were kept at:"
+echo "  $CONFIG"
+echo
+echo "Delete that folder manually only if you also want to remove your API settings."

@@ -1,0 +1,17 @@
+{
+  "name": "SkyTrace Aviation Intelligence",
+  "short_name": "SkyTrace",
+  "description": "Live aircraft, airport intelligence, telemetry, tracks and provider-sourced ACARS messages.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050609",
+  "theme_color": "#050609",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+node_modules/
+out/
+.DS_Store
+config.json
+.env
+.env.*
+data/*.json
+assets/SkyTrace.icns
+*.zip
+*.dmg
+assets/SkyTrace.png
+app.v3.js
+styles.v3.css
+index.html
+assets/SkyTrace.png.base64
