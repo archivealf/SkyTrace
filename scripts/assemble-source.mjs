@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
-const payloadDir = path.join(root, "source-payload");
+const payloadDir = path.join(root, "source-payload-fixed");
 
 const parts = fs.readdirSync(payloadDir)
   .filter((name) => /^frontend\.part\d+$/.test(name))
@@ -13,13 +13,19 @@ const parts = fs.readdirSync(payloadDir)
 
 if (!parts.length) throw new Error("SkyTrace frontend source payload is missing.");
 
-const encoded = parts.map((name) => fs.readFileSync(path.join(payloadDir, name), "utf8").trim()).join("");
-const json = zlib.gunzipSync(Buffer.from(encoded, "base64")).toString("utf8");
+const encoded = parts
+  .map((name) => fs.readFileSync(path.join(payloadDir, name), "utf8").trim())
+  .join("");
+
+const compressed = Buffer.from(encoded, "base64");
+const json = zlib.brotliDecompressSync(compressed).toString("utf8");
 const files = JSON.parse(json);
 
 for (const [relative, content] of Object.entries(files)) {
   const target = path.resolve(root, relative);
-  if (!target.startsWith(root + path.sep)) throw new Error(`Unsafe payload path: ${relative}`);
+  if (!target.startsWith(root + path.sep)) {
+    throw new Error(`Unsafe payload path: ${relative}`);
+  }
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, content, "utf8");
 }
