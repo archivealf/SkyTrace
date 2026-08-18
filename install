@@ -4,98 +4,55 @@ set -euo pipefail
 OWNER="archivealf"
 REPO="SkyTrace"
 APP_NAME="SkyTrace"
+VERSION="v3.2.0"
 INSTALL_DIR="$HOME/Applications"
 APP_PATH="$INSTALL_DIR/$APP_NAME.app"
 
 case "$(uname -m)" in
   arm64) ARCH="arm64" ;;
   x86_64) ARCH="x64" ;;
-  *)
-    echo "Unsupported Mac architecture: $(uname -m)"
-    exit 1
-    ;;
+  *) echo "Unsupported Mac architecture: $(uname -m)"; exit 1 ;;
 esac
 
 ASSET="SkyTrace-mac-${ARCH}.zip"
 CHECKSUM="${ASSET}.sha256"
-BASE="https://github.com/${OWNER}/${REPO}/releases/latest/download"
+BASE="https://github.com/${OWNER}/${REPO}/releases/download/${VERSION}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
-
 mkdir -p "$INSTALL_DIR"
-echo "Installing SkyTrace for macOS (${ARCH})..."
 
-download_prebuilt() {
-  echo "Checking for a prebuilt SkyTrace.app..."
-  if ! curl --fail --location --silent --show-error \
-    "${BASE}/${ASSET}" \
-    --output "$TMP/$ASSET"; then
-    return 1
-  fi
+echo "Installing SkyTrace ${VERSION} Free Stack for macOS (${ARCH})..."
 
-  if ! curl --fail --location --silent --show-error \
-    "${BASE}/${CHECKSUM}" \
-    --output "$TMP/$CHECKSUM"; then
-    return 1
-  fi
-
+FOUND_APP=""
+if curl --fail --location --silent --show-error "${BASE}/${ASSET}" --output "$TMP/$ASSET" && \
+   curl --fail --location --silent --show-error "${BASE}/${CHECKSUM}" --output "$TMP/$CHECKSUM"; then
   (cd "$TMP" && shasum -a 256 -c "$CHECKSUM")
   mkdir -p "$TMP/extracted"
   ditto -x -k "$TMP/$ASSET" "$TMP/extracted"
   FOUND_APP="$(find "$TMP/extracted" -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit)"
-  [[ -n "$FOUND_APP" ]]
-}
+fi
 
-build_locally() {
-  echo
-  echo "Prebuilt release is not available yet."
-  echo "Building SkyTrace locally for this Mac instead..."
-
-  if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
-    echo
-    echo "Node.js and npm are required for the temporary local build."
-    echo "If you already installed Node, open a new Terminal window and run this installer again."
-    return 1
-  fi
-
+if [[ -z "$FOUND_APP" ]]; then
+  echo "Prebuilt V3.2 app is not ready yet; building locally..."
+  command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 || { echo "Node.js 20+ and npm are required."; exit 1; }
   NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
-  if [[ "$NODE_MAJOR" -lt 20 ]]; then
-    echo "Node.js 20 or newer is required. Found: $(node --version)"
-    return 1
-  fi
+  [[ "$NODE_MAJOR" -ge 20 ]] || { echo "Node.js 20+ is required. Found: $(node --version)"; exit 1; }
 
-  SOURCE_ZIP="$TMP/source.zip"
-  curl --fail --location --progress-bar \
-    "https://github.com/${OWNER}/${REPO}/archive/refs/heads/main.zip" \
-    --output "$SOURCE_ZIP"
-
+  curl --fail --location --progress-bar "https://github.com/${OWNER}/${REPO}/archive/refs/heads/main.zip" --output "$TMP/source.zip"
   mkdir -p "$TMP/source"
-  ditto -x -k "$SOURCE_ZIP" "$TMP/source"
+  ditto -x -k "$TMP/source.zip" "$TMP/source"
   SOURCE_DIR="$(find "$TMP/source" -maxdepth 1 -type d -name "${REPO}-*" -print -quit)"
-  if [[ -z "$SOURCE_DIR" ]]; then
-    echo "Could not locate the downloaded SkyTrace source."
-    return 1
-  fi
+  [[ -n "$SOURCE_DIR" ]] || { echo "Could not locate the downloaded SkyTrace source."; exit 1; }
 
   cd "$SOURCE_DIR"
+  bash scripts/materialize-v3.2.sh
   npm install --no-audit --no-fund
   npm run data
-  npm run source
   npm run icon:mac
+  npm run check
   npm run package -- --arch="$ARCH"
-
   FOUND_APP="$(find out -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit)"
-  if [[ -z "$FOUND_APP" ]]; then
-    echo "Local build completed but SkyTrace.app was not found."
-    return 1
-  fi
-}
-
-FOUND_APP=""
-if ! download_prebuilt; then
-  rm -f "$TMP/$ASSET" "$TMP/$CHECKSUM"
-  rm -rf "$TMP/extracted"
-  build_locally
+  [[ -n "$FOUND_APP" ]] || { echo "SkyTrace.app was not produced."; exit 1; }
 fi
 
 if [[ -d "$APP_PATH" ]]; then
@@ -104,13 +61,6 @@ if [[ -d "$APP_PATH" ]]; then
 fi
 
 ditto "$FOUND_APP" "$APP_PATH"
-
-echo
-echo "Installed successfully:"
-echo "  $APP_PATH"
-echo
-echo "API configuration:"
-echo "  ~/Library/Application Support/SkyTrace/config.json"
-echo
+echo "Installed successfully: $APP_PATH"
 echo "Opening SkyTrace..."
 open "$APP_PATH"
