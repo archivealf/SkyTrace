@@ -1,116 +1,93 @@
-# SkyTrace Desktop
+# SkyTrace V3.2 Free Stack
 
-SkyTrace is a macOS aviation-intelligence app built with Electron. It wraps the SkyTrace V3 flight radar in a native `.app`, automatically starts its private loopback backend, and stores API configuration outside the application bundle.
+SkyTrace is a native-style macOS aviation intelligence app built with Electron. V3.2 keeps the existing radar, airport, watchlist, replay, weather, statistics and desktop features while replacing paid-provider dependencies with free/open data sources and local processing.
 
-## One-line install
+## Install
 
 ```bash
 bash <(curl -fsSL "https://raw.githubusercontent.com/archivealf/SkyTrace/main/install")
 ```
 
-The installer:
+The installer detects Intel (`x64`) or Apple Silicon (`arm64`), verifies prebuilt release checksums when available, installs to `~/Applications/SkyTrace.app`, and can build locally as a fallback. It does not disable Gatekeeper.
 
-- detects Apple Silicon (`arm64`) or Intel (`x64`)
-- downloads the matching latest GitHub Release
-- verifies the SHA-256 checksum
-- installs `SkyTrace.app` to `~/Applications`
-- opens the app
+## V3.2 data stack
 
-It does **not** disable Gatekeeper or change macOS security settings.
+- ADSB.lol: primary live aircraft positions/telemetry
+- OpenSky: optional free fallback; OAuth credentials are optional
+- OurAirports: airports, runways, frequencies and navaids
+- tar1090/Mictronics aircraft database: local registration/type/operator lookup
+- ADSBDB: free public metadata/route enrichment fallback
+- AviationWeather.gov: METAR, TAF, SIGMET and PIREP/AIREP products
+- Open-Meteo: general airport/weather forecasts
+- RainViewer: optional radar tiles
+- OpenFreeMap + MapLibre: map rendering
+
+No SkyLink or Airframes key is required. No `.env` file is used.
+
+## Timeline, not intercepted messages
+
+The old Messages view is now a telemetry-derived Timeline. It records observable flight events such as detection, airborne/on-ground transitions, altitude thresholds, climb/descent, heading changes and squawk changes. Public PIREP/AIREP and SIGMET products are shown separately. SkyTrace does not pretend these are ACARS messages.
 
 ## Configuration
 
-On first launch SkyTrace creates:
+SkyTrace creates:
 
 ```text
 ~/Library/Application Support/SkyTrace/config.json
 ```
 
-Open it from the native menu with **SkyTrace → Open config.json** (`⌘,`).
-
-Example:
+Default configuration:
 
 ```json
 {
-  "server": {
-    "port": 3000
+  "server": { "port": 3000 },
+  "providers": {
+    "live": "adsblol",
+    "openSkyFallback": true,
+    "adsbdb": true,
+    "aviationWeather": true,
+    "openMeteo": true,
+    "rainViewer": true
   },
   "opensky": {
     "clientId": "",
     "clientSecret": ""
-  },
-  "skylink": {
-    "apiKey": ""
-  },
-  "airframes": {
-    "apiKey": "",
-    "enabled": true,
-    "redactSensitive": true
   }
 }
 ```
 
-No `.env` file is used.
+## Build locally
 
-## Development
-
-Requirements:
-
-- Node.js 22+
-- macOS for building `.app` / `.dmg`
+Requires Node.js 20+ and macOS:
 
 ```bash
+bash scripts/materialize-v3.2.sh
 npm install
 npm run data
-npm start
-```
-
-## Build a local `.app`
-
-```bash
-npm run data
 npm run icon:mac
+npm run check
 npm run package
 ```
 
-The `.app` appears under `out/`.
+The app is produced under `out/`.
 
-## Build a DMG
+## GitHub release builds
 
-```bash
-npm run make
+GitHub Actions builds both:
+
+```text
+SkyTrace-mac-arm64.zip
+SkyTrace-mac-arm64.dmg
+SkyTrace-mac-x64.zip
+SkyTrace-mac-x64.dmg
 ```
 
-## GitHub releases
-
-The workflow at `.github/workflows/release-macos.yml` builds:
-
-- `SkyTrace-mac-arm64.zip`
-- `SkyTrace-mac-arm64.dmg`
-- `SkyTrace-mac-x64.zip`
-- `SkyTrace-mac-x64.dmg`
-
-Push a tag such as:
-
-```bash
-git tag v3.1.0
-git push origin v3.1.0
-```
-
-GitHub Actions creates/uploads the release assets automatically.
-
-## Signing
-
-Unsigned builds work for local development but macOS can warn when an app was downloaded from the internet. For public distribution, sign and notarize the app with an Apple Developer identity rather than instructing users to bypass Gatekeeper.
-
-## Data
-
-Large OurAirports reference files are intentionally not committed. `npm run data` downloads current public airport, runway, radio-frequency and navaid data during development/builds.
+The source payload stored under `v3.2-bundle/` is SHA-256 verified before it is materialized for builds. Large aviation reference databases are downloaded during the build rather than committed.
 
 ## Security
 
-- `config.json` is stored outside the app and is not served over HTTP.
+- API configuration is outside the application bundle and blocked from HTTP serving.
 - The desktop backend binds only to `127.0.0.1`.
-- Electron renderer `nodeIntegration` is disabled.
-- Context isolation and renderer sandboxing are enabled.
-- External navigation is blocked from the app window and HTTPS links open in the default browser.
+- Electron `nodeIntegration` is disabled.
+- Context isolation, renderer sandboxing and web security are enabled.
+- External navigation is opened in the system browser.
