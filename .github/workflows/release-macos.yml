@@ -137,6 +137,6 @@ jobs:
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "SkyTrace $TAG" \
-              --notes "SkyTrace V3.3 for macOS adds username/password accounts, permanent Stripe-backed upgrades, smoother transitions, Liquid Glass-inspired controls, the refreshed rounded SkyTrace icon, and the existing free aviation data stack. Public release builds connect to the configured SkyTrace Commerce HTTPS backend."
+              --notes "SkyTrace V3.3 for macOS adds username/password accounts, permanent Stripe-backed upgrades, smoother transitions, Liquid Glass-inspired controls and the refreshed rounded SkyTrace icon. Public builds connect to the configured SkyTrace Commerce HTTPS backend. ADSB.lol remains the primary live source; hosted providers requiring separate commercial permission (OpenSky REST, ADSBDB enrichment, the Open-Meteo free API and RainViewer) are disabled in the commercial build pending suitable licences/terms. See ATTRIBUTION.md for the data-provider record."
           fi
           gh release upload "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber
