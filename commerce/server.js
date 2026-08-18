@@ -41,8 +41,9 @@ function readConfig() {
     },
     mail: {
       mode: cleanString(raw?.mail?.mode) || "console",
-      resendApiKey: cleanString(raw?.mail?.resendApiKey),
-      from: cleanString(raw?.mail?.from) || "SkyTrace <login@example.com>"
+      brevoApiKey: cleanString(raw?.mail?.brevoApiKey),
+      senderName: cleanString(raw?.mail?.senderName) || "SkyTrace",
+      senderEmail: cleanString(raw?.mail?.senderEmail)
     },
     stripe: {
       enabled: raw?.stripe?.enabled === true,
@@ -160,23 +161,36 @@ async function sendOtp(email, code) {
     console.log(`[SkyTrace OTP] ${email}: ${code}`);
     return;
   }
-  if (config.mail.mode !== "resend") throw new Error("Unsupported mail.mode. Use console or resend.");
-  if (!config.mail.resendApiKey) throw new Error("Resend email is not configured.");
-  const response = await fetch("https://api.resend.com/emails", {
+  if (config.mail.mode !== "brevo") throw new Error("Unsupported mail.mode. Use console or brevo.");
+  if (!config.mail.brevoApiKey) throw new Error("Brevo email is not configured.");
+  if (!normalizeEmail(config.mail.senderEmail)) throw new Error("Brevo senderEmail must be a verified sender address.");
+
+  const text = `Your SkyTrace sign-in code is ${code}. It expires in ${config.security.otpMinutes} minutes. If you did not request this code, you can ignore this email.`;
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
-    headers: { Authorization: `Bearer ${config.mail.resendApiKey}`, "Content-Type": "application/json" },
+    headers: {
+      accept: "application/json",
+      "api-key": config.mail.brevoApiKey,
+      "content-type": "application/json"
+    },
     body: JSON.stringify({
-      from: config.mail.from,
-      to: [email],
+      sender: { name: config.mail.senderName, email: config.mail.senderEmail },
+      to: [{ email }],
       subject: "Your SkyTrace sign-in code",
-      text: `Your SkyTrace sign-in code is ${code}. It expires in ${config.security.otpMinutes} minutes. If you did not request this code, you can ignore this email.`
+      textContent: text,
+      htmlContent: `<!doctype html><html><body style="margin:0;background:#080a0f;color:#f5f7fb;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><div style="max-width:520px;margin:0 auto;padding:40px 24px"><div style="padding:28px;border:1px solid #ffffff20;border-radius:24px;background:#11151d"><div style="font-size:13px;letter-spacing:.12em;color:#8d96a8">SKYTRACE</div><h1 style="font-size:24px;margin:12px 0 8px">Sign-in code</h1><div style="font-size:34px;font-weight:700;letter-spacing:.18em;margin:22px 0">${code}</div><p style="margin:0;color:#aeb6c5;line-height:1.6">This code expires in ${config.security.otpMinutes} minutes. If you did not request it, you can ignore this email.</p></div></div></body></html>`
     }),
     signal: AbortSignal.timeout(12_000)
   });
   if (!response.ok) {
     let detail = "";
-    try { detail = (await response.json())?.message || ""; } catch {}
-    throw new Error(detail || `Email provider returned ${response.status}.`);
+    try {
+      const payload = await response.json();
+      detail = cleanString(payload?.message) || cleanString(payload?.code);
+    } catch {}
+    const e = new Error(detail || `Brevo returned ${response.status}.`);
+    e.status = 502;
+    throw e;
   }
 }
 
