@@ -91,6 +91,26 @@ libConfig = replaceRequired(
 );
 fs.writeFileSync(libConfigFile, libConfig);
 
+// Make licence/provider attribution directly reachable from the macOS Help menu.
+let electron = fs.readFileSync(electronFile, "utf8");
+electron = replaceRequired(
+  electron,
+`        {
+          label: "SkyTrace Project",
+          click: () => void shell.openExternal("https://github.com/archivealf/SkyTrace")
+        }`,
+`        {
+          label: "Data Licences & Attribution",
+          click: () => void shell.openPath(path.join(__dirname, "ATTRIBUTION.md"))
+        },
+        {
+          label: "SkyTrace Project",
+          click: () => void shell.openExternal("https://github.com/archivealf/SkyTrace")
+        }`,
+  "data-attribution Help menu"
+);
+fs.writeFileSync(electronFile, electron);
+
 // Do not leave restricted provider proxy routes callable in commercial builds.
 let server = fs.readFileSync(serverFile, "utf8");
 server = replaceRequired(
