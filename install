@@ -7,6 +7,7 @@ APP_NAME="SkyTrace"
 VERSION="v3.2.0"
 INSTALL_DIR="$HOME/Applications"
 APP_PATH="$INSTALL_DIR/$APP_NAME.app"
+RAW_BASE="https://raw.githubusercontent.com/${OWNER}/${REPO}/main"
 
 case "$(uname -m)" in
   arm64) ARCH="arm64" ;;
@@ -16,7 +17,9 @@ esac
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
-mkdir -p "$INSTALL_DIR"
+trap 'echo; echo "SkyTrace install failed at line $LINENO."; exit 1' ERR
+
+mkdir -p "$INSTALL_DIR" "$TMP/source/scripts" "$TMP/source/v3.2-bundle"
 
 echo "Installing SkyTrace ${VERSION} Free Stack for macOS (${ARCH})..."
 
@@ -31,28 +34,32 @@ if [[ "$NODE_OK" != "true" ]]; then
   exit 1
 fi
 
-SOURCE_DIR="$TMP/SkyTrace"
+echo "Downloading the verified SkyTrace V3.2 source bundle..."
+for i in $(seq -w 0 17); do
+  curl --fail --location --silent --show-error \
+    "${RAW_BASE}/v3.2-bundle/chunk${i}.b64" \
+    --output "$TMP/source/v3.2-bundle/chunk${i}.b64"
+done
 
-echo "Getting SkyTrace source..."
-if command -v git >/dev/null 2>&1; then
-  git clone --depth 1 --branch main "https://github.com/${OWNER}/${REPO}.git" "$SOURCE_DIR"
-else
-  echo "git is not available; using GitHub codeload instead..."
-  SOURCE_ZIP="$TMP/source.zip"
-  curl --fail --location --progress-bar \
-    "https://codeload.github.com/${OWNER}/${REPO}/zip/refs/heads/main" \
-    --output "$SOURCE_ZIP"
-  mkdir -p "$TMP/extracted"
-  ditto -x -k "$SOURCE_ZIP" "$TMP/extracted"
-  EXTRACTED="$(find "$TMP/extracted" -maxdepth 1 -type d -name "${REPO}-*" -print -quit)"
-  [[ -n "$EXTRACTED" ]] || { echo "Could not locate the downloaded SkyTrace source."; exit 1; }
-  mv "$EXTRACTED" "$SOURCE_DIR"
-fi
+curl --fail --location --silent --show-error \
+  "${RAW_BASE}/scripts/materialize-v3.2.sh" \
+  --output "$TMP/source/scripts/materialize-v3.2.sh"
 
-cd "$SOURCE_DIR"
-
-echo "Preparing SkyTrace V3.2..."
+cd "$TMP/source"
 bash scripts/materialize-v3.2.sh
+
+# Use OurAirports' official direct-download mirror to avoid redirect/maintenance failures.
+node - <<'NODE'
+const fs = require('fs');
+const p = 'scripts/update-aviation-data.mjs';
+let s = fs.readFileSync(p, 'utf8');
+s = s
+  .replace('https://ourairports.com/data/airports.csv', 'https://davidmegginson.github.io/ourairports-data/airports.csv')
+  .replace('https://ourairports.com/data/runways.csv', 'https://davidmegginson.github.io/ourairports-data/runways.csv')
+  .replace('https://ourairports.com/data/airport-frequencies.csv', 'https://davidmegginson.github.io/ourairports-data/airport-frequencies.csv')
+  .replace('https://ourairports.com/data/navaids.csv', 'https://davidmegginson.github.io/ourairports-data/navaids.csv');
+fs.writeFileSync(p, s);
+NODE
 
 echo "Installing build dependencies..."
 npm install --no-audit --no-fund
