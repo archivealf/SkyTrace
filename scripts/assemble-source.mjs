@@ -11,7 +11,9 @@ const parts = fs.readdirSync(payloadDir)
   .filter((name) => /^frontend\.part\d+$/.test(name))
   .sort();
 
-if (!parts.length) throw new Error("SkyTrace frontend source payload is missing.");
+if (!parts.length) {
+  throw new Error("SkyTrace frontend source payload is missing.");
+}
 
 const encoded = parts
   .map((name) => fs.readFileSync(path.join(payloadDir, name), "utf8").trim())
