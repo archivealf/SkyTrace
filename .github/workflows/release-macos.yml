@@ -26,6 +26,8 @@ jobs:
             arch: x64
 
     runs-on: ${{ matrix.runner }}
+    env:
+      SKYTRACE_COMMERCE_URL: ${{ vars.SKYTRACE_COMMERCE_URL }}
 
     steps:
       - name: Check out source
@@ -35,6 +37,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      - name: Require public commerce URL for release builds
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${SKYTRACE_COMMERCE_URL:-}" ]]; then
+            echo "Repository variable SKYTRACE_COMMERCE_URL is required for public releases."
+            exit 1
+          fi
+          case "$SKYTRACE_COMMERCE_URL" in
+            https://*) ;;
+            *) echo "SKYTRACE_COMMERCE_URL must use HTTPS."; exit 1 ;;
+          esac
 
       - name: Verify and materialize V3.3 source
         run: bash scripts/materialize-v3.3.sh
@@ -121,6 +137,6 @@ jobs:
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "SkyTrace $TAG" \
-              --notes "SkyTrace V3.3 for macOS adds email OTP accounts, permanent Stripe-backed upgrade support, smoother transitions, Liquid Glass-inspired controls, and the existing free aviation data stack. The separate commerce backend must be deployed and configured before payments are enabled."
+              --notes "SkyTrace V3.3 for macOS adds username/password accounts, permanent Stripe-backed upgrades, smoother transitions, Liquid Glass-inspired controls, the refreshed rounded SkyTrace icon, and the existing free aviation data stack. Public release builds connect to the configured SkyTrace Commerce HTTPS backend."
           fi
           gh release upload "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber
