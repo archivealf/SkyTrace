@@ -33,6 +33,30 @@ function ensureUserConfig() {
     fs.writeFileSync(configPath, `${JSON.stringify(DEFAULT_CONFIG, null, 2)}\n`, {
       mode: 0o600
     });
+  } else {
+    try {
+      const existing = JSON.parse(fs.readFileSync(configPath, "utf8"));
+      const releaseCommerceUrl = String(DEFAULT_CONFIG?.commerce?.baseUrl || "").trim();
+      const existingCommerceUrl = String(existing?.commerce?.baseUrl || "").trim();
+      const loopbackCommerce = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(existingCommerceUrl);
+      const shouldMigrateCommerce =
+        app.isPackaged &&
+        /^https:\/\//i.test(releaseCommerceUrl) &&
+        (!existingCommerceUrl || loopbackCommerce);
+
+      if (shouldMigrateCommerce) {
+        existing.commerce = {
+          ...(existing.commerce && typeof existing.commerce === "object" ? existing.commerce : {}),
+          enabled: true,
+          baseUrl: releaseCommerceUrl
+        };
+        fs.writeFileSync(configPath, `${JSON.stringify(existing, null, 2)}\n`, {
+          mode: 0o600
+        });
+      }
+    } catch (error) {
+      console.warn("Could not migrate SkyTrace config:", error?.message || error);
+    }
   }
 
   try {
