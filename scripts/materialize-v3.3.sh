@@ -23,6 +23,25 @@ cp "$OVERLAY/scripts/make-mac-icon.sh" "$ROOT/scripts/make-mac-icon.sh"
 chmod +x "$ROOT/scripts/make-mac-icon.sh"
 node "$ROOT/scripts/generate-skytrace-icon.mjs" "$ROOT/assets/SkyTrace.png"
 
+# GitHub release builds can inject a public HTTPS account/payment backend without
+# committing any Stripe secrets. Local builds keep the loopback default.
+if [[ -n "${SKYTRACE_COMMERCE_URL:-}" ]]; then
+  node - "$ROOT/electron-main.js" "$ROOT/lib/config.js" "$ROOT/config.example.json" <<'NODE'
+const fs = require("fs");
+const files = process.argv.slice(2);
+const raw = String(process.env.SKYTRACE_COMMERCE_URL || "").trim().replace(/\/+$/, "");
+let url;
+try { url = new URL(raw); } catch { throw new Error("SKYTRACE_COMMERCE_URL must be a valid URL."); }
+if (url.protocol !== "https:") throw new Error("SKYTRACE_COMMERCE_URL must use HTTPS for packaged releases.");
+for (const file of files) {
+  let text = fs.readFileSync(file, "utf8");
+  text = text.split("http://127.0.0.1:8787").join(raw);
+  fs.writeFileSync(file, text);
+}
+console.log(`Configured packaged SkyTrace account service: ${raw}`);
+NODE
+fi
+
 node - "$ROOT/index.html" "$ROOT/app.v3.js" "$ROOT/lib/live.js" <<'NODE'
 const fs = require("fs");
 const htmlFile = process.argv[2];
