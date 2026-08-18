@@ -14,46 +14,56 @@ case "$(uname -m)" in
   *) echo "Unsupported Mac architecture: $(uname -m)"; exit 1 ;;
 esac
 
-ASSET="SkyTrace-mac-${ARCH}.zip"
-CHECKSUM="${ASSET}.sha256"
-BASE="https://github.com/${OWNER}/${REPO}/releases/download/${VERSION}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$INSTALL_DIR"
 
 echo "Installing SkyTrace ${VERSION} Free Stack for macOS (${ARCH})..."
+echo "Building the current GitHub version locally (no release download required)."
 
-FOUND_APP=""
-if curl --fail --location --silent --show-error "${BASE}/${ASSET}" --output "$TMP/$ASSET" && \
-   curl --fail --location --silent --show-error "${BASE}/${CHECKSUM}" --output "$TMP/$CHECKSUM"; then
-  (cd "$TMP" && shasum -a 256 -c "$CHECKSUM")
-  mkdir -p "$TMP/extracted"
-  ditto -x -k "$TMP/$ASSET" "$TMP/extracted"
-  FOUND_APP="$(find "$TMP/extracted" -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit)"
+command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 || {
+  echo "Node.js 20.18+ and npm are required."
+  exit 1
+}
+
+NODE_OK="$(node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.stdout.write(String(a>20 || (a===20 && b>=18)))')"
+if [[ "$NODE_OK" != "true" ]]; then
+  echo "Node.js 20.18+ is required. Found: $(node --version)"
+  exit 1
 fi
 
-if [[ -z "$FOUND_APP" ]]; then
-  echo "Prebuilt V3.2 app is not ready yet; building locally..."
-  command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 || { echo "Node.js 20+ and npm are required."; exit 1; }
-  NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
-  [[ "$NODE_MAJOR" -ge 20 ]] || { echo "Node.js 20+ is required. Found: $(node --version)"; exit 1; }
+SOURCE_ZIP="$TMP/source.zip"
+echo "Downloading SkyTrace source..."
+curl --fail --location --progress-bar \
+  "https://github.com/${OWNER}/${REPO}/archive/refs/heads/main.zip" \
+  --output "$SOURCE_ZIP"
 
-  curl --fail --location --progress-bar "https://github.com/${OWNER}/${REPO}/archive/refs/heads/main.zip" --output "$TMP/source.zip"
-  mkdir -p "$TMP/source"
-  ditto -x -k "$TMP/source.zip" "$TMP/source"
-  SOURCE_DIR="$(find "$TMP/source" -maxdepth 1 -type d -name "${REPO}-*" -print -quit)"
-  [[ -n "$SOURCE_DIR" ]] || { echo "Could not locate the downloaded SkyTrace source."; exit 1; }
+mkdir -p "$TMP/source"
+ditto -x -k "$SOURCE_ZIP" "$TMP/source"
+SOURCE_DIR="$(find "$TMP/source" -maxdepth 1 -type d -name "${REPO}-*" -print -quit)"
+[[ -n "$SOURCE_DIR" ]] || { echo "Could not locate the downloaded SkyTrace source."; exit 1; }
 
-  cd "$SOURCE_DIR"
-  bash scripts/materialize-v3.2.sh
-  npm install --no-audit --no-fund
-  npm run data
-  npm run icon:mac
-  npm run check
-  npm run package -- --arch="$ARCH"
-  FOUND_APP="$(find out -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit)"
-  [[ -n "$FOUND_APP" ]] || { echo "SkyTrace.app was not produced."; exit 1; }
-fi
+cd "$SOURCE_DIR"
+echo "Preparing SkyTrace V3.2..."
+bash scripts/materialize-v3.2.sh
+
+echo "Installing build dependencies..."
+npm install --no-audit --no-fund
+
+echo "Downloading free aviation reference data..."
+npm run data
+
+echo "Building the macOS icon..."
+npm run icon:mac
+
+echo "Checking source..."
+npm run check
+
+echo "Building SkyTrace.app for ${ARCH}..."
+npm run package -- --arch="$ARCH"
+
+FOUND_APP="$(find out -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit)"
+[[ -n "$FOUND_APP" ]] || { echo "SkyTrace.app was not produced."; exit 1; }
 
 if [[ -d "$APP_PATH" ]]; then
   echo "Updating existing installation..."
@@ -61,6 +71,10 @@ if [[ -d "$APP_PATH" ]]; then
 fi
 
 ditto "$FOUND_APP" "$APP_PATH"
-echo "Installed successfully: $APP_PATH"
+
+echo
+echo "Installed successfully:"
+echo "  $APP_PATH"
+echo
 echo "Opening SkyTrace..."
 open "$APP_PATH"
