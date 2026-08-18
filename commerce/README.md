@@ -1,29 +1,29 @@
 # SkyTrace Commerce
 
-Backend for SkyTrace accounts, email OTP login, permanent entitlements and Stripe Checkout.
+Local account and purchase backend for SkyTrace V3.3.
 
-## Security model
+## Current mode
 
-- Stripe secret and webhook secret live only in `commerce/config.json` on the server.
-- Brevo API credentials live only in `commerce/config.json` on the server.
-- `commerce/config.json` and the local entitlement database are gitignored.
-- OTP codes are stored as keyed hashes, never plaintext.
-- App sessions are random tokens; only token hashes are persisted server-side.
-- Stripe webhooks are signature-verified before entitlements are changed.
-- Purchases are idempotent by Checkout Session ID.
-- A full Stripe refund revokes the matching purchase entitlement.
+- Runs on the MacBook at `http://127.0.0.1:8787` by default.
+- Accounts use username + password; no email sender is required.
+- Passwords are never stored in plaintext. Each password is hashed with Node's `scrypt`, a unique random salt, and the server-only `security.pepper`.
+- Sessions are random tokens; only token hashes are persisted.
+- Permanent entitlements are stored server-side in `commerce/data/store.json`.
+- Stripe Checkout Sessions are created server-side using the existing SkyTrace Price IDs.
+- In local mode, SkyTrace can retrieve the Checkout Session from Stripe after payment and verify `payment_status` before granting the entitlement, so a public webhook is not required for development.
+- A Stripe webhook is still supported and is recommended before serving customers over the internet, especially so refunds and asynchronous events can be handled automatically.
 
-## Before production
+## Local Mac setup
 
-1. Copy `config.example.json` to `config.json` on the backend VM.
-2. Generate `security.pepper` locally, for example with `openssl rand -hex 32`.
-3. In Brevo, create an API key and verify a sender address or sending domain. Put the API key only in `mail.brevoApiKey`, set `mail.mode` to `brevo`, and set `mail.senderEmail` to the verified sender. Never commit the key.
-4. Put the Stripe secret key in the server-only `config.json`. Do not commit it.
-5. Point `skytrace.duckdns.org` to the backend VM and terminate HTTPS with Caddy or another reverse proxy.
-6. Create a Stripe webhook for `https://skytrace.duckdns.org/stripe/webhook`, then put its `whsec_...` signing secret in the server-only config.
-7. Test OTP login and a Stripe test-mode checkout before enabling live payments.
-8. Set `stripe.enabled` to `true` only when you are ready to accept payments.
+1. Copy `config.example.json` to `config.json`.
+2. Generate a server pepper with `openssl rand -hex 32` and paste it into `security.pepper`.
+3. Leave `stripe.enabled` as `false` until you are ready to test Checkout.
+4. When ready, put the Stripe secret key in the local `config.json`; never commit it.
+5. Run `npm run check`, then `npm start` from this folder.
+6. Verify the backend with `curl http://127.0.0.1:8787/health`.
 
-Brevo mail is sent with the transactional email endpoint `POST /v3/smtp/email`. The API key is sent server-to-server and is never exposed to the SkyTrace desktop app.
+`config.json` and `data/store.json` are gitignored and should remain only on the host Mac.
 
-The backend listens on loopback by default so only the HTTPS reverse proxy should be internet-facing.
+## Before real public distribution
+
+A backend bound to `127.0.0.1` is reachable only from the same Mac. If other people's SkyTrace apps need to sign in and restore purchases, move this service to a public HTTPS server or deliberately expose the Mac through a secure HTTPS reverse proxy/tunnel. Do not expose the Stripe secret key in the desktop app.
