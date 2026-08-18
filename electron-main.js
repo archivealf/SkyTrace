@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const appIconPath = path.join(__dirname, "assets", "SkyTrace.png");
 
 app.setName("SkyTrace");
 
@@ -51,6 +52,7 @@ async function createWindow(url) {
     backgroundColor: "#050609",
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 18, y: 18 },
+    icon: fs.existsSync(appIconPath) ? appIconPath : undefined,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -157,6 +159,11 @@ function buildMenu(configPath) {
 
 async function boot() {
   const configPath = ensureUserConfig();
+
+  // Set an explicit runtime Dock icon as well as the bundle .icns icon.
+  if (process.platform === "darwin" && app.dock && fs.existsSync(appIconPath)) {
+    app.dock.setIcon(appIconPath);
+  }
 
   // These globals are set before importing the backend so the backend reads
   // the per-user config file rather than any file inside the application bundle.
