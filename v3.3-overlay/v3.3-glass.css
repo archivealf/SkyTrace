@@ -14,7 +14,10 @@
   backdrop-filter:blur(34px) saturate(1.55);
   -webkit-backdrop-filter:blur(34px) saturate(1.55);
 }
-.flightdeck-sheet,.command-search,.live-cluster,.flightdeck-rail,.brand-orb{position:relative}
+/* Keep the positioning from the base SkyTrace stylesheet. These components are
+   already fixed/absolute there; forcing position:relative here made the rail
+   become a full-width block over the map. */
+.flightdeck-sheet,.command-search,.live-cluster,.flightdeck-rail,.brand-orb{isolation:isolate}
 .flightdeck-sheet:before,.command-search:before,.live-cluster:before,.flightdeck-rail:before,.brand-orb:before{
   content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
   background:linear-gradient(118deg,rgba(255,255,255,.095),transparent 24%,transparent 72%,rgba(255,255,255,.025));
