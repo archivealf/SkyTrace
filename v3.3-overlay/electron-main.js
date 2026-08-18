@@ -44,6 +44,8 @@ function ensureUserConfig() {
         /^https:\/\//i.test(releaseCommerceUrl) &&
         (!existingCommerceUrl || loopbackCommerce);
 
+      // Release packages replace DEFAULT_CONFIG's loopback URL at build time.
+      // Preserve every other user setting while moving older installs to that HTTPS backend.
       if (shouldMigrateCommerce) {
         existing.commerce = {
           ...(existing.commerce && typeof existing.commerce === "object" ? existing.commerce : {}),
