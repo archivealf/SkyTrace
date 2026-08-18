@@ -1,0 +1,19 @@
+{
+  "server": { "port": 3000 },
+  "providers": {
+    "live": "adsblol",
+    "openSkyFallback": true,
+    "adsbdb": true,
+    "aviationWeather": true,
+    "openMeteo": true,
+    "rainViewer": true
+  },
+  "opensky": {
+    "clientId": "",
+    "clientSecret": ""
+  },
+  "commerce": {
+    "enabled": true,
+    "baseUrl": "https://skytrace.duckdns.org"
+  }
+}
