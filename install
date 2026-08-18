@@ -19,33 +19,83 @@ esac
 ASSET="SkyTrace-mac-${ARCH}.zip"
 CHECKSUM="${ASSET}.sha256"
 BASE="https://github.com/${OWNER}/${REPO}/releases/latest/download"
-
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-echo "Installing SkyTrace for macOS (${ARCH})..."
 mkdir -p "$INSTALL_DIR"
+echo "Installing SkyTrace for macOS (${ARCH})..."
 
-curl --fail --location --progress-bar \
-  "${BASE}/${ASSET}" \
-  --output "$TMP/$ASSET"
+download_prebuilt() {
+  echo "Checking for a prebuilt SkyTrace.app..."
+  if ! curl --fail --location --silent --show-error \
+    "${BASE}/${ASSET}" \
+    --output "$TMP/$ASSET"; then
+    return 1
+  fi
 
-curl --fail --location --silent --show-error \
-  "${BASE}/${CHECKSUM}" \
-  --output "$TMP/$CHECKSUM"
+  if ! curl --fail --location --silent --show-error \
+    "${BASE}/${CHECKSUM}" \
+    --output "$TMP/$CHECKSUM"; then
+    return 1
+  fi
 
-(
-  cd "$TMP"
-  shasum -a 256 -c "$CHECKSUM"
-)
+  (cd "$TMP" && shasum -a 256 -c "$CHECKSUM")
+  mkdir -p "$TMP/extracted"
+  ditto -x -k "$TMP/$ASSET" "$TMP/extracted"
+  FOUND_APP="$(find "$TMP/extracted" -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit)"
+  [[ -n "$FOUND_APP" ]]
+}
 
-mkdir -p "$TMP/extracted"
-ditto -x -k "$TMP/$ASSET" "$TMP/extracted"
+build_locally() {
+  echo
+  echo "Prebuilt release is not available yet."
+  echo "Building SkyTrace locally for this Mac instead..."
 
-FOUND_APP="$(find "$TMP/extracted" -maxdepth 3 -name "${APP_NAME}.app" -type d -print -quit)"
-if [[ -z "$FOUND_APP" ]]; then
-  echo "Installer error: ${APP_NAME}.app was not found in the release archive."
-  exit 1
+  if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+    echo
+    echo "Node.js and npm are required for the temporary local build."
+    echo "If you already installed Node, open a new Terminal window and run this installer again."
+    return 1
+  fi
+
+  NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
+  if [[ "$NODE_MAJOR" -lt 20 ]]; then
+    echo "Node.js 20 or newer is required. Found: $(node --version)"
+    return 1
+  fi
+
+  SOURCE_ZIP="$TMP/source.zip"
+  curl --fail --location --progress-bar \
+    "https://github.com/${OWNER}/${REPO}/archive/refs/heads/main.zip" \
+    --output "$SOURCE_ZIP"
+
+  mkdir -p "$TMP/source"
+  ditto -x -k "$SOURCE_ZIP" "$TMP/source"
+  SOURCE_DIR="$(find "$TMP/source" -maxdepth 1 -type d -name "${REPO}-*" -print -quit)"
+  if [[ -z "$SOURCE_DIR" ]]; then
+    echo "Could not locate the downloaded SkyTrace source."
+    return 1
+  fi
+
+  cd "$SOURCE_DIR"
+  npm install --no-audit --no-fund
+  npm run data
+  npm run source
+  npm run icon:mac
+  npm run package -- --arch="$ARCH"
+
+  FOUND_APP="$(find out -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit)"
+  if [[ -z "$FOUND_APP" ]]; then
+    echo "Local build completed but SkyTrace.app was not found."
+    return 1
+  fi
+}
+
+FOUND_APP=""
+if ! download_prebuilt; then
+  rm -f "$TMP/$ASSET" "$TMP/$CHECKSUM"
+  rm -rf "$TMP/extracted"
+  build_locally
 fi
 
 if [[ -d "$APP_PATH" ]]; then
@@ -56,10 +106,10 @@ fi
 ditto "$FOUND_APP" "$APP_PATH"
 
 echo
-echo "Installed:"
+echo "Installed successfully:"
 echo "  $APP_PATH"
 echo
-echo "Your API configuration is stored separately at:"
+echo "API configuration:"
 echo "  ~/Library/Application Support/SkyTrace/config.json"
 echo
 echo "Opening SkyTrace..."
