@@ -7,7 +7,8 @@ SRC="$ROOT/assets/SkyTrace.png"
 ICONSET="$ROOT/assets/SkyTrace.iconset"
 OUT="$ROOT/assets/SkyTrace.icns"
 
-base64 --decode "$B64" > "$SRC" 2>/dev/null || base64 -D "$B64" > "$SRC"
+# Decode with Node so this works the same on Intel/Apple Silicon macOS and Linux CI.
+node -e 'const fs=require("fs"); const src=process.argv[1]; const out=process.argv[2]; const b64=fs.readFileSync(src,"utf8").replace(/\s+/g,""); fs.writeFileSync(out, Buffer.from(b64,"base64"));' "$B64" "$SRC"
 trap 'rm -f "$SRC"' EXIT
 
 rm -rf "$ICONSET"
