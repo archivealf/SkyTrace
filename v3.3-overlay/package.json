@@ -1,0 +1,27 @@
+{
+  "name": "skytrace-desktop",
+  "productName": "SkyTrace",
+  "version": "3.3.0",
+  "private": true,
+  "description": "SkyTrace live aviation intelligence for macOS with accounts, permanent upgrades and liquid-glass UI.",
+  "type": "module",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "electron-forge start",
+    "web": "node server.js",
+    "data": "node scripts/update-aviation-data.mjs",
+    "icon:mac": "bash scripts/make-mac-icon.sh",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "check": "node --check electron-main.js && node --check server.js && node --check app.v3.js && node --check airlines.v2.2.js && node --check service-worker.v3.js && node --check scripts/update-aviation-data.mjs && node --check lib/config.js && node --check lib/account.js && node --check lib/live.js && node --check lib/opensky.js && node --check lib/airports.js && node --check lib/aircraft.js && node --check lib/weather.js && node --check lib/aviationweather.js && for f in api/*.js; do node --check \"$f\"; done"
+  },
+  "engines": {
+    "node": ">=20.18.0"
+  },
+  "devDependencies": {
+    "electron": "43.2.0",
+    "@electron-forge/cli": "7.11.2",
+    "@electron-forge/maker-dmg": "7.11.2",
+    "@electron-forge/maker-zip": "7.11.2"
+  }
+}
