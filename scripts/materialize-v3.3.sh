@@ -17,6 +17,7 @@ cp "$OVERLAY/config.example.json" "$ROOT/config.example.json"
 cp "$OVERLAY/manifest.webmanifest" "$ROOT/manifest.webmanifest"
 cp "$OVERLAY/service-worker.v3.js" "$ROOT/service-worker.v3.js"
 cp "$OVERLAY/v3.3-commerce.js" "$ROOT/v3.3-commerce.js"
+cp "$OVERLAY/v3.3-codes.js" "$ROOT/v3.3-codes.js"
 cp "$OVERLAY/v3.3-glass.css" "$ROOT/v3.3-glass.css"
 cp "$OVERLAY/README.md" "$ROOT/README.md"
 cp "$OVERLAY/ATTRIBUTION.md" "$ROOT/ATTRIBUTION.md"
@@ -105,6 +106,7 @@ const appFile = process.argv[3];
 let html = fs.readFileSync(htmlFile, "utf8");
 if (!html.includes('/v3.3-glass.css')) html = html.replace('<link rel="stylesheet" href="/styles.v3.css" />', '<link rel="stylesheet" href="/styles.v3.css" />\n  <link rel="stylesheet" href="/v3.3-glass.css" />');
 if (!html.includes('/v3.3-commerce.js')) html = html.replace('<script src="/app.v3.js"></script>', '<script src="/app.v3.js"></script>\n<script src="/v3.3-commerce.js"></script>');
+if (!html.includes('/v3.3-codes.js')) html = html.replace('<script src="/v3.3-commerce.js"></script>', '<script src="/v3.3-commerce.js"></script>\n<script src="/v3.3-codes.js"></script>');
 html = html.replace('window.SKYTRACE_BUILD="3.2.0-free";', 'window.SKYTRACE_BUILD="3.3.0-commerce-glass";');
 fs.writeFileSync(htmlFile, html);
 
