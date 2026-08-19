@@ -1,12 +1,13 @@
 {
   "name": "skytrace-commerce",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
-  "description": "SkyTrace account, OTP login, entitlements and Stripe Checkout backend.",
+  "description": "SkyTrace username/password accounts, permanent entitlements, Stripe Checkout and redeem codes.",
   "scripts": {
-    "start": "node server.js",
-    "check": "node --check server.js"
+    "start": "node --import ./redeem-hook.js server.js",
+    "check": "node --check server.js && node --check redeem-hook.js && node --check codes.js",
+    "codes": "node codes.js"
   },
   "engines": {
     "node": ">=20.18.0"
