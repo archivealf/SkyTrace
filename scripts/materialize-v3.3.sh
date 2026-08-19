@@ -75,6 +75,7 @@ NODE
 fi
 
 node "$OVERLAY/scripts/optimize-performance.mjs" "$ROOT"
+node "$OVERLAY/scripts/stabilize-runtime.mjs" "$ROOT"
 node - "$ROOT/index.html" "$ROOT/app.v3.js" <<'NODE'
 const fs = require("fs");
 const htmlFile = process.argv[2];
