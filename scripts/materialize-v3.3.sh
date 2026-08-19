@@ -18,6 +18,7 @@ cp "$OVERLAY/v3.3-commerce.js" "$ROOT/v3.3-commerce.js"
 cp "$OVERLAY/v3.3-codes.js" "$ROOT/v3.3-codes.js"
 cp "$OVERLAY/v3.3-platform.js" "$ROOT/v3.3-platform.js"
 cp "$OVERLAY/v3.3-export-fix.js" "$ROOT/v3.3-export-fix.js"
+cp "$OVERLAY/v3.4-features.js" "$ROOT/v3.4-features.js"
 cp "$OVERLAY/v3.3-glass.css" "$ROOT/v3.3-glass.css"
 cp "$OVERLAY/README.md" "$ROOT/README.md"
 cp "$OVERLAY/ATTRIBUTION.md" "$ROOT/ATTRIBUTION.md"
@@ -37,6 +38,7 @@ cp "$OVERLAY/api/health.js" "$ROOT/api/health.js"
 cp "$OVERLAY/scripts/update-aviation-data.mjs" "$ROOT/scripts/update-aviation-data.mjs"
 cp "$OVERLAY/scripts/generate-skytrace-icon.mjs" "$ROOT/scripts/generate-skytrace-icon.mjs"
 cp "$OVERLAY/scripts/make-mac-icon.sh" "$ROOT/scripts/make-mac-icon.sh"
+cp "$OVERLAY/scripts/apply-v34.mjs" "$ROOT/scripts/apply-v34.mjs"
 chmod +x "$ROOT/scripts/make-mac-icon.sh"
 rm -f "$ROOT/lib/opensky.js"
 node "$ROOT/scripts/generate-skytrace-icon.mjs" "$ROOT/assets/SkyTrace.png"
@@ -91,8 +93,13 @@ app = app.replace('if("serviceWorker"in navigator)navigator.serviceWorker.regist
 app = app.replace('function initMap(){\n    applyPerformanceMode();startPerformanceHud();\n    state.map=new maplibregl.Map(', 'function initMap(){\n    applyPerformanceMode();startPerformanceHud();\n    setTimeout(()=>{if(!el.loading.classList.contains("done")){el.loading.querySelector("span").textContent="Aviation data is taking longer than expected";el.loading.classList.add("done");}},10000);\n    state.map=new maplibregl.Map(');
 fs.writeFileSync(appFile, app);
 NODE
+
+# Add the V3.4 Operations / global Replay / aircraft-profile API bridge only
+# after the V3.3 account and map layers above are present.
+node "$OVERLAY/scripts/apply-v34.mjs" "$ROOT"
+
 node "$OVERLAY/scripts/finalize-v3.3.mjs" "$ROOT"
 rm -rf "$ROOT/source-payload-fixed" "$ROOT/.github"
 rm -f "$ROOT/trigger-build.txt"
 rm -rf "$OVERLAY"
-echo "Materialized SkyTrace V3.3.1 Performance RC with Cloud/Replay/Admin feature layer."
+echo "Materialized SkyTrace V3.3.1 Performance RC with V3.4 Operations/Replay/Profile feature layer."
