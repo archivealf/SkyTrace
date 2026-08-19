@@ -1,0 +1,199 @@
+/* SkyTrace V3.4 RC1 — desktop polish layer */
+:root{
+  --st-panel:rgba(10,13,19,.88);
+  --st-panel-soft:rgba(15,19,27,.78);
+  --st-panel-raised:rgba(19,24,34,.94);
+  --st-line:rgba(255,255,255,.10);
+  --st-line-strong:rgba(255,255,255,.17);
+  --st-text:#f5f7fb;
+  --st-muted:#8f98a8;
+  --st-muted-2:#697383;
+  --st-blue:#9eb1ff;
+  --st-blue-soft:rgba(120,145,255,.14);
+  --st-green:#7ce0ae;
+  --st-shadow:0 18px 60px rgba(0,0,0,.38);
+  --st-radius-xl:24px;
+  --st-radius-lg:18px;
+  --st-radius-md:13px;
+  --st-radius-sm:10px;
+}
+
+html,body{background:#05070b;color:var(--st-text)}
+body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+button:disabled{cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:none;
+  box-shadow:0 0 0 3px rgba(126,151,255,.16),0 0 0 1px rgba(151,171,255,.62)!important;
+}
+
+/* Startup --------------------------------------------------------------- */
+#loading{
+  position:fixed!important;
+  inset:0!important;
+  z-index:10000!important;
+  display:grid!important;
+  place-items:center!important;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 50% 38%,rgba(88,111,201,.13),transparent 32%),
+    radial-gradient(circle at 28% 76%,rgba(58,116,112,.07),transparent 29%),
+    linear-gradient(180deg,#080a0f 0%,#05070b 64%,#040509 100%);
+  opacity:1;
+  visibility:visible;
+  transition:opacity .42s ease,visibility .42s ease;
+}
+#loading::before{
+  content:"";
+  position:absolute;
+  inset:-30%;
+  pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);
+  background-size:42px 42px;
+  mask-image:radial-gradient(circle at center,#000 0%,transparent 61%);
+  -webkit-mask-image:radial-gradient(circle at center,#000 0%,transparent 61%);
+  transform:perspective(700px) rotateX(64deg) translateY(15%);
+  transform-origin:center;
+}
+#loading.done{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
+.startup-shell{
+  position:relative;
+  width:min(430px,calc(100vw - 52px));
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  z-index:1;
+}
+.startup-status{order:5;display:block;min-height:18px;margin-top:15px;color:var(--st-muted);font-size:11px;line-height:1.45;letter-spacing:.01em}
+.startup-logo{order:1;width:76px;height:76px;border-radius:23px;display:grid;place-items:center;overflow:hidden;margin-bottom:20px;border:1px solid rgba(255,255,255,.13);background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(255,255,255,.025));box-shadow:0 24px 70px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.11)}
+.startup-logo img{width:100%;height:100%;object-fit:cover;display:block}
+.startup-eyebrow{order:2;font-size:9px;font-weight:750;letter-spacing:.24em;color:#8792a4;margin-bottom:7px}
+.startup-title{order:3;margin:0;font-size:32px;line-height:1;font-weight:720;letter-spacing:-.045em;color:#f7f8fc}
+.startup-version{order:4;margin-top:10px;padding:5px 9px;border-radius:999px;border:1px solid rgba(154,172,255,.18);background:rgba(114,139,255,.07);color:#aebcff;font-size:8px;font-weight:720;letter-spacing:.08em}
+.startup-progress{order:6;position:relative;width:196px;height:2px;margin-top:8px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.07)}
+.startup-progress i{position:absolute;inset:0 auto 0 0;width:38%;border-radius:inherit;background:linear-gradient(90deg,transparent,#9bafff 46%,#c6d0ff 55%,transparent);animation:startupSweep 1.45s ease-in-out infinite;transform:translateX(-115%)}
+#loading.done .startup-progress i{animation:none;width:100%;transform:none;background:#9fb1ff}
+.startup-caption{order:7;margin-top:18px;color:#616b79;font-size:8px;letter-spacing:.08em;text-transform:uppercase}
+@keyframes startupSweep{0%{transform:translateX(-120%)}60%,100%{transform:translateX(290%)}}
+
+/* Main shell ------------------------------------------------------------ */
+.flightdeck-top{gap:10px!important}
+.brand-orb,.round-button,.account-pill,.command-search,.live-cluster,.flightdeck-rail,.flightdeck-sheet{
+  border:1px solid var(--st-line)!important;
+}
+.brand-orb,.round-button{box-shadow:0 8px 28px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.07)!important}
+.command-search{border-radius:15px!important;box-shadow:0 12px 38px rgba(0,0,0,.27),inset 0 1px rgba(255,255,255,.055)!important}
+.command-search input{font-size:11px!important;letter-spacing:.005em}
+.command-search input::placeholder{color:#697382!important}
+.live-cluster{border-radius:15px!important;padding:5px!important;gap:4px!important}
+.account-pill{height:38px!important;border-radius:11px!important;padding:0 11px!important;background:rgba(255,255,255,.045)!important}
+.account-pill:hover{background:rgba(255,255,255,.075)!important;border-color:var(--st-line-strong)!important}
+
+.flightdeck-rail{border-radius:20px!important;padding:6px!important;gap:3px!important;background:rgba(8,11,16,.88)!important}
+.flightdeck-rail button,.mode-tab{border-radius:13px!important;border:1px solid transparent!important;min-height:42px}
+.flightdeck-rail button:hover,.mode-tab:hover{background:rgba(255,255,255,.055)!important;border-color:rgba(255,255,255,.055)!important}
+.flightdeck-rail button.active,.mode-tab.active{background:linear-gradient(145deg,rgba(135,158,255,.15),rgba(255,255,255,.055))!important;border-color:rgba(153,172,255,.19)!important;color:#f6f7fc!important;box-shadow:inset 0 1px rgba(255,255,255,.07),0 8px 22px rgba(0,0,0,.18)!important}
+.flightdeck-rail button b,.mode-tab b{font-size:8px!important;font-weight:650!important;letter-spacing:.015em}
+
+.flightdeck-sheet{border-radius:var(--st-radius-xl)!important;background:linear-gradient(160deg,rgba(255,255,255,.035),transparent 28%),var(--st-panel)!important;box-shadow:var(--st-shadow),inset 0 1px rgba(255,255,255,.055)!important}
+.sidebar-head{padding-top:2px!important}
+.sidebar-head .eyebrow,.eyebrow{color:#7d8798!important;font-size:7px!important;font-weight:750!important;letter-spacing:.17em!important}
+.sidebar-head h1{margin-top:4px!important;letter-spacing:-.035em!important;font-weight:690!important}
+.source-row{color:#6e7888!important;border-top-color:rgba(255,255,255,.07)!important}
+
+/* Lists ----------------------------------------------------------------- */
+.scroll-list{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.14) transparent}
+.scroll-list::-webkit-scrollbar,.store-scroll::-webkit-scrollbar{width:6px}
+.scroll-list::-webkit-scrollbar-track,.store-scroll::-webkit-scrollbar-track{background:transparent}
+.scroll-list::-webkit-scrollbar-thumb,.store-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.13);border-radius:999px}
+.aircraft-row,.airport-row,.watch-row{
+  border:1px solid transparent!important;
+  border-radius:13px!important;
+  margin:2px 5px!important;
+  background:transparent!important;
+}
+.aircraft-row:hover,.airport-row:hover,.watch-row:hover{
+  background:rgba(255,255,255,.052)!important;
+  border-color:rgba(255,255,255,.07)!important;
+  transform:none!important;
+}
+.aircraft-row.active,.aircraft-row.selected,.airport-row.active,.airport-row.selected{
+  background:rgba(125,149,255,.10)!important;
+  border-color:rgba(145,165,255,.17)!important;
+}
+.aircraft-row strong,.airport-row strong,.watch-row strong{font-weight:650!important;letter-spacing:-.01em}
+.aircraft-row small,.airport-row small,.watch-row small{color:#7f8998!important}
+
+/* Detail panels --------------------------------------------------------- */
+.flight-card,.airport-panel,.stats-panel,.account-modal{
+  border-radius:24px!important;
+  border:1px solid rgba(255,255,255,.115)!important;
+  background:linear-gradient(150deg,rgba(255,255,255,.045),transparent 25%),rgba(8,11,17,.94)!important;
+  box-shadow:0 24px 75px rgba(0,0,0,.48),inset 0 1px rgba(255,255,255,.065)!important;
+}
+.detail-close{
+  width:31px!important;height:31px!important;border-radius:10px!important;
+  border:1px solid rgba(255,255,255,.08)!important;
+  background:rgba(255,255,255,.045)!important;
+  color:#9ca5b3!important;font-size:17px!important;line-height:1!important;
+}
+.detail-close:hover{background:rgba(255,255,255,.09)!important;color:#fff!important;border-color:rgba(255,255,255,.14)!important}
+.detail-tabs{padding:4px!important;border-radius:13px!important;background:rgba(255,255,255,.035)!important;border:1px solid rgba(255,255,255,.055)!important}
+.detail-tab{border-radius:9px!important;border:0!important;min-height:31px!important;color:#7f8998!important}
+.detail-tab.active{background:rgba(255,255,255,.075)!important;color:#f4f6fb!important;box-shadow:inset 0 1px rgba(255,255,255,.055),0 5px 16px rgba(0,0,0,.18)!important}
+.detail-tab:hover{transform:none!important;color:#d9dce4!important}
+.metric,.telemetry-row>div,.metadata-item,.awc-card,.advisory-card{
+  border-radius:13px!important;
+  border-color:rgba(255,255,255,.075)!important;
+  background:rgba(255,255,255,.032)!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.025)!important;
+}
+.metric:hover,.telemetry-row>div:hover,.metadata-item:hover,.awc-card:hover,.advisory-card:hover{transform:none!important;background:rgba(255,255,255,.05)!important;border-color:rgba(255,255,255,.105)!important}
+.metric span,.metadata-item span,.telemetry-row span{color:#747f90!important}
+.metric strong,.metadata-item strong,.telemetry-row strong{font-weight:620!important}
+
+/* Controls / actions ---------------------------------------------------- */
+.store-buy,.account-primary,.account-secondary,.account-logout,.airport-panel button,.flight-card button,.stats-panel button{
+  border-radius:11px!important;
+}
+.store-buy:not(.owned),.account-primary{
+  background:linear-gradient(180deg,rgba(139,160,255,.18),rgba(114,138,239,.12))!important;
+  border-color:rgba(148,168,255,.27)!important;
+}
+.store-buy:not(.owned):hover,.account-primary:hover{background:linear-gradient(180deg,rgba(151,170,255,.25),rgba(119,142,240,.18))!important;border-color:rgba(164,181,255,.37)!important}
+
+/* Store / account ------------------------------------------------------- */
+.store-scroll{gap:10px!important;padding:5px 10px 20px!important}
+.store-card{border-radius:16px!important;border-color:rgba(255,255,255,.075)!important;background:rgba(255,255,255,.032)!important;box-shadow:inset 0 1px rgba(255,255,255,.03)!important}
+.store-card:hover{transform:none!important;background:rgba(255,255,255,.047)!important;border-color:rgba(255,255,255,.11)!important;box-shadow:inset 0 1px rgba(255,255,255,.045)!important}
+.store-card-pro{background:radial-gradient(circle at 92% 0,rgba(125,151,255,.14),transparent 39%),rgba(255,255,255,.037)!important;border-color:rgba(143,163,255,.18)!important}
+.store-card h3{font-weight:670!important}
+.store-card p{font-size:9px!important;color:#838d9c!important}
+.store-features span{background:rgba(255,255,255,.035)!important;border-color:rgba(255,255,255,.07)!important;color:#a8b0bc!important}
+.store-buy.owned{background:rgba(93,200,143,.075)!important;border-color:rgba(108,218,161,.17)!important;color:#aee9ca!important}
+.account-modal{width:min(430px,calc(100% - 34px))!important;padding:22px!important}
+.account-mark,.account-avatar{border-color:rgba(255,255,255,.11)!important;background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(121,145,255,.055))!important}
+.account-field input{background:rgba(255,255,255,.035)!important;border-color:rgba(255,255,255,.085)!important;border-radius:11px!important}
+.account-profile{background:rgba(255,255,255,.03)!important;border-color:rgba(255,255,255,.07)!important}
+
+/* Status / toast -------------------------------------------------------- */
+.bottom-status{border-color:rgba(255,255,255,.075)!important;background:rgba(7,10,15,.78)!important;box-shadow:0 9px 28px rgba(0,0,0,.26)!important}
+.toast{border:1px solid rgba(255,255,255,.11)!important;background:rgba(13,17,24,.94)!important;box-shadow:0 18px 48px rgba(0,0,0,.42)!important;border-radius:13px!important;color:#e9ecf2!important}
+
+/* Performance mode retains the polish without expensive live effects. */
+.performance-mode .flightdeck-sheet,.performance-mode .command-search,.performance-mode .live-cluster,.performance-mode .brand-orb,.performance-mode .round-button,.performance-mode .flightdeck-rail{
+  backdrop-filter:blur(7px) saturate(1.04)!important;
+  -webkit-backdrop-filter:blur(7px) saturate(1.04)!important;
+}
+.performance-mode #loading{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+
+@media(max-width:900px){
+  .flightdeck-sheet,.flight-card,.airport-panel,.stats-panel{border-radius:20px!important}
+}
+@media(prefers-reduced-motion:reduce){.startup-progress i{animation:none!important;width:100%;transform:none!important}}
+@media(prefers-reduced-transparency:reduce){
+  #loading{background:#07090d!important}
+  .flight-card,.airport-panel,.stats-panel,.account-modal{background:#0c1017!important}
+}
