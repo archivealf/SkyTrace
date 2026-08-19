@@ -24,6 +24,22 @@ jobs:
       - name: Audit complete source tree
         run: node scripts/audit-runtime.mjs
 
+      - name: Verify quiet installer contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n install
+          bash -n install-v3.4-rc1
+          grep -F 'PORTABLE_NODE_VERSION="22.23.2"' install-v3.4-rc1 >/dev/null
+          grep -F 'LOG_FILE="$LOG_DIR/installer.log"' install-v3.4-rc1 >/dev/null
+          grep -F 'npm install --no-audit --no-fund --loglevel=error' install-v3.4-rc1 >/dev/null
+          grep -F 'run_step 8 "Install application"' install-v3.4-rc1 >/dev/null
+          if grep -F 'SkyTrace installer: preparing' install >/dev/null; then
+            echo "Noisy legacy launcher message returned."
+            exit 1
+          fi
+          node -e 'const p=require("./package.json"); if(p.engines?.node!==">=22.12.0") throw new Error(`Unexpected Node engine: ${p.engines?.node}`)'
+
       - name: Syntax-check V3.4 release transforms
         run: |
           node --check v3.3-overlay/v3.4-features.js
@@ -61,6 +77,11 @@ jobs:
           node scripts/verify-v3.4-release.mjs
           npm run check
           node scripts/audit-runtime.mjs
+          bash -n install
+          bash -n install-v3.4-rc1
+          grep -F 'LOG_FILE="$LOG_DIR/installer.log"' install-v3.4-rc1 >/dev/null
+          grep -F 'npm install --no-audit --no-fund --loglevel=error' install-v3.4-rc1 >/dev/null
+          node -e 'const p=require("./package.json"); if(p.engines?.node!==">=22.12.0") throw new Error(`Unexpected materialized Node engine: ${p.engines?.node}`)'
 
       - name: Complete smoke validation
-        run: echo "V3.4.0 RC1 source tree, backend, release identity, materializer, commercial hardening, executable audit and desktop checks passed."
+        run: echo "V3.4.0 RC1 source tree, quiet installer, backend, release identity, materializer, commercial hardening, executable audit and desktop checks passed."
