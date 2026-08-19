@@ -25,6 +25,7 @@ jobs:
         run: |
           node --check v3.3-overlay/v3.4-features.js
           node --check v3.3-overlay/scripts/apply-v34.mjs
+          node --check v3.3-overlay/scripts/stabilize-runtime.mjs
 
       - name: Run commerce integration checks
         run: npm --prefix commerce run check
@@ -45,7 +46,7 @@ jobs:
             fi
           done
 
-      - name: Materialize harden and verify V3.4 desktop source
+      - name: Materialize harden verify and audit desktop source
         env:
           SKYTRACE_COMMERCE_URL: https://skytrace.example.invalid
         run: |
@@ -53,6 +54,7 @@ jobs:
           node scripts/harden-commercial-build.mjs
           node scripts/verify-v3.3-release.mjs
           npm run check
+          node scripts/audit-runtime.mjs
 
       - name: Complete smoke validation
-        run: echo "V3.4 backend, materializer, commercial hardening and desktop source checks passed."
+        run: echo "V3.4 backend, materializer, commercial hardening, executable audit and desktop source checks passed."
