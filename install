@@ -3,11 +3,15 @@ set -euo pipefail
 
 OWNER="archivealf"
 REPO="SkyTrace"
+REF="v3.3-commerce"
 APP_NAME="SkyTrace"
-VERSION="v3.2.0"
+EXPECTED_VERSION="3.3.1"
+BUILD_LABEL="SkyTrace V3.3.1 Performance RC"
 INSTALL_DIR="$HOME/Applications"
 APP_PATH="$INSTALL_DIR/$APP_NAME.app"
-RAW_BASE="https://raw.githubusercontent.com/${OWNER}/${REPO}/main"
+SOURCE_ZIP="https://github.com/${OWNER}/${REPO}/archive/refs/heads/${REF}.zip"
+: "${SKYTRACE_COMMERCE_URL:=https://skytrace.duckdns.org}"
+export SKYTRACE_COMMERCE_URL
 
 case "$(uname -m)" in
   arm64) ARCH="arm64" ;;
@@ -19,12 +23,14 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 trap 'echo; echo "SkyTrace install failed at line $LINENO."; exit 1' ERR
 
-mkdir -p "$INSTALL_DIR" "$TMP/source/scripts" "$TMP/source/v3.2-bundle"
+mkdir -p "$INSTALL_DIR"
 
-echo "Installing SkyTrace ${VERSION} Free Stack for macOS (${ARCH})..."
+echo "Installing ${BUILD_LABEL} for macOS (${ARCH})..."
+echo "Source branch: ${REF}"
+echo
 
 command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 || {
-  echo "Node.js 20.18+ and npm are required."
+  echo "Node.js 20.18+ and npm are required for this RC installer."
   exit 1
 }
 
@@ -34,37 +40,35 @@ if [[ "$NODE_OK" != "true" ]]; then
   exit 1
 fi
 
-echo "Downloading the verified SkyTrace V3.2 source bundle..."
-for i in $(seq -w 0 17); do
-  curl --fail --location --silent --show-error \
-    "${RAW_BASE}/v3.2-bundle/chunk${i}.b64" \
-    --output "$TMP/source/v3.2-bundle/chunk${i}.b64"
-done
+case "$SKYTRACE_COMMERCE_URL" in
+  https://*) ;;
+  *) echo "SKYTRACE_COMMERCE_URL must use HTTPS."; exit 1 ;;
+esac
 
-curl --fail --location --silent --show-error \
-  "${RAW_BASE}/scripts/materialize-v3.2.sh" \
-  --output "$TMP/source/scripts/materialize-v3.2.sh"
+echo "Downloading ${REF} source..."
+curl --fail --location --progress-bar "$SOURCE_ZIP" --output "$TMP/source.zip"
+mkdir -p "$TMP/source"
+ditto -x -k "$TMP/source.zip" "$TMP/source"
 
-cd "$TMP/source"
-bash scripts/materialize-v3.2.sh
+SOURCE_DIR="$(find "$TMP/source" -maxdepth 1 -type d -name 'SkyTrace-*' -print -quit)"
+if [[ -z "$SOURCE_DIR" ]]; then
+  echo "Installer error: SkyTrace source directory was not found."
+  exit 1
+fi
 
-# Use OurAirports' official direct-download mirror to avoid redirect/maintenance failures.
-node - <<'NODE'
-const fs = require('fs');
-const p = 'scripts/update-aviation-data.mjs';
-let s = fs.readFileSync(p, 'utf8');
-s = s
-  .replace('https://ourairports.com/data/airports.csv', 'https://davidmegginson.github.io/ourairports-data/airports.csv')
-  .replace('https://ourairports.com/data/runways.csv', 'https://davidmegginson.github.io/ourairports-data/runways.csv')
-  .replace('https://ourairports.com/data/airport-frequencies.csv', 'https://davidmegginson.github.io/ourairports-data/airport-frequencies.csv')
-  .replace('https://ourairports.com/data/navaids.csv', 'https://davidmegginson.github.io/ourairports-data/navaids.csv');
-fs.writeFileSync(p, s);
-NODE
+cd "$SOURCE_DIR"
+
+echo "Materializing V3.3.1 Performance RC..."
+bash scripts/materialize-v3.3.sh
+
+# Public/commerce RC builds must never regain restricted hosted providers.
+node scripts/harden-commercial-build.mjs
+node scripts/verify-v3.3-release.mjs
 
 echo "Installing build dependencies..."
 npm install --no-audit --no-fund
 
-echo "Downloading free aviation reference data..."
+echo "Downloading aviation reference data..."
 npm run data
 
 echo "Building the macOS icon..."
@@ -72,6 +76,7 @@ npm run icon:mac
 
 echo "Checking source..."
 npm run check
+node scripts/verify-v3.3-release.mjs
 
 echo "Building SkyTrace.app for ${ARCH}..."
 npm run package -- --arch="$ARCH"
@@ -79,16 +84,34 @@ npm run package -- --arch="$ARCH"
 FOUND_APP="$(find out -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit)"
 [[ -n "$FOUND_APP" ]] || { echo "SkyTrace.app was not produced."; exit 1; }
 
+PLIST="$FOUND_APP/Contents/Info.plist"
+BUILT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST" 2>/dev/null || true)"
+if [[ "$BUILT_VERSION" != "$EXPECTED_VERSION" ]]; then
+  echo "Refusing to install unexpected build version: ${BUILT_VERSION:-unknown}"
+  echo "Expected: $EXPECTED_VERSION"
+  exit 1
+fi
+
 if [[ -d "$APP_PATH" ]]; then
-  echo "Updating existing installation..."
+  echo "Replacing existing SkyTrace installation..."
   rm -rf "$APP_PATH"
 fi
 
 ditto "$FOUND_APP" "$APP_PATH"
 
+INSTALLED_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Contents/Info.plist" 2>/dev/null || true)"
+if [[ "$INSTALLED_VERSION" != "$EXPECTED_VERSION" ]]; then
+  echo "Installed app version check failed. Expected $EXPECTED_VERSION, found ${INSTALLED_VERSION:-unknown}."
+  exit 1
+fi
+
 echo
 echo "Installed successfully:"
 echo "  $APP_PATH"
+echo "  Version: $INSTALLED_VERSION (Performance RC)"
+echo
+echo "Your existing SkyTrace config remains at:"
+echo "  ~/Library/Application Support/SkyTrace/config.json"
 echo
 echo "Opening SkyTrace..."
 open "$APP_PATH"
