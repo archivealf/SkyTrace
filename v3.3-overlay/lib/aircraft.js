@@ -11,6 +11,7 @@ const AIRCRAFT_TTL = 12 * 60 * 60_000;
 const ROUTE_TTL = 24 * 60 * 60_000;
 const CACHE = new Map();
 let localAircraft = null;
+let localAircraftPromise = null;
 
 function cleanHex(value) {
   const key = String(value || "").toUpperCase().replace(/[^0-9A-F]/g, "").slice(0, 6);
@@ -26,36 +27,63 @@ function numberOrNull(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-function loadLocalAircraftDb() {
-  if (localAircraft) return localAircraft;
-  localAircraft = new Map();
-  if (!fs.existsSync(LOCAL_DB)) return localAircraft;
-
-  try {
-    const text = zlib.gunzipSync(fs.readFileSync(LOCAL_DB)).toString("utf8");
-    for (const line of text.split(/\r?\n/)) {
-      if (!line) continue;
-      const fields = line.split(";");
-      const hex = cleanHex(fields[0]);
-      if (!hex) continue;
-      localAircraft.set(hex, {
-        icao24: hex,
-        registration: fields[1] || null,
-        typeCode: fields[2] || null,
-        flags: numberOrNull(fields[3]) || 0,
-        model: fields[4] || null,
-        operator: fields[5] || null,
-        year: numberOrNull(fields[6])
-      });
-    }
-  } catch (error) {
-    console.warn(`[SkyTrace] Could not load Mictronics aircraft database: ${error.message}`);
-  }
-  return localAircraft;
+function gunzip(buffer) {
+  return new Promise((resolve, reject) => {
+    zlib.gunzip(buffer, (error, output) => error ? reject(error) : resolve(output));
+  });
 }
 
-function localLookup(hex) {
-  return loadLocalAircraftDb().get(hex) || null;
+async function loadLocalAircraftDb() {
+  if (localAircraft) return localAircraft;
+  if (localAircraftPromise) return localAircraftPromise;
+
+  localAircraftPromise = (async () => {
+    const index = new Map();
+    if (!fs.existsSync(LOCAL_DB)) {
+      localAircraft = index;
+      return index;
+    }
+
+    try {
+      const compressed = await fs.promises.readFile(LOCAL_DB);
+      const text = (await gunzip(compressed)).toString("utf8");
+      const lines = text.split(/\r?\n/);
+      for (let i = 0; i < lines.length; i += 1) {
+        const line = lines[i];
+        if (!line) continue;
+        const fields = line.split(";");
+        const hex = cleanHex(fields[0]);
+        if (!hex) continue;
+        index.set(hex, {
+          icao24: hex,
+          registration: fields[1] || null,
+          typeCode: fields[2] || null,
+          flags: numberOrNull(fields[3]) || 0,
+          model: fields[4] || null,
+          operator: fields[5] || null,
+          year: numberOrNull(fields[6])
+        });
+        // Parsing the full aircraft database used to block Electron's main process.
+        // Yield periodically so window/input work remains responsive during first use.
+        if (i > 0 && i % 5000 === 0) await new Promise(resolve => setImmediate(resolve));
+      }
+    } catch (error) {
+      console.warn(`[SkyTrace] Could not load Mictronics aircraft database: ${error.message}`);
+    }
+
+    localAircraft = index;
+    return index;
+  })();
+
+  try {
+    return await localAircraftPromise;
+  } finally {
+    if (localAircraft) localAircraftPromise = null;
+  }
+}
+
+async function localLookup(hex) {
+  return (await loadLocalAircraftDb()).get(hex) || null;
 }
 
 function mergeAircraft(local, remote) {
@@ -100,7 +128,8 @@ async function fetchCached(url, cacheKey, ttl) {
   if (cached && Date.now() - cached.at < ttl) return { value: cached.value, cache: "HIT" };
 
   const response = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "SkyTrace/3.3" }
+    headers: { Accept: "application/json", "User-Agent": "SkyTrace/3.3" },
+    signal: AbortSignal.timeout(12_000)
   });
   if (response.status === 404) return { value: null, cache: "MISS" };
   if (!response.ok) {
@@ -174,19 +203,22 @@ export async function getAircraftMetadata(icao24, callsign = "") {
   const hex = cleanHex(icao24);
   if (!hex) throw Object.assign(new Error("Invalid ICAO24."), { status: 400 });
   const call = cleanCallsign(callsign);
-  const local = localLookup(hex);
+  const localPromise = localLookup(hex);
 
-  const [liveResult, routeResult] = await Promise.allSettled([
-    getLiveAircraft(hex),
-    call ? fetchRoute(call) : Promise.resolve({ route: null, cache: "MISS" })
+  const [local, liveResult, routeResult] = await Promise.all([
+    localPromise,
+    getLiveAircraft(hex).catch(error => ({ __error: error })),
+    call ? fetchRoute(call).catch(error => ({ __error: error })) : Promise.resolve({ route: null, cache: "MISS" })
   ]);
 
-  const live = liveResult.status === "fulfilled" ? liveResult.value.aircraft : null;
-  const route = routeResult.status === "fulfilled" ? routeResult.value.route : null;
+  const liveError = liveResult?.__error || null;
+  const routeError = routeResult?.__error || null;
+  const live = liveError ? null : liveResult.aircraft;
+  const route = routeError ? null : routeResult.route;
   const aircraft = mergeAircraft(local, live);
   const warnings = [];
-  if (liveResult.status === "rejected") warnings.push(liveResult.reason?.message || "Live aircraft enrichment unavailable.");
-  if (routeResult.status === "rejected") warnings.push(routeResult.reason?.message || "Route enrichment unavailable.");
+  if (liveError) warnings.push(liveError.message || "Live aircraft enrichment unavailable.");
+  if (routeError) warnings.push(routeError.message || "Route enrichment unavailable.");
 
   return {
     ok: true,
