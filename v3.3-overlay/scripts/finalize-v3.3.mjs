@@ -19,7 +19,11 @@ function replaceAll(rel, pairs) {
 
 replaceAll("index.html", [
   ["3.3.0-commerce-glass", BUILD],
-  ["3.2.0-free", BUILD]
+  ["3.2.0-free", BUILD],
+  ["V3.2 FREE", DISPLAY]
+]);
+replaceAll("styles.v3.css", [
+  ["/* V3.2 Free Stack */", "/* SkyTrace V3.3.1 runtime styles */"]
 ]);
 replaceAll("v3.3-commerce.js", [
   ["3.3.0-commerce-glass", BUILD],
