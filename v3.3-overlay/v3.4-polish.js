@@ -47,7 +47,11 @@
     polishStaticUi();
   }
 
-  if (document.readyState === "loading") {
+  // This script is injected before app.v3.js at the end of the document, so
+  // the loader already exists and can be polished before the main app boots.
+  if (document.getElementById("loading") || document.querySelector(".loading")) {
+    boot();
+  } else if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot, { once: true });
   } else {
     boot();
