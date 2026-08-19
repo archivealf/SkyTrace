@@ -61,28 +61,26 @@ app = replaceRequired(
 write(appFile, app);
 
 let codes = read(codesFile);
-codes = replaceRequired(
-  codes,
-  `  installStyles();
+const oldCodesObserver = `  installStyles();
   installRedeemCard();
   const observer = new MutationObserver(installRedeemCard);
   observer.observe(document.documentElement, { childList: true, subtree: true });
-})();`,
-  `  const boot = () => { installStyles(); installRedeemCard(); };
+})();`;
+if (codes.includes(oldCodesObserver)) {
+  codes = codes.replace(oldCodesObserver, `  const boot = () => { installStyles(); installRedeemCard(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
   else boot();
-})();`,
-  "remove document-wide redeem observer"
-);
+})();`);
+}
+if (codes.includes("MutationObserver")) throw new Error("Redeem runtime still contains a document MutationObserver.");
 write(codesFile, codes);
 
 let features = read(featuresFile);
-features = replaceRequired(
-  features,
-  `ensure();new MutationObserver(ensure).observe(document.documentElement,{childList:true,subtree:true});})();`,
-  `const boot=()=>ensure();if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();})();`,
-  "remove document-wide V3.4 observer"
-);
+const oldFeaturesObserver = `ensure();new MutationObserver(ensure).observe(document.documentElement,{childList:true,subtree:true});})();`;
+if (features.includes(oldFeaturesObserver)) {
+  features = features.replace(oldFeaturesObserver, `const boot=()=>ensure();if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();})();`);
+}
+if (features.includes("MutationObserver")) throw new Error("V3.4 runtime still contains a document MutationObserver.");
 write(featuresFile, features);
 
 let css = read(cssFile);
