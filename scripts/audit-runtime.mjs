@@ -1,0 +1,65 @@
+import fs from "node:fs";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const skipDirs = new Set([".git", "node_modules", "out", "v3.2-bundle", "source-payload", "source-payload-fixed", "data", "backups"]);
+const jsExtensions = new Set([".js", ".mjs", ".cjs"]);
+const files = [];
+
+function walk(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory() && skipDirs.has(entry.name)) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walk(full);
+    else if (jsExtensions.has(path.extname(entry.name))) files.push(full);
+  }
+}
+walk(root);
+
+const failures = [];
+let linesScanned = 0;
+for (const file of files) {
+  const rel = path.relative(root, file);
+  const text = fs.readFileSync(file, "utf8");
+  const lines = text.split(/\r?\n/);
+  linesScanned += lines.length;
+
+  const checked = spawnSync(process.execPath, ["--check", file], { encoding: "utf8" });
+  if (checked.status !== 0) failures.push(`${rel}: JavaScript syntax check failed: ${checked.stderr.trim()}`);
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const at = `${rel}:${i + 1}`;
+    if (/\beval\s*\(/.test(line)) failures.push(`${at}: eval() is not allowed in SkyTrace executable code.`);
+    if (/\bnew\s+Function\s*\(/.test(line)) failures.push(`${at}: new Function() is not allowed in SkyTrace executable code.`);
+    if (/\bwhile\s*\(\s*true\s*\)/.test(line) || /\bfor\s*\(\s*;\s*;\s*\)/.test(line)) failures.push(`${at}: unbounded loop requires explicit review.`);
+  }
+}
+
+function runtimeText(rel) {
+  const file = path.join(root, rel);
+  if (!fs.existsSync(file)) throw new Error(`Audit expected ${rel} to exist.`);
+  return fs.readFileSync(file, "utf8");
+}
+
+for (const rel of ["app.v3.js", "v3.3-codes.js", "v3.3-platform.js", "v3.3-entitlement-sync.js", "v3.4-features.js"]) {
+  const text = runtimeText(rel);
+  if (text.includes("MutationObserver")) failures.push(`${rel}: document MutationObserver is forbidden in the desktop runtime; use explicit events instead.`);
+}
+
+const app = runtimeText("app.v3.js");
+if (!app.includes('data-airport-traffic-icao')) failures.push("app.v3.js: optimized observed-airport traffic rows are missing.");
+if (!app.includes('el.aircraftList?.querySelector(".aircraft-row.selected")?.classList.remove("selected")')) failures.push("app.v3.js: constant-time aircraft close path is missing.");
+if (app.includes('function closeFlight(){state.selectedId=null;state.followSelected=false;el.detailsPanel.classList.add("hidden");updateSelectedAircraftFilter();renderFlightList();')) failures.push("app.v3.js: old full-list close redraw is still present.");
+if (fs.existsSync(path.join(root, "v3.4-airport-traffic-fix.js"))) failures.push("Obsolete recursive airport-traffic compatibility runtime is still materialized.");
+
+if (failures.length) {
+  console.error(`SkyTrace executable audit failed (${failures.length} issue${failures.length === 1 ? "" : "s"}).`);
+  for (const failure of failures) console.error(`- ${failure}`);
+  process.exit(1);
+}
+
+console.log(`SkyTrace executable audit passed: ${files.length} JavaScript/module files and ${linesScanned.toLocaleString()} source lines scanned.`);
+console.log("Renderer stability checks passed: no document MutationObservers, no dynamic eval, constant-time aircraft close, optimized airport traffic rendering.");
