@@ -90,7 +90,8 @@ async function adsbFetch(pathname, key, ttl = FRESH_TTL) {
 
   try {
     const response = await fetch(`${ADSB_ROOT}${pathname}`, {
-      headers: { Accept: "application/json", "User-Agent": "SkyTrace/3.3" }
+      headers: { Accept: "application/json", "User-Agent": "SkyTrace/3.3" },
+      signal: AbortSignal.timeout(12_000)
     });
     if (!response.ok) {
       const error = new Error(
