@@ -29,7 +29,8 @@ export async function getWeather(lat, lon) {
     headers: {
       Accept: "application/json",
       "User-Agent": USER_AGENT
-    }
+    },
+    signal: AbortSignal.timeout(12_000)
   });
   if (!response.ok) {
     throw Object.assign(new Error(`MET Norway weather provider failed (${response.status}).`), { status: response.status });
