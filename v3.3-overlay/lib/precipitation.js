@@ -61,7 +61,8 @@ export async function getPrecipitationTile(z, x, y) {
   url.searchParams.set("HEIGHT", "256");
 
   const response = await fetch(url, {
-    headers: { Accept: "image/png,image/*;q=0.9,*/*;q=0.1", "User-Agent": "SkyTrace/3.3" }
+    headers: { Accept: "image/png,image/*;q=0.9,*/*;q=0.1", "User-Agent": "SkyTrace/3.3" },
+    signal: AbortSignal.timeout(12_000)
   });
 
   if (response.status === 404 || response.status === 204) {
