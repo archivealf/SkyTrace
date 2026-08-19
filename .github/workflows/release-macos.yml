@@ -1,4 +1,4 @@
-name: Build SkyTrace V3.3 macOS
+name: Build SkyTrace V3.3.1 macOS
 
 on:
   workflow_dispatch:
@@ -43,7 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "${SKYTRACE_COMMERCE_URL:-}" ]]; then
-            echo "Repository variable SKYTRACE_COMMERCE_URL is required for packaged V3.3 builds."
+            echo "Repository variable SKYTRACE_COMMERCE_URL is required for packaged V3.3.1 builds."
             exit 1
           fi
           case "$SKYTRACE_COMMERCE_URL" in
@@ -51,11 +51,14 @@ jobs:
             *) echo "SKYTRACE_COMMERCE_URL must use HTTPS."; exit 1 ;;
           esac
 
-      - name: Verify and materialize V3.3 source
+      - name: Verify and materialize V3.3.1 source
         run: bash scripts/materialize-v3.3.sh
 
       - name: Enforce commercial provider isolation
         run: node scripts/harden-commercial-build.mjs
+
+      - name: Verify V3.3.1 release identity
+        run: node scripts/verify-v3.3-release.mjs
 
       - name: Verify commerce backend
         run: node --check commerce/server.js
@@ -72,8 +75,21 @@ jobs:
       - name: Verify JavaScript
         run: npm run check
 
+      - name: Re-verify release identity
+        run: node scripts/verify-v3.3-release.mjs
+
       - name: Package SkyTrace.app
         run: npm run package -- --arch=${{ matrix.arch }}
+
+      - name: Verify packaged app version
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$(find out -maxdepth 3 -name 'SkyTrace.app' -type d -print -quit)"
+          [[ -n "$APP" ]] || { echo "SkyTrace.app was not found."; exit 1; }
+          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
+          [[ "$VERSION" == "3.3.1" ]] || { echo "Unexpected packaged version: $VERSION"; exit 1; }
+          echo "Verified packaged SkyTrace version $VERSION"
 
       - name: Create release ZIP and checksum
         shell: bash
@@ -125,7 +141,7 @@ jobs:
           path: release-assets
           merge-multiple: true
 
-      - name: Publish V3.3 release
+      - name: Publish V3.3.1 release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -134,13 +150,13 @@ jobs:
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             TAG="${GITHUB_REF_NAME}"
           else
-            TAG="v3.3.0"
+            TAG="v3.3.1"
           fi
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "SkyTrace $TAG" \
-              --notes "SkyTrace V3.3 for macOS adds username/password accounts, permanent Stripe-backed upgrades, smoother transitions, Liquid Glass-inspired controls and the refreshed rounded SkyTrace icon. Public builds connect to the configured SkyTrace Commerce HTTPS backend. ADSB.lol remains the primary live source; hosted providers requiring separate commercial permission (OpenSky REST, ADSBDB enrichment, the Open-Meteo free API and RainViewer) are disabled in the commercial build pending suitable licences/terms. See ATTRIBUTION.md for the data-provider record."
+              --notes "SkyTrace V3.3.1 for macOS adds the V3.3 account/commerce features plus a major performance pass: adaptive aircraft rendering, Performance Mode, FPS/render telemetry, lighter glass effects, bounded trail memory and reduced unnecessary DOM/map work. Public builds connect to the configured SkyTrace Commerce HTTPS backend. ADSB.lol remains the primary live source; OpenSky REST, ADSBDB enrichment, the Open-Meteo free API and RainViewer remain disabled in commercial builds pending suitable licences/terms."
           fi
           gh release upload "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber
