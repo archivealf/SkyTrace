@@ -14,13 +14,13 @@ const DEFAULT_CONFIG = {
   server: { port: 3000 },
   providers: {
     live: "adsblol",
-    openSkyFallback: true,
-    adsbdb: true,
+    liveStaleCache: true,
+    aircraftEnrichment: true,
+    routes: true,
     aviationWeather: true,
-    openMeteo: true,
-    rainViewer: true
+    generalWeather: true,
+    precipitation: true
   },
-  opensky: { clientId: "", clientSecret: "" },
   commerce: { enabled: true, baseUrl: "http://127.0.0.1:8787" }
 };
 
@@ -36,6 +36,25 @@ function ensureUserConfig() {
   } else {
     try {
       const existing = JSON.parse(fs.readFileSync(configPath, "utf8"));
+      const existingProviders = existing?.providers && typeof existing.providers === "object" ? existing.providers : {};
+      const hasLegacyProviderConfig =
+        ["openSkyFallback", "adsbdb", "openMeteo", "rainViewer"].some((key) => key in existingProviders) ||
+        Boolean(existing?.opensky);
+      let configChanged = false;
+      if (hasLegacyProviderConfig) {
+        existing.providers = {
+          live: "adsblol",
+          liveStaleCache: true,
+          aircraftEnrichment: true,
+          routes: true,
+          aviationWeather: existingProviders.aviationWeather !== false,
+          generalWeather: true,
+          precipitation: true
+        };
+        delete existing.opensky;
+        configChanged = true;
+      }
+
       const releaseCommerceUrl = String(DEFAULT_CONFIG?.commerce?.baseUrl || "").trim();
       const existingCommerceUrl = String(existing?.commerce?.baseUrl || "").trim();
       const loopbackCommerce = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(existingCommerceUrl);
@@ -52,6 +71,10 @@ function ensureUserConfig() {
           enabled: true,
           baseUrl: releaseCommerceUrl
         };
+        configChanged = true;
+      }
+
+      if (configChanged) {
         fs.writeFileSync(configPath, `${JSON.stringify(existing, null, 2)}\n`, {
           mode: 0o600
         });

@@ -2,15 +2,12 @@
   "server": { "port": 3000 },
   "providers": {
     "live": "adsblol",
-    "openSkyFallback": true,
-    "adsbdb": true,
+    "liveStaleCache": true,
+    "aircraftEnrichment": true,
+    "routes": true,
     "aviationWeather": true,
-    "openMeteo": true,
-    "rainViewer": true
-  },
-  "opensky": {
-    "clientId": "",
-    "clientSecret": ""
+    "generalWeather": true,
+    "precipitation": true
   },
   "commerce": {
     "enabled": true,

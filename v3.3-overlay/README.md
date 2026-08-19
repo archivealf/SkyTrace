@@ -10,38 +10,26 @@ This installer deliberately targets the `v3.3-commerce` branch and refuses to in
 bash <(curl -fsSL "https://raw.githubusercontent.com/archivealf/SkyTrace/v3.3-commerce/install")
 ```
 
-The installer builds the correct architecture for the current Mac, applies the public commercial-provider hardening, verifies the V3.3.1 performance identity, replaces an older `~/Applications/SkyTrace.app`, and preserves the user config stored under `~/Library/Application Support/SkyTrace/`.
+The installer builds the correct architecture for the current Mac, applies the public commercial-provider verification, verifies the V3.3.1 performance identity, replaces an older `~/Applications/SkyTrace.app`, and preserves the user config stored under `~/Library/Application Support/SkyTrace/`.
 
 ## Performance work
 
 Performance Mode is enabled by default and includes adaptive aircraft rendering, a live FPS/render-count HUD, reduced live glass blur, lighter animations, debounced search/filter updates, lazy list/stat rendering, bounded trail/event memory, capped dynamic livery images and refresh throttling while the map is moving.
 
-## Data stack
+## Free commercial-use data stack
 
-The local/development build can use:
+Public commercial V3.3.1 builds use a no-key stack selected for the release use case:
 
-- ADSB.lol: primary live aircraft positions/telemetry
-- OpenSky: optional fallback for non-commercial use where its terms permit
-- OurAirports: airports, runways, frequencies and navaids
-- tar1090/Mictronics aircraft database: local registration/type/operator lookup
-- ADSBDB: optional public metadata/route enrichment for local development where upstream terms permit
-- AviationWeather.gov: METAR, TAF, SIGMET and PIREP/AIREP products
-- Open-Meteo: optional general weather for non-commercial development
-- RainViewer: optional radar imagery for non-commercial development
-- OpenFreeMap + MapLibre: map rendering
+- **ADSB.lol** — primary live aircraft positions/telemetry, with a bounded stale snapshot cache for short upstream outages.
+- **Mictronics aircraft database** — registration, type, model and operator reference data. The build refreshes `aircraft.csv.gz` from the tar1090-db CSV mirror.
+- **VRS Standing Data via ADSB.lol** — callsign route enrichment.
+- **MET Norway Locationforecast 2.0** — global general weather.
+- **NASA GPM IMERG via NASA GIBS** — global satellite precipitation-rate map layer. The UI calls this **Precipitation**, not radar, because it is a satellite estimate.
+- **AviationWeather.gov** — METAR, TAF, SIGMET and PIREP/AIREP products.
+- **OurAirports** — airports, runways, frequencies and navaids.
+- **OpenFreeMap + MapLibre** — map rendering.
 
-### Public commercial V3.3.1 builds
-
-When `SKYTRACE_COMMERCE_URL` is supplied, the packaged app uses a stricter provider policy:
-
-- ADSB.lol remains the live aircraft source.
-- OurAirports, local aircraft reference data, AviationWeather.gov and OpenFreeMap/MapLibre remain available.
-- OpenSky REST API use and fallback are disabled unless SkyTrace later obtains the required commercial agreement.
-- ADSBDB hosted aircraft/route enrichment is disabled pending suitable written permission/terms for the release use case.
-- The Open-Meteo free hosted API is disabled; a future build can use its commercial customer endpoint under a paid plan.
-- RainViewer is disabled until commercial integration terms are in place.
-
-These restrictions are enforced at build/runtime rather than relying only on default config, so an older local configuration cannot silently turn the restricted hosted providers back on in a commercial package. See `ATTRIBUTION.md` for the provider/licence record.
+OpenSky REST, ADSBDB, the Open-Meteo free endpoint and RainViewer are not included in the commercial runtime. CI scans packaged source for those restricted hosts. See `ATTRIBUTION.md` for the provider/licence record and attribution requirements.
 
 No `.env` file is used.
 
@@ -57,7 +45,7 @@ SkyTrace creates:
 ~/Library/Application Support/SkyTrace/config.json
 ```
 
-Local/development defaults include optional providers that are automatically restricted in public commercial release builds as described above.
+Older configs containing the previous OpenSky/ADSBDB/Open-Meteo/RainViewer provider switches are migrated to the current commercial-safe provider schema. The account service URL remains user-configurable for development and is injected as HTTPS in packaged releases.
 
 ## Build locally
 

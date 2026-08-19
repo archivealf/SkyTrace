@@ -8,15 +8,12 @@ const DEFAULT_CONFIG = Object.freeze({
   server: { port: 3000 },
   providers: {
     live: "adsblol",
-    openSkyFallback: true,
-    adsbdb: true,
+    liveStaleCache: true,
+    aircraftEnrichment: true,
+    routes: true,
     aviationWeather: true,
-    openMeteo: true,
-    rainViewer: true
-  },
-  opensky: {
-    clientId: "",
-    clientSecret: ""
+    generalWeather: true,
+    precipitation: true
   },
   commerce: {
     enabled: true,
@@ -26,9 +23,7 @@ const DEFAULT_CONFIG = Object.freeze({
 
 function resolveConfigPath() {
   const desktopPath = globalThis.__SKYTRACE_CONFIG_PATH__;
-  if (typeof desktopPath === "string" && desktopPath.trim()) {
-    return path.resolve(desktopPath);
-  }
+  if (typeof desktopPath === "string" && desktopPath.trim()) return path.resolve(desktopPath);
   return path.resolve(__dirname, "../config.json");
 }
 
@@ -40,7 +35,7 @@ function cleanString(value) {
 
 function loadConfig() {
   if (!fs.existsSync(configPath)) {
-    console.warn(`[SkyTrace] config.json was not found at ${configPath}. Using the no-key free provider stack.`);
+    console.warn(`[SkyTrace] config.json was not found at ${configPath}. Using the free commercial provider stack.`);
     return structuredClone(DEFAULT_CONFIG);
   }
 
@@ -52,16 +47,13 @@ function loadConfig() {
         port: Number.isInteger(port) && port >= 0 && port <= 65535 ? port : 3000
       },
       providers: {
-        live: raw?.providers?.live === "opensky" ? "opensky" : "adsblol",
-        openSkyFallback: raw?.providers?.openSkyFallback !== false,
-        adsbdb: raw?.providers?.adsbdb !== false,
+        live: "adsblol",
+        liveStaleCache: raw?.providers?.liveStaleCache !== false,
+        aircraftEnrichment: raw?.providers?.aircraftEnrichment !== false,
+        routes: raw?.providers?.routes !== false,
         aviationWeather: raw?.providers?.aviationWeather !== false,
-        openMeteo: raw?.providers?.openMeteo !== false,
-        rainViewer: raw?.providers?.rainViewer !== false
-      },
-      opensky: {
-        clientId: cleanString(raw?.opensky?.clientId),
-        clientSecret: cleanString(raw?.opensky?.clientSecret)
+        generalWeather: raw?.providers?.generalWeather !== false,
+        precipitation: raw?.providers?.precipitation !== false
       },
       commerce: {
         enabled: raw?.commerce?.enabled !== false,
@@ -75,7 +67,3 @@ function loadConfig() {
 }
 
 export const config = Object.freeze(loadConfig());
-
-export function hasOpenSkyCredentials() {
-  return Boolean(config.opensky.clientId && config.opensky.clientSecret);
-}

@@ -66,7 +66,7 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Download free aviation reference data
+      - name: Download free commercial aviation reference data
         run: npm run data
 
       - name: Build macOS icon
@@ -107,16 +107,23 @@ jobs:
             echo "Stale V3.2 FREE UI label survived packaging."
             exit 1
           fi
-          if grep -aF 'api.rainviewer.com' "$ASAR" >/dev/null; then
-            echo "Direct RainViewer endpoint survived packaging."
-            exit 1
-          fi
           if grep -aF 'Installing SkyTrace v3.2.0 Free Stack' "$ASAR" >/dev/null; then
             echo "Old V3.2 installer content survived packaging."
             exit 1
           fi
 
-          echo "Verified packaged SkyTrace $VERSION ($BUNDLE_ID), ASAR runtime and performance/commercial markers."
+          for host in opensky-network.org api.adsbdb.com api.open-meteo.com api.rainviewer.com; do
+            if grep -aF "$host" "$ASAR" >/dev/null; then
+              echo "Restricted provider host survived packaging: $host"
+              exit 1
+            fi
+          done
+
+          for marker in api.adsb.lol vrs-standing-data.adsb.lol api.met.no gibs.earthdata.nasa.gov 'Precipitation'; do
+            grep -aF "$marker" "$ASAR" >/dev/null || { echo "Expected free commercial provider marker is missing: $marker"; exit 1; }
+          done
+
+          echo "Verified packaged SkyTrace $VERSION ($BUNDLE_ID), ASAR runtime, performance markers and free commercial provider stack."
 
       - name: Create release ZIP and checksum
         shell: bash
@@ -184,6 +191,6 @@ jobs:
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "SkyTrace $TAG" \
-              --notes "SkyTrace V3.3.1 for macOS adds the V3.3 account/commerce features plus a major performance pass: adaptive aircraft rendering, Performance Mode, FPS/render telemetry, lighter glass effects, bounded trail memory and reduced unnecessary DOM/map work. Public builds connect to the configured SkyTrace Commerce HTTPS backend. ADSB.lol remains the primary live source; OpenSky REST, ADSBDB enrichment, the Open-Meteo free API and RainViewer remain disabled in commercial builds pending suitable licences/terms."
+              --notes "SkyTrace V3.3.1 for macOS adds V3.3 accounts/commerce plus a major performance pass. The public commercial runtime uses ADSB.lol for live traffic, Mictronics/VRS standing data for aircraft and route enrichment, MET Norway for general weather, NASA GPM IMERG via GIBS for the Precipitation map layer, AviationWeather.gov, OurAirports and OpenFreeMap. Restricted OpenSky REST, ADSBDB, Open-Meteo free-hosted and RainViewer endpoints are excluded and CI-scanned."
           fi
           gh release upload "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber
