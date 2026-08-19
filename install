@@ -1,117 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-OWNER="archivealf"
-REPO="SkyTrace"
-REF="v3.3-commerce"
-APP_NAME="SkyTrace"
-EXPECTED_VERSION="3.3.1"
-BUILD_LABEL="SkyTrace V3.3.1 Performance RC"
-INSTALL_DIR="$HOME/Applications"
-APP_PATH="$INSTALL_DIR/$APP_NAME.app"
-SOURCE_ZIP="https://github.com/${OWNER}/${REPO}/archive/refs/heads/${REF}.zip"
-: "${SKYTRACE_COMMERCE_URL:=https://skytrace.duckdns.org}"
-export SKYTRACE_COMMERCE_URL
+RC_INSTALLER="https://raw.githubusercontent.com/archivealf/SkyTrace/v3.3-commerce/install-v3.3-rc"
+TMP="$(mktemp)"
+trap 'rm -f "$TMP"' EXIT
 
-case "$(uname -m)" in
-  arm64) ARCH="arm64" ;;
-  x86_64) ARCH="x64" ;;
-  *) echo "Unsupported Mac architecture: $(uname -m)"; exit 1 ;;
-esac
+echo "SkyTrace installer: switching to V3.3.1 Performance RC..."
+curl --fail --location --silent --show-error "$RC_INSTALLER" --output "$TMP"
 
-TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
-trap 'echo; echo "SkyTrace install failed at line $LINENO."; exit 1' ERR
-
-mkdir -p "$INSTALL_DIR"
-
-echo "Installing ${BUILD_LABEL} for macOS (${ARCH})..."
-echo "Source branch: ${REF}"
-echo
-
-command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 || {
-  echo "Node.js 20.18+ and npm are required for this RC installer."
-  exit 1
-}
-
-NODE_OK="$(node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.stdout.write(String(a>20 || (a===20 && b>=18)))')"
-if [[ "$NODE_OK" != "true" ]]; then
-  echo "Node.js 20.18+ is required. Found: $(node --version)"
-  exit 1
-fi
-
-case "$SKYTRACE_COMMERCE_URL" in
-  https://*) ;;
-  *) echo "SKYTRACE_COMMERCE_URL must use HTTPS."; exit 1 ;;
-esac
-
-echo "Downloading ${REF} source..."
-curl --fail --location --progress-bar "$SOURCE_ZIP" --output "$TMP/source.zip"
-mkdir -p "$TMP/source"
-ditto -x -k "$TMP/source.zip" "$TMP/source"
-
-SOURCE_DIR="$(find "$TMP/source" -maxdepth 1 -type d -name 'SkyTrace-*' -print -quit)"
-if [[ -z "$SOURCE_DIR" ]]; then
-  echo "Installer error: SkyTrace source directory was not found."
-  exit 1
-fi
-
-cd "$SOURCE_DIR"
-
-echo "Materializing V3.3.1 Performance RC..."
-bash scripts/materialize-v3.3.sh
-
-# Public/commerce RC builds must never regain restricted hosted providers.
-node scripts/harden-commercial-build.mjs
-node scripts/verify-v3.3-release.mjs
-
-echo "Installing build dependencies..."
-npm install --no-audit --no-fund
-
-echo "Downloading aviation reference data..."
-npm run data
-
-echo "Building the macOS icon..."
-npm run icon:mac
-
-echo "Checking source..."
-npm run check
-node scripts/verify-v3.3-release.mjs
-
-echo "Building SkyTrace.app for ${ARCH}..."
-npm run package -- --arch="$ARCH"
-
-FOUND_APP="$(find out -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit)"
-[[ -n "$FOUND_APP" ]] || { echo "SkyTrace.app was not produced."; exit 1; }
-
-PLIST="$FOUND_APP/Contents/Info.plist"
-BUILT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST" 2>/dev/null || true)"
-if [[ "$BUILT_VERSION" != "$EXPECTED_VERSION" ]]; then
-  echo "Refusing to install unexpected build version: ${BUILT_VERSION:-unknown}"
-  echo "Expected: $EXPECTED_VERSION"
-  exit 1
-fi
-
-if [[ -d "$APP_PATH" ]]; then
-  echo "Replacing existing SkyTrace installation..."
-  rm -rf "$APP_PATH"
-fi
-
-ditto "$FOUND_APP" "$APP_PATH"
-
-INSTALLED_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Contents/Info.plist" 2>/dev/null || true)"
-if [[ "$INSTALLED_VERSION" != "$EXPECTED_VERSION" ]]; then
-  echo "Installed app version check failed. Expected $EXPECTED_VERSION, found ${INSTALLED_VERSION:-unknown}."
-  exit 1
-fi
-
-echo
-echo "Installed successfully:"
-echo "  $APP_PATH"
-echo "  Version: $INSTALLED_VERSION (Performance RC)"
-echo
-echo "Your existing SkyTrace config remains at:"
-echo "  ~/Library/Application Support/SkyTrace/config.json"
-echo
-echo "Opening SkyTrace..."
-open "$APP_PATH"
+# The RC installer independently verifies source identity, commercial hardening,
+# performance markers, bundle ID and final 3.3.1 app version before replacement.
+bash "$TMP"
