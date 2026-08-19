@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+OWNER="archivealf"
+REPO="SkyTrace"
+REF="v3.3-commerce"
+APP_NAME="SkyTrace"
+EXPECTED_VERSION="3.4.0"
+EXPECTED_BUNDLE_ID="io.skytrace.desktop"
+EXPECTED_BUILD_MARKER="3.4.0-rc1"
+BUILD_LABEL="SkyTrace V3.4.0 RC1"
+INSTALL_DIR="$HOME/Applications"
+APP_PATH="$INSTALL_DIR/$APP_NAME.app"
+SOURCE_ZIP="https://github.com/${OWNER}/${REPO}/archive/refs/heads/${REF}.zip"
+: "${SKYTRACE_COMMERCE_URL:=https://skytrace.duckdns.org}"
+export SKYTRACE_COMMERCE_URL
+
+case "$(uname -m)" in
+  arm64)
+    ARCH="arm64"
+    ARCH_LABEL="Apple Silicon (arm64)"
+    ;;
+  x86_64)
+    ARCH="x64"
+    ARCH_LABEL="Intel (x86_64)"
+    ;;
+  *)
+    echo "Unsupported Mac architecture: $(uname -m)"
+    exit 1
+    ;;
+esac
+
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+trap 'echo; echo "SkyTrace install failed at line $LINENO."; exit 1' ERR
+
+mkdir -p "$INSTALL_DIR"
+
+echo "Installing ${BUILD_LABEL}"
+echo "Detected Mac: ${ARCH_LABEL}"
+echo "Source branch: ${REF}"
+echo
+
+command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 || {
+  echo "Node.js 20.18+ and npm are required for the RC1 source installer."
+  exit 1
+}
+
+NODE_OK="$(node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.stdout.write(String(a>20 || (a===20 && b>=18)))')"
+if [[ "$NODE_OK" != "true" ]]; then
+  echo "Node.js 20.18+ is required. Found: $(node --version)"
+  exit 1
+fi
+
+case "$SKYTRACE_COMMERCE_URL" in
+  https://*) ;;
+  *) echo "SKYTRACE_COMMERCE_URL must use HTTPS."; exit 1 ;;
+esac
+
+echo "Downloading RC1 source..."
+curl --fail --location --progress-bar "$SOURCE_ZIP" --output "$TMP/source.zip"
+mkdir -p "$TMP/source"
+ditto -x -k "$TMP/source.zip" "$TMP/source"
+
+SOURCE_DIR="$(find "$TMP/source" -maxdepth 1 -type d -name 'SkyTrace-*' -print -quit)"
+if [[ -z "$SOURCE_DIR" ]]; then
+  echo "Installer error: SkyTrace source directory was not found."
+  exit 1
+fi
+
+cd "$SOURCE_DIR"
+
+echo "Materializing ${BUILD_LABEL}..."
+bash scripts/materialize-v3.4.sh
+node scripts/harden-commercial-build.mjs
+node scripts/verify-v3.4-release.mjs
+node scripts/audit-runtime.mjs
+
+echo "Installing build dependencies..."
+npm install --no-audit --no-fund
+
+echo "Downloading aviation reference data..."
+npm run data
+
+echo "Building the macOS icon..."
+npm run icon:mac
+
+echo "Checking release source..."
+npm run check
+node scripts/verify-v3.4-release.mjs
+node scripts/audit-runtime.mjs
+
+echo "Building SkyTrace.app for ${ARCH_LABEL}..."
+npm run package -- --arch="$ARCH"
+
+FOUND_APP="$(find out -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit)"
+[[ -n "$FOUND_APP" ]] || { echo "SkyTrace.app was not produced."; exit 1; }
+
+PLIST="$FOUND_APP/Contents/Info.plist"
+ASAR="$FOUND_APP/Contents/Resources/app.asar"
+BUILT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST" 2>/dev/null || true)"
+BUILT_BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST" 2>/dev/null || true)"
+if [[ "$BUILT_VERSION" != "$EXPECTED_VERSION" ]]; then
+  echo "Refusing to install unexpected build version: ${BUILT_VERSION:-unknown}"
+  echo "Expected: $EXPECTED_VERSION"
+  exit 1
+fi
+if [[ "$BUILT_BUNDLE_ID" != "$EXPECTED_BUNDLE_ID" ]]; then
+  echo "Refusing to install unexpected bundle identifier: ${BUILT_BUNDLE_ID:-unknown}"
+  echo "Expected: $EXPECTED_BUNDLE_ID"
+  exit 1
+fi
+if [[ ! -f "$ASAR" ]]; then
+  echo "Refusing to install package without the expected app.asar payload."
+  exit 1
+fi
+if ! grep -aF "$EXPECTED_BUILD_MARKER" "$ASAR" >/dev/null; then
+  echo "Refusing to install package without the ${EXPECTED_BUILD_MARKER} runtime marker."
+  exit 1
+fi
+
+if [[ -d "$APP_PATH" ]]; then
+  echo "Replacing existing SkyTrace installation..."
+  rm -rf "$APP_PATH"
+fi
+
+ditto "$FOUND_APP" "$APP_PATH"
+
+INSTALLED_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Contents/Info.plist" 2>/dev/null || true)"
+INSTALLED_BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Contents/Info.plist" 2>/dev/null || true)"
+if [[ "$INSTALLED_VERSION" != "$EXPECTED_VERSION" || "$INSTALLED_BUNDLE_ID" != "$EXPECTED_BUNDLE_ID" ]]; then
+  echo "Installed app identity check failed."
+  echo "Version: ${INSTALLED_VERSION:-unknown}"
+  echo "Bundle ID: ${INSTALLED_BUNDLE_ID:-unknown}"
+  exit 1
+fi
+
+echo
+echo "Installed successfully:"
+echo "  $APP_PATH"
+echo "  Release: ${BUILD_LABEL}"
+echo "  Architecture: ${ARCH_LABEL}"
+echo "  Version: $INSTALLED_VERSION"
+echo "  Bundle ID: $INSTALLED_BUNDLE_ID"
+echo
+echo "Your existing SkyTrace config remains at:"
+echo "  ~/Library/Application Support/SkyTrace/config.json"
+echo
+echo "Opening the verified RC1 installation..."
+open "$APP_PATH"
