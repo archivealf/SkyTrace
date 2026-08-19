@@ -16,6 +16,7 @@ function requireFileAbsent(rel, label = rel) { if (fs.existsSync(path.join(root,
 const pkg = JSON.parse(text("package.json"));
 if (pkg.version !== VERSION) throw new Error(`package.json version is ${pkg.version}; expected ${VERSION}.`);
 if (pkg?.config?.forge !== "./forge.config.cjs") throw new Error("package.json is not using the canonical forge.config.cjs.");
+if (pkg?.engines?.node !== ">=22.12.0") throw new Error(`package.json Node engine is ${pkg?.engines?.node}; expected >=22.12.0.`);
 requireContains("forge.config.cjs", 'appBundleId: "io.skytrace.desktop"', "SkyTrace bundle identifier");
 requireContains("forge.config.cjs", "asar: true", "ASAR packaging");
 requireContains("forge.config.cjs", '/^\\/(?:README|CHANGELOG)\\.md$/', "release-document packaging exclusion");
@@ -23,11 +24,18 @@ requireContains("forge.config.cjs", '/^\\/install(?:-.*)?$/', "installer packagi
 requireContains("index.html", `window.SKYTRACE_BUILD=\"${BUILD}\"`, "V3.4.0 RC1 build marker");
 requireContains("index.html", 'id="performanceMode"', "Performance Mode control");
 requireContains("index.html", 'id="perfStatus"', "performance HUD");
+requireContains("index.html", '/v3.4-polish.css', "V3.4 UI polish stylesheet");
+requireContains("index.html", '/v3.4-polish.js', "V3.4 startup polish script");
 requireContains("index.html", '/v3.3-platform.js', "Cloud feature layer script");
 requireContains("index.html", '/v3.3-export-fix.js', "safe history export script");
 requireContains("index.html", '/v3.3-codes.js', "redeem-code UI script");
 requireContains("index.html", '/v3.3-entitlement-sync.js', "live entitlement sync script");
 requireContains("index.html", '/v3.4-features.js', "V3.4 Operations feature script");
+requireContains("v3.4-polish.css", ".startup-shell", "polished startup layout");
+requireContains("v3.4-polish.css", ".flight-card,.airport-panel", "detail-panel polish");
+requireContains("v3.4-polish.js", "Preparing live aviation data", "startup status copy");
+requireContains("v3.4-polish.js", "V3.4.0 RC1", "startup release label");
+requireAbsent("v3.4-polish.js", "MutationObserver", "UI-polish MutationObserver");
 requireContains("app.v3.js", "function flightsForMap()", "adaptive aircraft renderer");
 requireContains("app.v3.js", 'localStorage.getItem("skytrace.performanceMode")', "persisted Performance Mode");
 requireContains("v3.3-commerce.js", `window.SKYTRACE_BUILD = \"${BUILD}\"`, "commerce build marker");
@@ -104,11 +112,11 @@ if (process.env.SKYTRACE_COMMERCE_URL) {
   requireContains("ATTRIBUTION.md", "Mictronics", "Mictronics attribution");
   requireContains("ATTRIBUTION.md", "MET Norway", "MET Norway attribution");
   requireContains("ATTRIBUTION.md", "NASA GPM IMERG", "NASA precipitation attribution");
-  const runtimeFiles = ["app.v3.js","v3.3-codes.js","v3.3-entitlement-sync.js","v3.3-platform.js","v3.3-export-fix.js","v3.4-features.js","server.js","electron-main.js","lib/config.js","lib/account.js","lib/live.js","lib/aircraft.js","lib/weather.js","lib/precipitation.js","api/config.js","api/health.js"];
+  const runtimeFiles = ["app.v3.js","v3.3-codes.js","v3.3-entitlement-sync.js","v3.3-platform.js","v3.3-export-fix.js","v3.4-features.js","v3.4-polish.js","server.js","electron-main.js","lib/config.js","lib/account.js","lib/live.js","lib/aircraft.js","lib/weather.js","lib/precipitation.js","api/config.js","api/health.js"];
   for (const rel of runtimeFiles) {
     const value = text(rel);
     for (const host of BLOCKED_HOSTS) if (value.includes(host)) throw new Error(`${rel} contains restricted provider host ${host}.`);
   }
 }
 
-console.log(`Verified SkyTrace ${DISPLAY} (${BUILD}): identity, packaging, runtime stability, commerce, Cloud tools, V3.4 Operations/Replay/Profile and free commercial provider stack are consistent.`);
+console.log(`Verified SkyTrace ${DISPLAY} (${BUILD}): identity, packaging, polished startup/UI, runtime stability, commerce, Cloud tools, V3.4 Operations/Replay/Profile and free commercial provider stack are consistent.`);
