@@ -35,12 +35,16 @@ for (const file of files) {
     if (checked.status !== 0) failures.push(`${rel}: JavaScript syntax check failed: ${checked.stderr.trim()}`);
   }
 
+  // The audit implementation necessarily contains the patterns it searches for.
+  // Syntax-check it, but do not make its rule definitions match themselves.
+  if (rel === "scripts/audit-runtime.mjs") continue;
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const at = `${rel}:${i + 1}`;
     if (jsExtensions.has(ext)) {
-      if (/\beval\s*\(/.test(line)) failures.push(`${at}: eval() is not allowed in SkyTrace executable code.`);
-      if (/\bnew\s+Function\s*\(/.test(line)) failures.push(`${at}: new Function() is not allowed in SkyTrace executable code.`);
+      if (/\beval\s*\(/.test(line)) failures.push(`${at}: dynamic eval is not allowed in SkyTrace executable code.`);
+      if (/\bnew\s+Function\s*\(/.test(line)) failures.push(`${at}: dynamic Function construction is not allowed in SkyTrace executable code.`);
       if (/\bwhile\s*\(\s*true\s*\)/.test(line) || /\bfor\s*\(\s*;\s*;\s*\)/.test(line)) failures.push(`${at}: unbounded loop requires explicit review.`);
     }
   }
