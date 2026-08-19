@@ -19,7 +19,9 @@ cp "$OVERLAY/v3.3-codes.js" "$ROOT/v3.3-codes.js"
 cp "$OVERLAY/v3.3-platform.js" "$ROOT/v3.3-platform.js"
 cp "$OVERLAY/v3.3-export-fix.js" "$ROOT/v3.3-export-fix.js"
 cp "$OVERLAY/v3.4-features.js" "$ROOT/v3.4-features.js"
+cp "$OVERLAY/v3.4-polish.js" "$ROOT/v3.4-polish.js"
 cp "$OVERLAY/v3.3-glass.css" "$ROOT/v3.3-glass.css"
+cp "$OVERLAY/v3.4-polish.css" "$ROOT/v3.4-polish.css"
 cp "$OVERLAY/README.md" "$ROOT/README.md"
 cp "$OVERLAY/CHANGELOG.md" "$ROOT/CHANGELOG.md"
 cp "$OVERLAY/ATTRIBUTION.md" "$ROOT/ATTRIBUTION.md"
@@ -87,7 +89,9 @@ const htmlFile = process.argv[2];
 const appFile = process.argv[3];
 let html = fs.readFileSync(htmlFile, "utf8");
 if (!html.includes('/v3.3-glass.css')) html = html.replace('<link rel="stylesheet" href="/styles.v3.css" />', '<link rel="stylesheet" href="/styles.v3.css" />\n  <link rel="stylesheet" href="/v3.3-glass.css" />');
+if (!html.includes('/v3.4-polish.css')) html = html.replace('<link rel="stylesheet" href="/v3.3-glass.css" />', '<link rel="stylesheet" href="/v3.3-glass.css" />\n  <link rel="stylesheet" href="/v3.4-polish.css" />');
 if (!html.includes('/v3.3-platform.js')) html = html.replace('<script src="/app.v3.js"></script>', '<script src="/v3.3-platform.js"></script>\n<script src="/app.v3.js"></script>');
+if (!html.includes('/v3.4-polish.js')) html = html.replace('<script src="/v3.3-platform.js"></script>', '<script src="/v3.4-polish.js"></script>\n<script src="/v3.3-platform.js"></script>');
 if (!html.includes('/v3.3-export-fix.js')) html = html.replace('<script src="/v3.3-platform.js"></script>', '<script src="/v3.3-platform.js"></script>\n<script src="/v3.3-export-fix.js"></script>');
 if (!html.includes('/v3.3-commerce.js')) html = html.replace('<script src="/app.v3.js"></script>', '<script src="/app.v3.js"></script>\n<script src="/v3.3-commerce.js"></script>');
 if (!html.includes('/v3.3-codes.js')) html = html.replace('<script src="/v3.3-commerce.js"></script>', '<script src="/v3.3-commerce.js"></script>\n<script src="/v3.3-codes.js"></script>');
@@ -107,4 +111,4 @@ node "$OVERLAY/scripts/finalize-v3.4.mjs" "$ROOT"
 rm -rf "$ROOT/source-payload-fixed" "$ROOT/.github"
 rm -f "$ROOT/trigger-build.txt"
 rm -rf "$OVERLAY"
-echo "Materialized SkyTrace V3.4.0 RC1 with Cloud, Operations, Replay+, Airport Intelligence and runtime stability fixes."
+echo "Materialized SkyTrace V3.4.0 RC1 with Cloud, Operations, Replay+, Airport Intelligence, UI polish and runtime stability fixes."
