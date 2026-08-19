@@ -7,6 +7,9 @@ OVERLAY="$ROOT/v3.3-overlay"
 bash "$ROOT/scripts/materialize-v3.2.sh"
 [[ -d "$OVERLAY" ]] || { echo "SkyTrace V3.3 overlay is missing."; exit 1; }
 
+# The verified V3.2 payload is only a base. Restore every user-facing V3.3 file
+# that the base extraction can overwrite so packaged builds cannot regress to
+# V3.2 docs/install metadata.
 cp "$OVERLAY/server.js" "$ROOT/server.js"
 cp "$OVERLAY/electron-main.js" "$ROOT/electron-main.js"
 cp "$OVERLAY/package.json" "$ROOT/package.json"
@@ -15,6 +18,10 @@ cp "$OVERLAY/manifest.webmanifest" "$ROOT/manifest.webmanifest"
 cp "$OVERLAY/service-worker.v3.js" "$ROOT/service-worker.v3.js"
 cp "$OVERLAY/v3.3-commerce.js" "$ROOT/v3.3-commerce.js"
 cp "$OVERLAY/v3.3-glass.css" "$ROOT/v3.3-glass.css"
+cp "$OVERLAY/README.md" "$ROOT/README.md"
+cp "$OVERLAY/ATTRIBUTION.md" "$ROOT/ATTRIBUTION.md"
+cp "$OVERLAY/install" "$ROOT/install"
+chmod +x "$ROOT/install"
 mkdir -p "$ROOT/lib" "$ROOT/scripts"
 cp "$OVERLAY/lib/account.js" "$ROOT/lib/account.js"
 cp "$OVERLAY/lib/config.js" "$ROOT/lib/config.js"
@@ -194,5 +201,13 @@ live = live.replace('  if (radius > 245) return null;\n\n  const r = Math.max(1,
 fs.writeFileSync(liveFile, live);
 NODE
 
+# Finalize release identity only after all earlier overlays have been applied.
+node "$OVERLAY/scripts/finalize-v3.3.mjs" "$ROOT"
+
+# Remove build-only payloads that should never be mistaken for runtime/current
+# release files inside a packaged app.
+rm -rf "$ROOT/source-payload-fixed" "$ROOT/.github"
+rm -f "$ROOT/trigger-build.txt"
+
 rm -rf "$OVERLAY"
-echo "Materialized SkyTrace V3.3 Commerce + Liquid Glass."
+echo "Materialized SkyTrace V3.3.1 Performance RC."
