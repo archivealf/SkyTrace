@@ -80,6 +80,18 @@ const oldFeaturesObserver = `ensure();new MutationObserver(ensure).observe(docum
 if (features.includes(oldFeaturesObserver)) {
   features = features.replace(oldFeaturesObserver, `const boot=()=>ensure();if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();})();`);
 }
+features = replaceRequired(
+  features,
+  `function drawReplay(){const m=map();if(!m||!state.replay.length)return;const end=Math.min(state.replay.length,state.index+1),by=new Map();for(const p of state.replay.slice(0,end)){if(!by.has(p.icao))by.set(p.icao,[]);by.get(p.icao).push([Number(p.longitude),Number(p.latitude)])}const fc={type:'FeatureCollection',features:[...by].filter(([,c])=>c.length>1).map(([icao,c])=>({type:'Feature',properties:{icao},geometry:{type:'LineString',coordinates:c}}))};setLayer('v34-replay',fc,'#60a5fa',false);const at=state.replay[state.index]?.recordedAt;if(at)$('replayInfo').textContent=\`${new Date(Number(at)).toLocaleString()} · ${end.toLocaleString()} observations rendered.\`}`,
+  `function drawReplay(){const m=map();if(!m||!state.replay.length)return;const end=Math.min(state.replay.length,state.index+1),by=new Map();for(let i=0;i<end;i++){const p=state.replay[i];if(!by.has(p.icao))by.set(p.icao,[]);by.get(p.icao).push([Number(p.longitude),Number(p.latitude)])}const fc={type:'FeatureCollection',features:[...by].filter(([,c])=>c.length>1).map(([icao,c])=>({type:'Feature',properties:{icao},geometry:{type:'LineString',coordinates:c}}))};setLayer('v34-replay',fc,'#60a5fa',false);const at=state.replay[state.index]?.recordedAt;if(at)$('replayInfo').textContent=\`${new Date(Number(at)).toLocaleString()} · ${end.toLocaleString()} observations rendered.\`}`,
+  "allocation-free V3.4 replay redraw"
+);
+features = replaceRequired(
+  features,
+  `function playReplay(){if(state.timer){clearInterval(state.timer);state.timer=null;$('replayPlay').textContent='Play';return}if(!state.replay.length)return toast('Load Replay+ first.');$('replayPlay').textContent='Pause';const speed=Number($('replaySpeed').value)||1;state.timer=setInterval(()=>{state.index++;if(state.index>=state.replay.length){clearInterval(state.timer);state.timer=null;state.index=state.replay.length-1;$('replayPlay').textContent='Play'}$('replayTimeline').value=state.index;drawReplay()},Math.max(30,240/speed))}`,
+  `function playReplay(){if(state.timer){clearInterval(state.timer);state.timer=null;$('replayPlay').textContent='Play';return}if(!state.replay.length)return toast('Load Replay+ first.');if(state.index>=state.replay.length-1)state.index=0;$('replayTimeline').value=state.index;drawReplay();$('replayPlay').textContent='Pause';const speed=Number($('replaySpeed').value)||1,step=Math.max(1,Math.ceil(state.replay.length/300));state.timer=setInterval(()=>{state.index=Math.min(state.replay.length-1,state.index+step);$('replayTimeline').value=state.index;drawReplay();if(state.index>=state.replay.length-1){clearInterval(state.timer);state.timer=null;$('replayPlay').textContent='Play'}},Math.max(60,300/speed))}`,
+  "bounded V3.4 replay playback"
+);
 if (features.includes("MutationObserver")) throw new Error("V3.4 runtime still contains a document MutationObserver.");
 write(featuresFile, features);
 
@@ -89,4 +101,4 @@ if (!css.includes(".airport-traffic-row{")) {
 }
 write(cssFile, css);
 
-console.log("Applied SkyTrace runtime stability patch: observer loops removed, aircraft close made constant-time, airport traffic renderer optimized.");
+console.log("Applied SkyTrace runtime stability patch: observer loops removed, aircraft close made constant-time, airport traffic renderer optimized, Replay+ work bounded.");
