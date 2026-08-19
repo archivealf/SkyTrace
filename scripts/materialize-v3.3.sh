@@ -190,5 +190,7 @@ live = live.replace('  if (radius > 245) return null;\n\n  const r = Math.max(1,
 fs.writeFileSync(liveFile, live);
 NODE
 
+node "$OVERLAY/scripts/optimize-performance.mjs" "$ROOT"
+
 rm -rf "$OVERLAY"
 echo "Materialized SkyTrace V3.3 Commerce + Liquid Glass."
