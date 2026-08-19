@@ -63,8 +63,6 @@ function ensureUserConfig() {
         /^https:\/\//i.test(releaseCommerceUrl) &&
         (!existingCommerceUrl || loopbackCommerce);
 
-      // Release packages replace DEFAULT_CONFIG's loopback URL at build time.
-      // Preserve every other user setting while moving older installs to that HTTPS backend.
       if (shouldMigrateCommerce) {
         existing.commerce = {
           ...(existing.commerce && typeof existing.commerce === "object" ? existing.commerce : {}),
@@ -99,8 +97,9 @@ async function createWindow(url) {
     height: 960,
     minWidth: 980,
     minHeight: 680,
+    show: false,
     title: "SkyTrace",
-    backgroundColor: "#050609",
+    backgroundColor: "#07090d",
     vibrancy: process.platform === "darwin" ? "under-window" : undefined,
     visualEffectState: process.platform === "darwin" ? "active" : undefined,
     titleBarStyle: "hiddenInset",
@@ -111,6 +110,10 @@ async function createWindow(url) {
       sandbox: true,
       webSecurity: true
     }
+  });
+
+  mainWindow.once("ready-to-show", () => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url: target }) => {
