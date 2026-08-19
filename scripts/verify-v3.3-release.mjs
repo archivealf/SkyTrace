@@ -35,11 +35,16 @@ requireContains("forge.config.cjs", "asar: true", "ASAR packaging");
 requireContains("index.html", `window.SKYTRACE_BUILD=\"${BUILD}\"`, "V3.3.1 build marker");
 requireContains("index.html", 'id="performanceMode"', "Performance Mode control");
 requireContains("index.html", 'id="perfStatus"', "performance HUD");
+requireContains("index.html", '/v3.3-codes.js', "redeem-code UI script");
 requireContains("app.v3.js", "function flightsForMap()", "adaptive aircraft renderer");
 requireContains("app.v3.js", 'localStorage.getItem("skytrace.performanceMode")', "persisted Performance Mode");
 requireContains("v3.3-commerce.js", `window.SKYTRACE_BUILD = \"${BUILD}\"`, "commerce build marker");
 requireContains("v3.3-commerce.js", 'appVersion.textContent = "V3.3.1 RC"', "visible V3.3.1 RC label");
+requireContains("v3.3-codes.js", "Have a SkyTrace code?", "redeem-code store UI");
+requireContains("v3.3-codes.js", "/api/account/redeem", "redeem-code account API");
 requireContains("server.js", BUILD, "server build marker");
+requireContains("server.js", 'url.pathname === "/api/account/redeem"', "local redeem-code proxy");
+requireContains("lib/account.js", 'remote("/v1/redeem"', "commerce redeem-code proxy");
 requireContains("api/config.js", BUILD, "API config build marker");
 requireContains("api/health.js", BUILD, "API health build marker");
 requireContains("electron-main.js", "SkyTrace data licences and attribution", "ASAR-safe attribution dialog");
@@ -86,9 +91,11 @@ if (process.env.SKYTRACE_COMMERCE_URL) {
 
   const runtimeFiles = [
     "app.v3.js",
+    "v3.3-codes.js",
     "server.js",
     "electron-main.js",
     "lib/config.js",
+    "lib/account.js",
     "lib/live.js",
     "lib/aircraft.js",
     "lib/weather.js",
@@ -104,4 +111,4 @@ if (process.env.SKYTRACE_COMMERCE_URL) {
   }
 }
 
-console.log(`Verified SkyTrace ${BUILD}: identity, packaging, performance and free commercial provider stack are consistent.`);
+console.log(`Verified SkyTrace ${BUILD}: identity, packaging, performance, redeem codes and free commercial provider stack are consistent.`);
