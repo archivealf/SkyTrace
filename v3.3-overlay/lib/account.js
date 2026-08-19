@@ -96,7 +96,8 @@ export function getAccountServiceConfig() {
     ok: true,
     enabled: Boolean(config?.commerce?.enabled && accountBaseUrl()),
     baseUrl: accountBaseUrl(),
-    login: "username_password"
+    login: "username_password",
+    redeemCodes: true
   };
 }
 
@@ -180,4 +181,12 @@ export async function confirmAccountCheckout(sessionId) {
     }
   }
   return result;
+}
+
+export async function redeemAccountCode(code) {
+  return remote("/v1/redeem", {
+    method: "POST",
+    body: { code: String(code || "").trim() },
+    auth: true
+  });
 }
