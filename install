@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RC_INSTALLER="https://raw.githubusercontent.com/archivealf/SkyTrace/v3.3-commerce/install"
+RC_INSTALLER="https://raw.githubusercontent.com/archivealf/SkyTrace/v3.3-commerce/install-v3.3-rc"
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
 echo "SkyTrace installer: switching to V3.3.1 Performance RC..."
 curl --fail --location --silent --show-error "$RC_INSTALLER" --output "$TMP"
 
-# The RC installer independently verifies the source branch, commercial hardening,
-# performance markers and final 3.3.1 app version before replacing SkyTrace.app.
+# The RC installer independently verifies source identity, commercial hardening,
+# performance markers, bundle ID and final 3.3.1 app version before replacement.
 bash "$TMP"
