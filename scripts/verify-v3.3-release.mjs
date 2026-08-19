@@ -36,11 +36,17 @@ requireContains("api/health.js", BUILD, "API health build marker");
 requireContains("electron-main.js", "SkyTrace data licences and attribution", "ASAR-safe attribution dialog");
 requireAbsent("electron-main.js", 'shell.openPath(path.join(__dirname, "ATTRIBUTION.md"))', "ASAR-unsafe attribution openPath");
 
-requireContains("install", 'REF="v3.3-commerce"', "V3.3 installer branch");
-requireContains("install", 'EXPECTED_VERSION="3.3.1"', "installer version guard");
-requireAbsent("install", "/main", "main-branch fallback");
-requireAbsent("install", "V3.2", "V3.2 installer text");
-requireAbsent("install", "v3.2", "V3.2 installer path");
+requireContains("install", "install-v3.3-rc", "shared V3.3.1 launcher target");
+requireAbsent("install", "V3.2", "V3.2 launcher text");
+requireAbsent("install", "v3.2", "V3.2 launcher path");
+
+requireContains("install-v3.3-rc", 'REF="v3.3-commerce"', "V3.3 installer branch");
+requireContains("install-v3.3-rc", 'EXPECTED_VERSION="3.3.1"', "installer version guard");
+requireContains("install-v3.3-rc", 'EXPECTED_BUNDLE_ID="io.skytrace.desktop"', "installer bundle-ID guard");
+requireContains("install-v3.3-rc", "Contents/Resources/app.asar", "installer ASAR guard");
+requireAbsent("install-v3.3-rc", "/main", "main-branch fallback");
+requireAbsent("install-v3.3-rc", "V3.2", "V3.2 installer text");
+requireAbsent("install-v3.3-rc", "v3.2", "V3.2 installer path");
 
 requireContains("README.md", "v3.3-commerce/install", "V3.3 RC install link");
 requireAbsent("README.md", "main/install", "old main installer link");
@@ -54,4 +60,4 @@ if (process.env.SKYTRACE_COMMERCE_URL) {
   requireContains("lib/config.js", "rainViewer: false", "RainViewer commercial gate");
 }
 
-console.log(`Verified SkyTrace ${BUILD}: installer, identity, packaging config, performance patch and commercial gates are consistent.`);
+console.log(`Verified SkyTrace ${BUILD}: launcher, installer, identity, packaging config, performance patch and commercial gates are consistent.`);
