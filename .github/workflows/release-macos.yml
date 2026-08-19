@@ -107,6 +107,9 @@ jobs:
 
           grep -aF '3.4.0-rc1' "$ASAR" >/dev/null || { echo "V3.4.0 RC1 build marker is missing from app.asar."; exit 1; }
           grep -aF 'V3.4.0 RC1' "$ASAR" >/dev/null || { echo "Visible V3.4.0 RC1 label is missing from app.asar."; exit 1; }
+          grep -aF 'startup-shell' "$ASAR" >/dev/null || { echo "Polished startup screen is missing from app.asar."; exit 1; }
+          grep -aF 'Preparing live aviation data' "$ASAR" >/dev/null || { echo "Startup status UI is missing from app.asar."; exit 1; }
+          grep -aF 'v3.4-polish.css' "$ASAR" >/dev/null || { echo "V3.4 UI polish stylesheet is missing from app.asar."; exit 1; }
           grep -aF 'skytrace.performanceMode' "$ASAR" >/dev/null || { echo "Performance Mode marker is missing from app.asar."; exit 1; }
           grep -aF 'function flightsForMap()' "$ASAR" >/dev/null || { echo "Adaptive renderer is missing from app.asar."; exit 1; }
           grep -aF 'Have a SkyTrace code?' "$ASAR" >/dev/null || { echo "Redeem-code UI is missing from app.asar."; exit 1; }
@@ -135,7 +138,7 @@ jobs:
             grep -aF "$marker" "$ASAR" >/dev/null || { echo "Expected free commercial provider marker is missing: $marker"; exit 1; }
           done
 
-          echo "Verified packaged SkyTrace V3.4.0 RC1 for ${{ matrix.architecture_label }} ($VERSION, $BUNDLE_ID)."
+          echo "Verified packaged SkyTrace V3.4.0 RC1 polished UI for ${{ matrix.architecture_label }} ($VERSION, $BUNDLE_ID)."
 
       - name: Create RC1 ZIP and checksum
         shell: bash
