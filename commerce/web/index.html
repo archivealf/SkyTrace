@@ -1,1 +1,58 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SkyTrace Web</title><link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css"><script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script><link rel="stylesheet" href="/app/web.css"></head><body><div id="map"></div><aside class="panel"><header><div><small>SKYTRACE WEB</small><h1>Live aviation</h1></div><span id="status">Offline</span></header><section id="login"><input id="username" autocomplete="username" placeholder="Username"><input id="password" type="password" autocomplete="current-password" placeholder="Password"><button id="loginBtn">Sign in</button><p id="loginMsg">Use your SkyTrace account.</p></section><section id="app" class="hidden"><div class="row"><button id="refreshBtn">Refresh</button><button id="opsBtn">Operations</button><button id="replayBtn">Replay+</button><button id="logoutBtn">Sign out</button></div><div class="stats"><div><b id="visible">0</b><span>VISIBLE</span></div><div><b id="alerts">0</b><span>OPS ITEMS</span></div></div><div id="list"></div><div id="drawer" class="drawer hidden"></div></section><footer>OpenFreeMap © OpenMapTiles · Data from OpenStreetMap · Live aircraft: ADSB.lol · Aviation weather: AviationWeather.gov</footer></aside><script src="/app/web.js"></script></body></html>
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SkyTrace Web</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
+  <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+  <link rel="stylesheet" href="/app/web.css?v=34.1">
+</head>
+<body>
+  <div id="map"></div>
+  <aside class="panel">
+    <header class="panel-head">
+      <div>
+        <small>SKYTRACE WEB · V3.4</small>
+        <h1>Live aviation</h1>
+      </div>
+      <span id="status" class="status-pill">Offline</span>
+    </header>
+
+    <section id="login" class="login-card">
+      <p class="section-copy">Sign in to view observed aircraft, Operations and Replay+.</p>
+      <label><span>Username</span><input id="username" autocomplete="username" placeholder="SkyTrace username"></label>
+      <label><span>Password</span><input id="password" type="password" autocomplete="current-password" placeholder="Password"></label>
+      <button id="loginBtn" class="primary">Sign in</button>
+      <p id="loginMsg" class="muted">Use the same account as the SkyTrace desktop app.</p>
+    </section>
+
+    <section id="app" class="hidden app-shell">
+      <div class="toolbar">
+        <button id="refreshBtn">Refresh</button>
+        <button id="opsBtn">Operations</button>
+        <button id="replayBtn">Replay+</button>
+        <button id="logoutBtn" class="quiet">Sign out</button>
+      </div>
+
+      <div class="stats">
+        <div><b id="visible">0</b><span>OBSERVED</span></div>
+        <div><b id="alerts">0</b><span>OPS ITEMS</span></div>
+      </div>
+
+      <section class="traffic-card">
+        <div class="section-head">
+          <div><small>LIVE ADS-B</small><h2>Observed Traffic</h2></div>
+          <span id="trafficMeta">Waiting…</span>
+        </div>
+        <div id="list" class="traffic-list"><div class="empty-state">Refreshing observed traffic…</div></div>
+      </section>
+
+      <div id="drawer" class="drawer hidden"></div>
+    </section>
+
+    <footer>OpenFreeMap © OpenMapTiles · Data from OpenStreetMap · Live aircraft: ADSB.lol · Aviation weather: AviationWeather.gov</footer>
+  </aside>
+  <script src="/app/web.js?v=34.1"></script>
+</body>
+</html>
