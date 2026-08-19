@@ -44,4 +44,14 @@ jobs:
               exit 1
             fi
           done
-          echo "V3.4 smoke checks passed."
+
+      - name: Materialize and verify V3.4 desktop source
+        env:
+          SKYTRACE_COMMERCE_URL: https://skytrace.example.invalid
+        run: |
+          bash scripts/materialize-v3.3.sh
+          node scripts/verify-v3.3-release.mjs
+          npm run check
+
+      - name: Complete smoke validation
+        run: echo "V3.4 backend, materializer and desktop source checks passed."
