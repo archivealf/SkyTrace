@@ -21,11 +21,15 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Audit complete source tree
+        run: node scripts/audit-runtime.mjs
+
       - name: Syntax-check V3.4 desktop overlay
         run: |
           node --check v3.3-overlay/v3.4-features.js
           node --check v3.3-overlay/scripts/apply-v34.mjs
           node --check v3.3-overlay/scripts/stabilize-runtime.mjs
+          node --check v3.3-overlay/scripts/stabilize-replay.mjs
 
       - name: Run commerce integration checks
         run: npm --prefix commerce run check
@@ -57,4 +61,4 @@ jobs:
           node scripts/audit-runtime.mjs
 
       - name: Complete smoke validation
-        run: echo "V3.4 backend, materializer, commercial hardening, executable audit and desktop source checks passed."
+        run: echo "V3.4 source tree, backend, materializer, commercial hardening, executable audit and desktop source checks passed."
