@@ -1,9 +1,9 @@
 {
   "name": "skytrace-desktop",
   "productName": "SkyTrace",
-  "version": "3.3.1",
+  "version": "3.4.0",
   "private": true,
-  "description": "SkyTrace live aviation intelligence for macOS with accounts, Cloud Replay, Operations, aircraft profiles and performance-optimized UI.",
+  "description": "SkyTrace V3.4 aviation intelligence for macOS with accounts, Cloud Replay+, Operations, aircraft profiles and performance-optimized UI.",
   "type": "module",
   "main": "electron-main.js",
   "scripts": {
