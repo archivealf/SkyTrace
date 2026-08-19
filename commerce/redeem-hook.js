@@ -8,3 +8,6 @@ import "./platform-preserve.js";
 // monitoring and backup/audit endpoints without replacing the proven
 // authentication/Stripe compatibility layer above.
 import "./v34-hook.js";
+// Searchable account administration, disable/restore and expiring grants are
+// isolated in their own final preload so they can guard login/account reads.
+import "./admin-v34-hook.js";
