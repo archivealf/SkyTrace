@@ -1,37 +1,75 @@
 # SkyTrace Commerce
 
-Local account and purchase backend for SkyTrace V3.3.
+Account and purchase backend for SkyTrace V3.3.
 
 ## Current mode
 
-- Runs on the MacBook at `http://127.0.0.1:8787` by default.
 - Accounts use username + password; no email sender is required.
 - Passwords are never stored in plaintext. Each password is hashed with Node's `scrypt`, a unique random salt, and the server-only `security.pepper`.
 - Sessions are random tokens; only token hashes are persisted.
 - Permanent entitlements are stored server-side in `commerce/data/store.json`.
-- Stripe Checkout Sessions are created server-side using the existing SkyTrace Price IDs.
-- In local mode, SkyTrace can retrieve the Checkout Session from Stripe after payment and verify `payment_status` before granting the entitlement, so a public webhook is not required for development.
-- A Stripe webhook is still supported and is recommended before serving customers over the internet, especially so refunds and asynchronous events can be handled automatically.
+- Stripe Checkout Sessions are created server-side using the configured SkyTrace Price IDs.
+- Redeem codes can grant the same permanent entitlements as Stripe purchases.
+- Redeem codes are generated only on the server. Plaintext codes are shown once and only an HMAC hash is stored.
+- Codes can be single-use or multi-use, optionally expire, and can be revoked.
+- Redemption attempts are rate-limited and a code is not consumed when the account already owns the entitlement.
 
-## Local Mac setup
+## Start
 
-From the `commerce` folder, the easiest start command is:
+Use the package start command so the redeem-code hook is loaded before the commerce server:
 
 ```bash
-chmod +x start-macos-local.sh
-./start-macos-local.sh
+npm start
 ```
 
-On first run it creates `config.json`, generates a random server pepper, locks down the config permissions, checks the backend syntax, and starts the service. Stripe stays disabled until you deliberately add your server-only Stripe secret and set `stripe.enabled` to `true`.
+The equivalent direct command is:
 
-You can verify it in another Terminal window with:
+```bash
+node --import ./redeem-hook.js server.js
+```
+
+Verify it with:
 
 ```bash
 curl http://127.0.0.1:8787/health
 ```
 
-`config.json` and `data/store.json` are gitignored and should remain only on the host Mac.
+`config.json` and `data/store.json` are gitignored and must remain server-side.
 
-## Before real public distribution
+## Redeem-code manager
 
-A backend bound to `127.0.0.1` is reachable only from the same Mac. If other people's SkyTrace apps need to sign in and restore purchases, move this service to a public HTTPS server or deliberately expose the Mac through a secure HTTPS reverse proxy/tunnel. Do not expose the Stripe secret key in the desktop app.
+Generate five single-use SkyTrace Pro codes:
+
+```bash
+node codes.js generate pro 5
+```
+
+Generate 20 Themes codes that expire after 30 days:
+
+```bash
+node codes.js generate themes 20 --days 30 --label launch-giveaway
+```
+
+Generate one shared Pro code that can be redeemed 25 times:
+
+```bash
+node codes.js generate pro 1 --uses 25 --label event-code
+```
+
+List code records without exposing plaintext codes:
+
+```bash
+node codes.js list
+```
+
+Revoke a code using its ID or the full code:
+
+```bash
+node codes.js revoke code_xxxxxxxxx
+```
+
+Available product keys are `pro`, `airport_intelligence`, `advanced_aircraft`, `replay_plus`, and `themes`.
+
+## Public deployment
+
+Keep the commerce process bound to `127.0.0.1` and expose it through the existing HTTPS reverse proxy. Do not expose Stripe secrets, the server pepper, `config.json`, or `data/store.json` to the desktop app or GitHub.
