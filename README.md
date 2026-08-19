@@ -1,61 +1,69 @@
-# SkyTrace V3.3.1 Performance RC
+# SkyTrace V3.4.0 RC1
 
-SkyTrace is a native-style macOS aviation intelligence app built with Electron. V3.3.1 adds a major performance pass on top of the V3.3 account, Stripe-backed permanent upgrade and Liquid Glass work.
+SkyTrace is a macOS aviation intelligence app built with Electron. V3.4.0 RC1 unifies the current account/commerce system, SkyTrace Cloud, Operations, Replay+, Airport Intelligence, aircraft profiles, web access and the recent runtime-stability work under one release identity.
 
-## Install the current Performance RC
-
-This installer deliberately targets the `v3.3-commerce` branch and refuses to install an unexpected version. It does **not** fall back to `main` or V3.2.
+## Install RC1
 
 ```bash
 bash <(curl -fsSL "https://raw.githubusercontent.com/archivealf/SkyTrace/v3.3-commerce/install")
 ```
 
-The installer builds the correct architecture for the current Mac, applies the public commercial-provider verification, verifies the V3.3.1 performance identity, replaces an older `~/Applications/SkyTrace.app`, and preserves the user config stored under `~/Library/Application Support/SkyTrace/`.
+The installer detects Intel versus Apple Silicon, materializes the V3.4 release source, runs commercial-provider and runtime audits, verifies bundle identity and build marker, builds the correct architecture, and preserves user configuration under `~/Library/Application Support/SkyTrace/`.
 
-## Performance work
+The release-candidate branch is still named `v3.3-commerce` for continuity; the application version and packaged release identity are V3.4.0 RC1.
 
-Performance Mode is enabled by default and includes adaptive aircraft rendering, a live FPS/render-count HUD, reduced live glass blur, lighter animations, debounced search/filter updates, lazy list/stat rendering, bounded trail/event memory, capped dynamic livery images and refresh throttling while the map is moving.
+## SkyTrace Cloud
+
+Signed-in accounts can sync aircraft/callsign/registration/type watchlists, Advanced Aircraft alerts, airport/aircraft/map bookmarks and saved map workspaces. Entitlements are refreshed while the app is running so external grants and revocations are reflected without relying on stale Store state.
+
+Alerts are evaluated while SkyTrace is running; RC1 does not claim always-on push notification delivery after the desktop app is closed.
+
+## Cloud Replay+
+
+Replay+ / Pro accounts collect sampled public ADS-B positions into the Commerce SQLite backend while signed-in clients view live traffic. Replay supports multi-aircraft history, timeline playback, altitude/speed visualization and CSV, GeoJSON or KML export.
+
+Coverage is explicitly labelled **community-collected**. It is not guaranteed complete global historical coverage.
+
+## Operations and Airport Intelligence
+
+V3.4 includes AviationWeather.gov SIGMET, G-AIRMET and PIREP products plus Airport Intelligence / Airport Ops+ with live nearby/on-ground traffic, observed Arrivals/Departures, movement estimates, runway-use estimates, traffic profiles, aircraft-type mix, OurAirports runway/frequency data and aviation weather.
+
+Arrival/departure and runway-use values are derived estimates from observed traffic. SkyTrace does not claim licensed schedule or delay truth where no licensed schedule source is configured. NOTAMs remain unavailable unless an approved official feed is configured on the backend.
+
+## Aircraft profiles
+
+Advanced Aircraft / Pro accounts can open richer aircraft profiles with current state, recent observed history, summary statistics and private account notes.
+
+## Store, codes and administration
+
+Stripe permanent purchases remain attached to the SkyTrace username. Redeem codes are generated server-side and stored as hashes. The SQLite/WAL admin tooling supports searchable users, account disable/restore, expiring grants, revocation, code CSV export, audit events, health checks and guarded backups/restores.
+
+## SkyTrace Web
+
+The Commerce backend serves a browser-accessible SkyTrace Web app at `/app` using the same accounts and entitlements. It includes live traffic, map interaction, aircraft profiles, Operations and Replay+.
 
 ## Free commercial-use data stack
 
-Public commercial V3.3.1 builds use a no-key stack selected for the release use case:
+Public commercial builds use ADSB.lol for live aircraft, Mictronics/tar1090 aircraft reference data, VRS Standing Data via ADSB.lol for route enrichment, MET Norway Locationforecast, NASA GPM IMERG via GIBS, AviationWeather.gov, OurAirports and OpenFreeMap + MapLibre.
 
-- **ADSB.lol** — primary live aircraft positions/telemetry, with a bounded stale snapshot cache for short upstream outages.
-- **Mictronics aircraft database** — registration, type, model and operator reference data. The build refreshes `aircraft.csv.gz` from the tar1090-db CSV mirror.
-- **VRS Standing Data via ADSB.lol** — callsign route enrichment.
-- **MET Norway Locationforecast 2.0** — global general weather.
-- **NASA GPM IMERG via NASA GIBS** — global satellite precipitation-rate map layer. The UI calls this **Precipitation**, not radar, because it is a satellite estimate.
-- **AviationWeather.gov** — METAR, TAF, SIGMET and PIREP/AIREP products.
-- **OurAirports** — airports, runways, frequencies and navaids.
-- **OpenFreeMap + MapLibre** — map rendering.
+OpenSky REST, ADSBDB, Open-Meteo's free hosted endpoint and RainViewer are not included in the commercial runtime. CI verifies those restricted hosts do not survive packaging. See `ATTRIBUTION.md` for provider/licence details.
 
-OpenSky REST, ADSBDB, the Open-Meteo free endpoint and RainViewer are not included in the commercial runtime. CI scans packaged source for those restricted hosts. See `ATTRIBUTION.md` for the provider/licence record and attribution requirements.
+## Performance and stability
 
-No `.env` file is used.
+Performance Mode is enabled by default and includes adaptive aircraft rendering, FPS/render telemetry, lighter glass effects, bounded trail/event memory, debounced search/filter work, capped livery caches and refresh throttling while the map moves.
 
-## Timeline, not intercepted messages
-
-The Messages view is a telemetry-derived Timeline. It records observable flight events such as detection, airborne/on-ground transitions, altitude thresholds, climb/descent, heading changes and squawk changes. Public PIREP/AIREP and SIGMET products are shown separately. SkyTrace does not present these as intercepted ACARS messages.
-
-## Configuration
-
-SkyTrace creates:
-
-```text
-~/Library/Application Support/SkyTrace/config.json
-```
-
-Older configs containing the previous OpenSky/ADSBDB/Open-Meteo/RainViewer provider switches are migrated to the current commercial-safe provider schema. The account service URL remains user-configurable for development and is injected as HTTPS in packaged releases.
+RC1 additionally removes the document-wide observer loop that could freeze airport/aircraft interactions, makes aircraft-card close constant-time, renders observed airport traffic directly in the existing sidebar, asynchronously initializes the large aircraft reference database, bounds provider request timeouts and limits Replay+ redraw work.
 
 ## Build locally
 
-Requires Node.js 20.18+ and macOS:
+Requires macOS and Node.js 20.18+:
 
 ```bash
 export SKYTRACE_COMMERCE_URL="https://skytrace.duckdns.org"
-bash scripts/materialize-v3.3.sh
+bash scripts/materialize-v3.4.sh
 node scripts/harden-commercial-build.mjs
-node scripts/verify-v3.3-release.mjs
+node scripts/verify-v3.4-release.mjs
+node scripts/audit-runtime.mjs
 npm install
 npm run data
 npm run icon:mac
@@ -63,17 +71,6 @@ npm run check
 npm run package
 ```
 
-The app is produced under `out/`.
+GitHub Actions builds Intel x64 and Apple Silicon arm64 ZIP/DMG artifacts. Pull-request builds do not publish a public release. Public release publication requires an explicit version tag.
 
-## GitHub CI builds
-
-GitHub Actions builds both Intel (`x64`) and Apple Silicon (`arm64`) ZIP/DMG artifacts. RC pull-request builds do not publish a public release.
-
-## Security
-
-- API configuration is outside the application bundle and blocked from HTTP serving.
-- The desktop backend binds only to `127.0.0.1`.
-- Electron `nodeIntegration` is disabled.
-- Context isolation, renderer sandboxing and web security are enabled.
-- External navigation is opened in the system browser.
-- Public account/payment traffic uses the configured HTTPS SkyTrace Commerce service.
+See `CHANGELOG.md` for RC1 release notes and known limitations.
