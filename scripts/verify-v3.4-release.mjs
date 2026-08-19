@@ -18,6 +18,8 @@ if (pkg.version !== VERSION) throw new Error(`package.json version is ${pkg.vers
 if (pkg?.config?.forge !== "./forge.config.cjs") throw new Error("package.json is not using the canonical forge.config.cjs.");
 requireContains("forge.config.cjs", 'appBundleId: "io.skytrace.desktop"', "SkyTrace bundle identifier");
 requireContains("forge.config.cjs", "asar: true", "ASAR packaging");
+requireContains("forge.config.cjs", '/^\\/(?:README|CHANGELOG)\\.md$/', "release-document packaging exclusion");
+requireContains("forge.config.cjs", '/^\\/install(?:-.*)?$/', "installer packaging exclusion");
 requireContains("index.html", `window.SKYTRACE_BUILD=\"${BUILD}\"`, "V3.4.0 RC1 build marker");
 requireContains("index.html", 'id="performanceMode"', "Performance Mode control");
 requireContains("index.html", 'id="perfStatus"', "performance HUD");
