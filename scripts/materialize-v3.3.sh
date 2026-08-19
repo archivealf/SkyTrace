@@ -7,12 +7,12 @@ OVERLAY="$ROOT/v3.3-overlay"
 bash "$ROOT/scripts/materialize-v3.2.sh"
 [[ -d "$OVERLAY" ]] || { echo "SkyTrace V3.3 overlay is missing."; exit 1; }
 
-# The verified V3.2 payload is only a base. Restore every user-facing V3.3 file
-# that the base extraction can overwrite so packaged builds cannot regress to
-# V3.2 docs/install metadata.
+# The verified V3.2 payload is only a base. Restore every V3.3.1 source,
+# packaging and user-facing file that the base extraction can overwrite.
 cp "$OVERLAY/server.js" "$ROOT/server.js"
 cp "$OVERLAY/electron-main.js" "$ROOT/electron-main.js"
 cp "$OVERLAY/package.json" "$ROOT/package.json"
+cp "$OVERLAY/forge.config.cjs" "$ROOT/forge.config.cjs"
 cp "$OVERLAY/config.example.json" "$ROOT/config.example.json"
 cp "$OVERLAY/manifest.webmanifest" "$ROOT/manifest.webmanifest"
 cp "$OVERLAY/service-worker.v3.js" "$ROOT/service-worker.v3.js"
@@ -21,7 +21,8 @@ cp "$OVERLAY/v3.3-glass.css" "$ROOT/v3.3-glass.css"
 cp "$OVERLAY/README.md" "$ROOT/README.md"
 cp "$OVERLAY/ATTRIBUTION.md" "$ROOT/ATTRIBUTION.md"
 cp "$OVERLAY/install" "$ROOT/install"
-chmod +x "$ROOT/install"
+cp "$OVERLAY/install-v3.3-rc" "$ROOT/install-v3.3-rc"
+chmod +x "$ROOT/install" "$ROOT/install-v3.3-rc"
 mkdir -p "$ROOT/lib" "$ROOT/scripts"
 cp "$OVERLAY/lib/account.js" "$ROOT/lib/account.js"
 cp "$OVERLAY/lib/config.js" "$ROOT/lib/config.js"
