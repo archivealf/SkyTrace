@@ -8,7 +8,9 @@ SkyTrace is a macOS aviation intelligence app built with Electron. V3.4.0 RC1 un
 bash <(curl -fsSL "https://raw.githubusercontent.com/archivealf/SkyTrace/v3.3-commerce/install")
 ```
 
-The installer detects Intel versus Apple Silicon, materializes the V3.4 release source, runs commercial-provider and runtime audits, verifies bundle identity and build marker, builds the correct architecture, and preserves user configuration under `~/Library/Application Support/SkyTrace/`.
+The installer detects Intel versus Apple Silicon, uses a temporary verified Node 22 runtime when the Mac's system Node is older, materializes the V3.4 release source, runs commercial-provider and runtime audits, verifies bundle identity and build marker, builds the correct architecture, and preserves user configuration under `~/Library/Application Support/SkyTrace/`.
+
+Normal installer output is intentionally compact. Detailed build output is written to `~/Library/Logs/SkyTrace/installer.log` and is surfaced only when a step fails.
 
 The release-candidate branch is still named `v3.3-commerce` for continuity; the application version and packaged release identity are V3.4.0 RC1.
 
@@ -56,7 +58,7 @@ RC1 additionally removes the document-wide observer loop that could freeze airpo
 
 ## Build locally
 
-Requires macOS and Node.js 20.18+:
+Requires macOS and Node.js 22.12+:
 
 ```bash
 export SKYTRACE_COMMERCE_URL="https://skytrace.duckdns.org"
