@@ -1,4 +1,4 @@
-# SkyTrace V3.3 data licences and attribution
+# SkyTrace V3.3.1 data licences and attribution
 
 SkyTrace uses or can use the following data/services. Provider terms remain controlling and can change independently of SkyTrace.
 
@@ -12,7 +12,7 @@ SkyTrace uses or can use the following data/services. Provider terms remain cont
 
 ## Disabled in public commercial builds unless separately licensed
 
-The V3.3 public release build disables these hosted integrations even if an older local configuration enabled them:
+The V3.3.1 public release build disables these hosted integrations even if an older local configuration enabled them:
 
 - OpenSky Network REST API — commercial or operational use requires a written licence from OpenSky Network. Public commercial builds force ADSB.lol as the live provider and disable OpenSky fallback.
 - ADSBDB — SkyTrace does not use the hosted aircraft/route enrichment endpoints in public commercial builds while upstream route-data redistribution/publication permissions remain unsuitable or unclear for this release. Written permission can be added later before re-enabling it.
