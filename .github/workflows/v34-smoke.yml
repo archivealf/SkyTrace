@@ -1,0 +1,47 @@
+name: SkyTrace V3.4 Smoke
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Syntax-check V3.4 desktop overlay
+        run: |
+          node --check v3.3-overlay/v3.4-features.js
+          node --check v3.3-overlay/scripts/apply-v34.mjs
+
+      - name: Run commerce integration checks
+        run: npm --prefix commerce run check
+
+      - name: Verify monitoring and restore tools
+        run: |
+          node --check commerce/monitor.js
+          node --check commerce/restore.js
+
+      - name: Check restricted-provider isolation in new V3.4 files
+        shell: bash
+        run: |
+          set -euo pipefail
+          for host in opensky-network.org api.adsbdb.com api.open-meteo.com api.rainviewer.com; do
+            if grep -R -F "$host" commerce/v34-hook.js commerce/admin-v34-hook.js commerce/web v3.3-overlay/v3.4-features.js; then
+              echo "Restricted provider host found in V3.4 code: $host"
+              exit 1
+            fi
+          done
+          echo "V3.4 smoke checks passed."
