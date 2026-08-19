@@ -19,12 +19,15 @@ requireContains("index.html", 'id="perfStatus"', "performance HUD");
 requireContains("index.html", '/v3.3-platform.js', "Cloud feature layer script");
 requireContains("index.html", '/v3.3-export-fix.js', "safe history export script");
 requireContains("index.html", '/v3.3-codes.js', "redeem-code UI script");
+requireContains("index.html", '/v3.3-entitlement-sync.js', "live entitlement sync script");
 requireContains("index.html", '/v3.4-features.js', "V3.4 Operations feature script");
 requireContains("app.v3.js", "function flightsForMap()", "adaptive aircraft renderer");
 requireContains("app.v3.js", 'localStorage.getItem("skytrace.performanceMode")', "persisted Performance Mode");
 requireContains("v3.3-commerce.js", `window.SKYTRACE_BUILD = \"${BUILD}\"`, "commerce build marker");
 requireContains("v3.3-commerce.js", 'appVersion.textContent = "V3.3.1 RC"', "visible V3.3.1 RC label");
 requireContains("v3.3-codes.js", "Have a SkyTrace code?", "redeem-code store UI");
+requireContains("v3.3-entitlement-sync.js", "/api/account/me", "account entitlement refresh endpoint");
+requireContains("v3.3-entitlement-sync.js", "setInterval", "background entitlement refresh");
 requireContains("v3.3-platform.js", "SKYTRACE CLOUD", "Cloud UI");
 requireContains("v3.3-platform.js", "Cloud Replay+", "Cloud Replay UI");
 requireContains("v3.3-platform.js", "Airport Intelligence", "Airport Intelligence UI");
@@ -50,7 +53,7 @@ requireContains("lib/account.js", 'remote("/v1/cloud"', "commerce cloud-sync pro
 requireContains("lib/account.js", 'remote(`/v1/history', "commerce history proxy");
 requireContains("lib/account.js", 'remote("/v1/v34/operations"', "V3.4 Operations account proxy");
 requireContains("lib/account.js", 'remote(`/v1/v34/replay', "V3.4 replay account proxy");
-requireContains("scripts/apply-v34.mjs", "Applied SkyTrace V3.4", "V3.4 materialization patch");
+requireContains("scripts/apply-v34.mjs", "entitlement sync", "V3.4 entitlement-sync materialization patch");
 requireContains("api/config.js", BUILD, "API config build marker");
 requireContains("api/health.js", BUILD, "API health build marker");
 requireContains("electron-main.js", "SkyTrace data licences and attribution", "ASAR-safe attribution dialog");
@@ -88,7 +91,7 @@ if (process.env.SKYTRACE_COMMERCE_URL) {
   requireContains("ATTRIBUTION.md", "Mictronics", "Mictronics attribution");
   requireContains("ATTRIBUTION.md", "MET Norway", "MET Norway attribution");
   requireContains("ATTRIBUTION.md", "NASA GPM IMERG", "NASA precipitation attribution");
-  const runtimeFiles = ["app.v3.js","v3.3-codes.js","v3.3-platform.js","v3.3-export-fix.js","v3.4-features.js","server.js","electron-main.js","lib/config.js","lib/account.js","lib/live.js","lib/aircraft.js","lib/weather.js","lib/precipitation.js","api/config.js","api/health.js"];
+  const runtimeFiles = ["app.v3.js","v3.3-codes.js","v3.3-entitlement-sync.js","v3.3-platform.js","v3.3-export-fix.js","v3.4-features.js","server.js","electron-main.js","lib/config.js","lib/account.js","lib/live.js","lib/aircraft.js","lib/weather.js","lib/precipitation.js","api/config.js","api/health.js"];
   for (const rel of runtimeFiles) { const value = text(rel); for (const host of BLOCKED_HOSTS) if (value.includes(host)) throw new Error(`${rel} contains restricted provider host ${host}.`); }
 }
-console.log(`Verified SkyTrace ${BUILD}: identity, packaging, performance, redeem codes, Cloud tools, V3.4 Operations/Replay/Profile and free commercial provider stack are consistent.`);
+console.log(`Verified SkyTrace ${BUILD}: identity, packaging, performance, redeem codes, live entitlement sync, Cloud tools, V3.4 Operations/Replay/Profile and free commercial provider stack are consistent.`);
