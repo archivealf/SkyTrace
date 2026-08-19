@@ -15,6 +15,10 @@
     "secretKey": "",
     "webhookSecret": ""
   },
+  "operations": {
+    "notamFeedUrl": "",
+    "notamBearerToken": ""
+  },
   "products": {
     "pro": { "priceId": "price_1U5rD119iuWs3yVBZ1Cl1iGe" },
     "airport_intelligence": { "priceId": "price_1U5rDF19iuWs3yVBUcK38gRO" },
