@@ -19,7 +19,10 @@ function requireAbsent(rel, needle, label = needle) {
 
 const pkg = JSON.parse(text("package.json"));
 if (pkg.version !== "3.3.1") throw new Error(`package.json version is ${pkg.version}; expected 3.3.1.`);
+if (pkg?.config?.forge !== "./forge.config.cjs") throw new Error("package.json is not using the canonical forge.config.cjs.");
 
+requireContains("forge.config.cjs", 'appBundleId: "io.skytrace.desktop"', "SkyTrace bundle identifier");
+requireContains("forge.config.cjs", "asar: true", "ASAR packaging");
 requireContains("index.html", `window.SKYTRACE_BUILD=\"${BUILD}\"`, "V3.3.1 build marker");
 requireContains("index.html", 'id="performanceMode"', "Performance Mode control");
 requireContains("index.html", 'id="perfStatus"', "performance HUD");
@@ -30,6 +33,8 @@ requireContains("v3.3-commerce.js", 'appVersion.textContent = "V3.3.1 RC"', "vis
 requireContains("server.js", BUILD, "server build marker");
 requireContains("api/config.js", BUILD, "API config build marker");
 requireContains("api/health.js", BUILD, "API health build marker");
+requireContains("electron-main.js", "SkyTrace data licences and attribution", "ASAR-safe attribution dialog");
+requireAbsent("electron-main.js", 'shell.openPath(path.join(__dirname, "ATTRIBUTION.md"))', "ASAR-unsafe attribution openPath");
 
 requireContains("install", 'REF="v3.3-commerce"', "V3.3 installer branch");
 requireContains("install", 'EXPECTED_VERSION="3.3.1"', "installer version guard");
@@ -49,4 +54,4 @@ if (process.env.SKYTRACE_COMMERCE_URL) {
   requireContains("lib/config.js", "rainViewer: false", "RainViewer commercial gate");
 }
 
-console.log(`Verified SkyTrace ${BUILD}: installer, identity, performance patch and commercial gates are consistent.`);
+console.log(`Verified SkyTrace ${BUILD}: installer, identity, packaging config, performance patch and commercial gates are consistent.`);
