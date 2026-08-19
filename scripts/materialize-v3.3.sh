@@ -167,6 +167,10 @@ console.log("Commercial release policy: OpenSky, ADSBDB, Open-Meteo free API and
 NODE
 fi
 
+# Run performance rewrites against the verified V3.2 renderer before the V3.3
+# startup/service-worker tweaks below alter the exact source patterns.
+node "$OVERLAY/scripts/optimize-performance.mjs" "$ROOT"
+
 node - "$ROOT/index.html" "$ROOT/app.v3.js" "$ROOT/lib/live.js" <<'NODE'
 const fs = require("fs");
 const htmlFile = process.argv[2];
@@ -182,15 +186,13 @@ fs.writeFileSync(htmlFile, html);
 let app = fs.readFileSync(appFile, "utf8");
 app = app.replace('}catch(err){ console.error(err); el.sourceStatus.textContent="Flight feed unavailable"; showToast(err.message,5000); }', '}catch(err){ console.error(err); el.sourceStatus.textContent="Flight feed unavailable"; el.loading.classList.add("done"); showToast(err.message,5000); }');
 app = app.replace('if("serviceWorker"in navigator)navigator.serviceWorker.register("/service-worker.v3.js", { updateViaCache: "none" }).catch(()=>{});', 'if("serviceWorker"in navigator&&!navigator.userAgent.includes("Electron"))navigator.serviceWorker.register("/service-worker.v3.js", { updateViaCache: "none" }).catch(()=>{});');
-app = app.replace('function initMap(){\n    state.map=new maplibregl.Map(', 'function initMap(){\n    setTimeout(()=>{if(!el.loading.classList.contains("done")){el.loading.querySelector("span").textContent="Aviation data is taking longer than expected";el.loading.classList.add("done");}},10000);\n    state.map=new maplibregl.Map(');
+app = app.replace('function initMap(){\n    applyPerformanceMode();startPerformanceHud();\n    state.map=new maplibregl.Map(', 'function initMap(){\n    applyPerformanceMode();startPerformanceHud();\n    setTimeout(()=>{if(!el.loading.classList.contains("done")){el.loading.querySelector("span").textContent="Aviation data is taking longer than expected";el.loading.classList.add("done");}},10000);\n    state.map=new maplibregl.Map(');
 fs.writeFileSync(appFile, app);
 
 let live = fs.readFileSync(liveFile, "utf8");
 live = live.replace('  if (radius > 245) return null;\n\n  const r = Math.max(1, Math.min(245, radius));', '  const r = Math.max(1, Math.min(245, radius));');
 fs.writeFileSync(liveFile, live);
 NODE
-
-node "$OVERLAY/scripts/optimize-performance.mjs" "$ROOT"
 
 rm -rf "$OVERLAY"
 echo "Materialized SkyTrace V3.3 Commerce + Liquid Glass."
