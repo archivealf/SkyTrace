@@ -81,15 +81,42 @@ jobs:
       - name: Package SkyTrace.app
         run: npm run package -- --arch=${{ matrix.arch }}
 
-      - name: Verify packaged app version
+      - name: Scan packaged app identity and runtime payload
         shell: bash
         run: |
           set -euo pipefail
           APP="$(find out -maxdepth 3 -name 'SkyTrace.app' -type d -print -quit)"
           [[ -n "$APP" ]] || { echo "SkyTrace.app was not found."; exit 1; }
-          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
+
+          PLIST="$APP/Contents/Info.plist"
+          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")"
+          BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")"
+          ASAR="$APP/Contents/Resources/app.asar"
+
           [[ "$VERSION" == "3.3.1" ]] || { echo "Unexpected packaged version: $VERSION"; exit 1; }
-          echo "Verified packaged SkyTrace version $VERSION"
+          [[ "$BUNDLE_ID" == "io.skytrace.desktop" ]] || { echo "Unexpected bundle ID: $BUNDLE_ID"; exit 1; }
+          [[ -f "$ASAR" ]] || { echo "Packaged app.asar is missing."; exit 1; }
+          [[ ! -d "$APP/Contents/Resources/app" ]] || { echo "Unexpected unpacked runtime app directory found."; exit 1; }
+
+          grep -aF '3.3.1-performance-rc' "$ASAR" >/dev/null || { echo "V3.3.1 build marker is missing from app.asar."; exit 1; }
+          grep -aF 'V3.3.1 RC' "$ASAR" >/dev/null || { echo "Visible V3.3.1 RC label is missing from app.asar."; exit 1; }
+          grep -aF 'skytrace.performanceMode' "$ASAR" >/dev/null || { echo "Performance Mode marker is missing from app.asar."; exit 1; }
+          grep -aF 'function flightsForMap()' "$ASAR" >/dev/null || { echo "Adaptive renderer is missing from app.asar."; exit 1; }
+
+          if grep -aF 'V3.2 FREE' "$ASAR" >/dev/null; then
+            echo "Stale V3.2 FREE UI label survived packaging."
+            exit 1
+          fi
+          if grep -aF 'api.rainviewer.com' "$ASAR" >/dev/null; then
+            echo "Direct RainViewer endpoint survived packaging."
+            exit 1
+          fi
+          if grep -aF 'Installing SkyTrace v3.2.0 Free Stack' "$ASAR" >/dev/null; then
+            echo "Old V3.2 installer content survived packaging."
+            exit 1
+          fi
+
+          echo "Verified packaged SkyTrace $VERSION ($BUNDLE_ID), ASAR runtime and performance/commercial markers."
 
       - name: Create release ZIP and checksum
         shell: bash
