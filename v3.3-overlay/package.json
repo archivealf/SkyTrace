@@ -15,7 +15,7 @@
     "package": "electron-forge package",
     "make:mac": "npm run icon:mac && electron-forge make --platform=darwin",
     "make": "electron-forge make",
-    "check": "node --check electron-main.js && node --check server.js && node --check app.v3.js && node --check v3.3-codes.js && node --check v3.3-entitlement-sync.js && node --check v3.3-platform.js && node --check v3.3-export-fix.js && node --check v3.4-features.js && node --check airlines.v2.2.js && node --check service-worker.v3.js && node --check scripts/update-aviation-data.mjs && node --check scripts/generate-skytrace-icon.mjs && node --check lib/config.js && node --check lib/account.js && node --check lib/live.js && node --check lib/airports.js && node --check lib/aircraft.js && node --check lib/weather.js && node --check lib/precipitation.js && node --check lib/aviationweather.js && for f in api/*.js; do node --check \"$f\"; done"
+    "check": "node --check electron-main.js && node --check server.js && node --check app.v3.js && node --check v3.3-codes.js && node --check v3.3-entitlement-sync.js && node --check v3.3-platform.js && node --check v3.3-export-fix.js && node --check v3.4-features.js && node --check v3.4-airport-traffic-fix.js && node --check airlines.v2.2.js && node --check service-worker.v3.js && node --check scripts/update-aviation-data.mjs && node --check scripts/generate-skytrace-icon.mjs && node --check lib/config.js && node --check lib/account.js && node --check lib/live.js && node --check lib/airports.js && node --check lib/aircraft.js && node --check lib/weather.js && node --check lib/precipitation.js && node --check lib/aviationweather.js && for f in api/*.js; do node --check \"$f\"; done"
   },
   "engines": { "node": ">=20.18.0" },
   "devDependencies": {
