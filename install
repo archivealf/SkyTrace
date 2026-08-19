@@ -5,9 +5,9 @@ RC_INSTALLER="https://raw.githubusercontent.com/archivealf/SkyTrace/v3.3-commerc
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
-echo "SkyTrace installer: preparing V3.4.0 RC1..."
-curl --fail --location --silent --show-error "$RC_INSTALLER" --output "$TMP"
+if ! curl --fail --location --silent --show-error "$RC_INSTALLER" --output "$TMP"; then
+  printf 'Could not download the SkyTrace installer. Check your internet connection and try again.\n' >&2
+  exit 1
+fi
 
-# The RC1 installer independently verifies architecture, source identity,
-# commercial hardening, runtime audit, bundle ID and final 3.4.0 app version.
 bash "$TMP"
