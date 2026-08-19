@@ -1,4 +1,4 @@
-name: SkyTrace V3.4 Smoke
+name: SkyTrace V3.4.0 RC1 Smoke
 
 on:
   pull_request:
@@ -24,12 +24,14 @@ jobs:
       - name: Audit complete source tree
         run: node scripts/audit-runtime.mjs
 
-      - name: Syntax-check V3.4 desktop overlay
+      - name: Syntax-check V3.4 release transforms
         run: |
           node --check v3.3-overlay/v3.4-features.js
           node --check v3.3-overlay/scripts/apply-v34.mjs
           node --check v3.3-overlay/scripts/stabilize-runtime.mjs
           node --check v3.3-overlay/scripts/stabilize-replay.mjs
+          node --check v3.3-overlay/scripts/finalize-v3.4.mjs
+          node --check scripts/verify-v3.4-release.mjs
 
       - name: Run commerce integration checks
         run: npm --prefix commerce run check
@@ -39,7 +41,7 @@ jobs:
           node --check commerce/monitor.js
           node --check commerce/restore.js
 
-      - name: Check restricted-provider isolation in new V3.4 files
+      - name: Check restricted-provider isolation in V3.4 files
         shell: bash
         run: |
           set -euo pipefail
@@ -50,15 +52,15 @@ jobs:
             fi
           done
 
-      - name: Materialize harden verify and audit desktop source
+      - name: Materialize harden verify and audit V3.4.0 RC1
         env:
           SKYTRACE_COMMERCE_URL: https://skytrace.example.invalid
         run: |
-          bash scripts/materialize-v3.3.sh
+          bash scripts/materialize-v3.4.sh
           node scripts/harden-commercial-build.mjs
-          node scripts/verify-v3.3-release.mjs
+          node scripts/verify-v3.4-release.mjs
           npm run check
           node scripts/audit-runtime.mjs
 
       - name: Complete smoke validation
-        run: echo "V3.4 source tree, backend, materializer, commercial hardening, executable audit and desktop source checks passed."
+        run: echo "V3.4.0 RC1 source tree, backend, release identity, materializer, commercial hardening, executable audit and desktop checks passed."
