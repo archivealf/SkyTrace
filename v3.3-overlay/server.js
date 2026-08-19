@@ -9,7 +9,7 @@ import { getWeather } from "./lib/weather.js";
 import { getPrecipitationInfo, getPrecipitationTile } from "./lib/precipitation.js";
 import { getAirportAviationWeather, getAirportAdvisories, getRecentPilotReports } from "./lib/aviationweather.js";
 import { config } from "./lib/config.js";
-import { getAccountServiceConfig, getAccountCatalog, registerAccount, loginAccount, getAccount, logoutAccount, createAccountCheckout, confirmAccountCheckout } from "./lib/account.js";
+import { getAccountServiceConfig, getAccountCatalog, registerAccount, loginAccount, getAccount, logoutAccount, createAccountCheckout, confirmAccountCheckout, redeemAccountCode } from "./lib/account.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const mime = {
@@ -104,6 +104,10 @@ async function api(req, res, url) {
     if (url.pathname === "/api/account/register" && req.method === "POST") return json(res, 201, await registerAccount(await readJsonBody(req)));
     if (url.pathname === "/api/account/login" && req.method === "POST") return json(res, 200, await loginAccount(await readJsonBody(req)));
     if (url.pathname === "/api/account/logout" && req.method === "POST") return json(res, 200, await logoutAccount());
+    if (url.pathname === "/api/account/redeem" && req.method === "POST") {
+      const body = await readJsonBody(req);
+      return json(res, 200, await redeemAccountCode(body.code));
+    }
     if (url.pathname === "/api/account/checkout" && req.method === "POST") {
       const body = await readJsonBody(req);
       return json(res, 200, await createAccountCheckout(body.productKey));
@@ -130,7 +134,8 @@ async function api(req, res, url) {
           radar: false,
           desktop: Boolean(globalThis.__SKYTRACE_DESKTOP__),
           accounts: Boolean(config.commerce?.enabled),
-          store: Boolean(config.commerce?.enabled)
+          store: Boolean(config.commerce?.enabled),
+          redeemCodes: Boolean(config.commerce?.enabled)
         }
       });
     }
@@ -244,6 +249,7 @@ export async function startSkyTraceServer({ port = config.server.port, host = "1
     console.log("Precipitation: NASA GPM IMERG via GIBS");
     console.log("Aviation weather: AviationWeather.gov");
     console.log("Maps: OpenFreeMap + MapLibre");
+    console.log("Purchases: Stripe Checkout + redeem codes");
   }
   return { server, port: actualPort, host, url: `http://${host}:${actualPort}` };
 }
