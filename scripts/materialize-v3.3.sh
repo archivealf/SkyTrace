@@ -3,9 +3,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OVERLAY="$ROOT/v3.3-overlay"
 
-[[ -f "$ROOT/scripts/materialize-v3.2.sh" ]] || { echo "SkyTrace V3.2 materializer is missing."; exit 1; }
+[[ -f "$ROOT/scripts/materialize-v3.2.sh" ]] || { echo "SkyTrace base materializer is missing."; exit 1; }
 bash "$ROOT/scripts/materialize-v3.2.sh"
-[[ -d "$OVERLAY" ]] || { echo "SkyTrace V3.3 overlay is missing."; exit 1; }
+[[ -d "$OVERLAY" ]] || { echo "SkyTrace release overlay is missing."; exit 1; }
 
 cp "$OVERLAY/server.js" "$ROOT/server.js"
 cp "$OVERLAY/electron-main.js" "$ROOT/electron-main.js"
@@ -21,10 +21,14 @@ cp "$OVERLAY/v3.3-export-fix.js" "$ROOT/v3.3-export-fix.js"
 cp "$OVERLAY/v3.4-features.js" "$ROOT/v3.4-features.js"
 cp "$OVERLAY/v3.3-glass.css" "$ROOT/v3.3-glass.css"
 cp "$OVERLAY/README.md" "$ROOT/README.md"
+cp "$OVERLAY/CHANGELOG.md" "$ROOT/CHANGELOG.md"
 cp "$OVERLAY/ATTRIBUTION.md" "$ROOT/ATTRIBUTION.md"
 cp "$OVERLAY/install" "$ROOT/install"
-cp "$OVERLAY/install-v3.3-rc" "$ROOT/install-v3.3-rc"
-chmod +x "$ROOT/install" "$ROOT/install-v3.3-rc"
+cp "$OVERLAY/install-v3.4-rc1" "$ROOT/install-v3.4-rc1"
+# Keep the old installer path as a compatibility alias only.
+if [[ -f "$OVERLAY/install-v3.3-rc" ]]; then cp "$OVERLAY/install-v3.3-rc" "$ROOT/install-v3.3-rc"; fi
+chmod +x "$ROOT/install" "$ROOT/install-v3.4-rc1"
+[[ ! -f "$ROOT/install-v3.3-rc" ]] || chmod +x "$ROOT/install-v3.3-rc"
 
 mkdir -p "$ROOT/lib" "$ROOT/api" "$ROOT/scripts"
 cp "$OVERLAY/lib/account.js" "$ROOT/lib/account.js"
@@ -96,12 +100,11 @@ app = app.replace('function initMap(){\n    applyPerformanceMode();startPerforma
 fs.writeFileSync(appFile, app);
 NODE
 
-# Add the V3.4 Operations / global Replay / aircraft-profile API bridge only
-# after the V3.3 account and map layers above are present.
+# Add V3.4 Operations / Replay / aircraft-profile APIs after the stable account/map layers.
 node "$OVERLAY/scripts/apply-v34.mjs" "$ROOT"
+node "$OVERLAY/scripts/finalize-v3.4.mjs" "$ROOT"
 
-node "$OVERLAY/scripts/finalize-v3.3.mjs" "$ROOT"
 rm -rf "$ROOT/source-payload-fixed" "$ROOT/.github"
 rm -f "$ROOT/trigger-build.txt"
 rm -rf "$OVERLAY"
-echo "Materialized SkyTrace V3.3.1 Performance RC with V3.4 Operations/Replay/Profile feature layer."
+echo "Materialized SkyTrace V3.4.0 RC1 with Cloud, Operations, Replay+, Airport Intelligence and runtime stability fixes."
