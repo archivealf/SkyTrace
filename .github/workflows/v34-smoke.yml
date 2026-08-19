@@ -40,14 +40,21 @@ jobs:
           fi
           node -e 'const p=require("./package.json"); if(p.engines?.node!==">=22.12.0") throw new Error(`Unexpected Node engine: ${p.engines?.node}`)'
 
-      - name: Syntax-check V3.4 release transforms
+      - name: Syntax-check V3.4 release transforms and UI polish
         run: |
           node --check v3.3-overlay/v3.4-features.js
+          node --check v3.3-overlay/v3.4-polish.js
           node --check v3.3-overlay/scripts/apply-v34.mjs
           node --check v3.3-overlay/scripts/stabilize-runtime.mjs
           node --check v3.3-overlay/scripts/stabilize-replay.mjs
           node --check v3.3-overlay/scripts/finalize-v3.4.mjs
           node --check scripts/verify-v3.4-release.mjs
+          grep -F '.startup-shell' v3.3-overlay/v3.4-polish.css >/dev/null
+          grep -F 'Preparing live aviation data' v3.3-overlay/v3.4-polish.js >/dev/null
+          if grep -F 'MutationObserver' v3.3-overlay/v3.4-polish.js >/dev/null; then
+            echo "UI polish must not use MutationObserver."
+            exit 1
+          fi
 
       - name: Run commerce integration checks
         run: npm --prefix commerce run check
@@ -62,7 +69,7 @@ jobs:
         run: |
           set -euo pipefail
           for host in opensky-network.org api.adsbdb.com api.open-meteo.com api.rainviewer.com; do
-            if grep -R -F "$host" commerce/v34-hook.js commerce/admin-v34-hook.js commerce/web v3.3-overlay/v3.4-features.js; then
+            if grep -R -F "$host" commerce/v34-hook.js commerce/admin-v34-hook.js commerce/web v3.3-overlay/v3.4-features.js v3.3-overlay/v3.4-polish.js; then
               echo "Restricted provider host found in V3.4 code: $host"
               exit 1
             fi
@@ -81,7 +88,10 @@ jobs:
           bash -n install-v3.4-rc1
           grep -F 'LOG_FILE="$LOG_DIR/installer.log"' install-v3.4-rc1 >/dev/null
           grep -F 'npm install --no-audit --no-fund --loglevel=error' install-v3.4-rc1 >/dev/null
+          grep -F '/v3.4-polish.css' index.html >/dev/null
+          grep -F '/v3.4-polish.js' index.html >/dev/null
+          grep -F '.startup-shell' v3.4-polish.css >/dev/null
           node -e 'const p=require("./package.json"); if(p.engines?.node!==">=22.12.0") throw new Error(`Unexpected materialized Node engine: ${p.engines?.node}`)'
 
       - name: Complete smoke validation
-        run: echo "V3.4.0 RC1 source tree, quiet installer, backend, release identity, materializer, commercial hardening, executable audit and desktop checks passed."
+        run: echo "V3.4.0 RC1 source tree, polished startup/UI, quiet installer, backend, release identity, materializer, commercial hardening, executable audit and desktop checks passed."
