@@ -14,7 +14,18 @@ module.exports = {
     ignore: [
       /^\/out($|\/)/,
       /^\/\.git($|\/)/,
+      /^\/\.github($|\/)/,
+      /^\/commerce($|\/)/,
+      /^\/scripts($|\/)/,
+      /^\/node_modules($|\/)/,
       /^\/config\.json$/,
+      /^\/config\.example\.json$/,
+      /^\/forge\.config\.cjs$/,
+      /^\/README\.md$/,
+      /^\/install(?:-v3\.3-rc)?$/,
+      /^\/uninstall$/,
+      /^\/assets\/SkyTrace\.png\.base64$/,
+      /^\/assets\/SkyTrace\.icns$/,
       /^\/SkyTrace.*\.zip$/,
       /^\/SkyTrace.*\.dmg$/
     ]
