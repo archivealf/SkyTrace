@@ -5,8 +5,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-B64="$TMP/skytrace-v3.2.zip.b64"
-ZIP="$TMP/skytrace-v3.2.zip"
+B64="$TMP/skytrace-base.zip.b64"
+ZIP="$TMP/skytrace-base.zip"
 EXPECTED="f1b6dbf212009023792875cf4444d389bcc5fb15cf4c71e8a766e87109ea0a0e"
 
 cat "$ROOT"/v3.2-bundle/chunk*.b64 > "$B64"
@@ -15,7 +15,7 @@ node -e 'const fs=require("fs"); const input=fs.readFileSync(process.argv[1],"ut
 
 ACTUAL="$(shasum -a 256 "$ZIP" | awk '{print $1}')"
 if [[ "$ACTUAL" != "$EXPECTED" ]]; then
-  echo "SkyTrace V3.2 source bundle checksum mismatch."
+  echo "SkyTrace base source bundle checksum mismatch."
   echo "Expected: $EXPECTED"
   echo "Actual:   $ACTUAL"
   exit 1
@@ -30,7 +30,7 @@ else
   exit 1
 fi
 
-# Remove legacy V3.1 paid-provider/interception-era files from the materialized tree.
+# Remove legacy paid-provider/interception-era files from the materialized tree.
 rm -rf "$ROOT/source-payload" "$ROOT/v3.2-bundle"
 rm -f \
   "$ROOT/api/acars.js" \
@@ -39,4 +39,4 @@ rm -f \
   "$ROOT/lib/airframes.js" \
   "$ROOT/scripts/assemble-source.mjs"
 
-echo "Materialized SkyTrace V3.2 Free Stack."
+echo "Materialized SkyTrace base source."
