@@ -86,8 +86,7 @@
     }
   }
 
-  installStyles();
-  installRedeemCard();
-  const observer = new MutationObserver(installRedeemCard);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  const boot = () => { installStyles(); installRedeemCard(); };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
+  else boot();
 })();
