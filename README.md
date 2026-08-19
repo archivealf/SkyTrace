@@ -1,10 +1,20 @@
-# SkyTrace V3.3
+# SkyTrace V3.3.1 Performance RC
 
-SkyTrace is a native-style macOS aviation intelligence app built with Electron. V3.3 adds username/password accounts, Stripe-backed permanent upgrades and a public HTTPS commerce service while retaining the radar, airport, watchlist, replay, statistics and desktop features.
+SkyTrace is a native-style macOS aviation intelligence app built with Electron. V3.3.1 adds a major performance pass on top of the V3.3 account, Stripe-backed permanent upgrade and Liquid Glass work.
 
-## Install
+## Install the current Performance RC
 
-Public release builds are distributed as Intel (`x64`) and Apple Silicon (`arm64`) macOS packages through GitHub Releases.
+This installer deliberately targets the `v3.3-commerce` branch and refuses to install an unexpected version. It does **not** fall back to `main` or V3.2.
+
+```bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/archivealf/SkyTrace/v3.3-commerce/install")
+```
+
+The installer builds the correct architecture for the current Mac, applies the public commercial-provider hardening, verifies the V3.3.1 performance identity, replaces an older `~/Applications/SkyTrace.app`, and preserves the user config stored under `~/Library/Application Support/SkyTrace/`.
+
+## Performance work
+
+Performance Mode is enabled by default and includes adaptive aircraft rendering, a live FPS/render-count HUD, reduced live glass blur, lighter animations, debounced search/filter updates, lazy list/stat rendering, bounded trail/event memory, capped dynamic livery images and refresh throttling while the map is moving.
 
 ## Data stack
 
@@ -20,9 +30,9 @@ The local/development build can use:
 - RainViewer: optional radar imagery for non-commercial development
 - OpenFreeMap + MapLibre: map rendering
 
-### Public commercial V3.3 builds
+### Public commercial V3.3.1 builds
 
-When `SKYTRACE_COMMERCE_URL` is supplied by the release workflow, the packaged app deliberately uses a stricter provider policy:
+When `SKYTRACE_COMMERCE_URL` is supplied, the packaged app uses a stricter provider policy:
 
 - ADSB.lol remains the live aircraft source.
 - OurAirports, local aircraft reference data, AviationWeather.gov and OpenFreeMap/MapLibre remain available.
@@ -31,7 +41,7 @@ When `SKYTRACE_COMMERCE_URL` is supplied by the release workflow, the packaged a
 - The Open-Meteo free hosted API is disabled; a future build can use its commercial customer endpoint under a paid plan.
 - RainViewer is disabled until commercial integration terms are in place.
 
-These restrictions are enforced at build/runtime rather than relying only on the default config, so an older local configuration cannot silently turn the restricted hosted providers back on in a commercial package. See `ATTRIBUTION.md` for the provider/licence record.
+These restrictions are enforced at build/runtime rather than relying only on default config, so an older local configuration cannot silently turn the restricted hosted providers back on in a commercial package. See `ATTRIBUTION.md` for the provider/licence record.
 
 No `.env` file is used.
 
@@ -51,10 +61,13 @@ Local/development defaults include optional providers that are automatically res
 
 ## Build locally
 
-Requires Node.js 20+ and macOS:
+Requires Node.js 20.18+ and macOS:
 
 ```bash
+export SKYTRACE_COMMERCE_URL="https://skytrace.duckdns.org"
 bash scripts/materialize-v3.3.sh
+node scripts/harden-commercial-build.mjs
+node scripts/verify-v3.3-release.mjs
 npm install
 npm run data
 npm run icon:mac
@@ -64,18 +77,9 @@ npm run package
 
 The app is produced under `out/`.
 
-## GitHub release builds
+## GitHub CI builds
 
-GitHub Actions builds both:
-
-```text
-SkyTrace-mac-arm64.zip
-SkyTrace-mac-arm64.dmg
-SkyTrace-mac-x64.zip
-SkyTrace-mac-x64.dmg
-```
-
-Release builds require the repository variable `SKYTRACE_COMMERCE_URL` to contain the public HTTPS commerce endpoint. Stripe secrets and webhook signing secrets remain server-side and are never embedded in the app.
+GitHub Actions builds both Intel (`x64`) and Apple Silicon (`arm64`) ZIP/DMG artifacts. RC pull-request builds do not publish a public release.
 
 ## Security
 
