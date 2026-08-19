@@ -60,7 +60,7 @@ jobs:
       - name: Verify V3.3.1 release identity
         run: node scripts/verify-v3.3-release.mjs
 
-      - name: Verify commerce backend and redeem codes
+      - name: Verify commerce backend, V3.4 smoke tests and redeem codes
         run: npm --prefix commerce run check
 
       - name: Install dependencies
@@ -104,6 +104,10 @@ jobs:
           grep -aF 'function flightsForMap()' "$ASAR" >/dev/null || { echo "Adaptive renderer is missing from app.asar."; exit 1; }
           grep -aF 'Have a SkyTrace code?' "$ASAR" >/dev/null || { echo "Redeem-code UI is missing from app.asar."; exit 1; }
           grep -aF '/api/account/redeem' "$ASAR" >/dev/null || { echo "Redeem-code account route is missing from app.asar."; exit 1; }
+          grep -aF 'Operational weather' "$ASAR" >/dev/null || { echo "V3.4 Operations UI is missing from app.asar."; exit 1; }
+          grep -aF 'Global Replay+' "$ASAR" >/dev/null || { echo "V3.4 Global Replay UI is missing from app.asar."; exit 1; }
+          grep -aF 'Aircraft profile' "$ASAR" >/dev/null || { echo "V3.4 aircraft profile UI is missing from app.asar."; exit 1; }
+          grep -aF '/api/v34/operations' "$ASAR" >/dev/null || { echo "V3.4 Operations API bridge is missing from app.asar."; exit 1; }
 
           if grep -aF 'V3.2 FREE' "$ASAR" >/dev/null; then
             echo "Stale V3.2 FREE UI label survived packaging."
@@ -125,7 +129,7 @@ jobs:
             grep -aF "$marker" "$ASAR" >/dev/null || { echo "Expected free commercial provider marker is missing: $marker"; exit 1; }
           done
 
-          echo "Verified packaged SkyTrace $VERSION ($BUNDLE_ID), ASAR runtime, redeem codes, performance markers and free commercial provider stack."
+          echo "Verified packaged SkyTrace $VERSION ($BUNDLE_ID), ASAR runtime, V3.4 Operations/Replay/Profile, redeem codes, performance markers and free commercial provider stack."
 
       - name: Create release ZIP and checksum
         shell: bash
@@ -193,6 +197,6 @@ jobs:
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "SkyTrace $TAG" \
-              --notes "SkyTrace V3.3.1 for macOS adds V3.3 accounts/commerce, permanent redeem codes and a major performance pass. The public commercial runtime uses ADSB.lol for live traffic, Mictronics/VRS standing data for aircraft and route enrichment, MET Norway for general weather, NASA GPM IMERG via GIBS for the Precipitation map layer, AviationWeather.gov, OurAirports and OpenFreeMap. Restricted OpenSky REST, ADSBDB, Open-Meteo free-hosted and RainViewer endpoints are excluded and CI-scanned."
+              --notes "SkyTrace V3.3.1 for macOS adds accounts/commerce, Cloud tools, V3.4 Operations/Replay/Profile features and a major performance pass. The public commercial runtime uses ADSB.lol, Mictronics/VRS standing data, MET Norway, NASA GPM IMERG via GIBS, AviationWeather.gov, OurAirports and OpenFreeMap. Restricted OpenSky REST, ADSBDB, Open-Meteo free-hosted and RainViewer endpoints are excluded and CI-scanned."
           fi
           gh release upload "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber
