@@ -22,5 +22,6 @@
     "replay_plus": { "priceId": "price_1U5rDX19iuWs3yVBTTWlnAWk" },
     "themes": { "priceId": "price_1U5rDg19iuWs3yVBgPZmFESI" }
   },
-  "dataFile": "data/store.json"
+  "dataFile": "data/store.json",
+  "sqliteFile": "data/store.sqlite3"
 }

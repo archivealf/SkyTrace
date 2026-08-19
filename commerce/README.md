@@ -1,75 +1,79 @@
 # SkyTrace Commerce
 
-Account and purchase backend for SkyTrace V3.3.
+SkyTrace Commerce is the HTTPS account, entitlement and Cloud backend used by SkyTrace V3.3.1.
 
-## Current mode
+## Storage
 
-- Accounts use username + password; no email sender is required.
-- Passwords are never stored in plaintext. Each password is hashed with Node's `scrypt`, a unique random salt, and the server-only `security.pepper`.
-- Sessions are random tokens; only token hashes are persisted.
-- Permanent entitlements are stored server-side in `commerce/data/store.json`.
-- Stripe Checkout Sessions are created server-side using the configured SkyTrace Price IDs.
-- Redeem codes can grant the same permanent entitlements as Stripe purchases.
-- Redeem codes are generated only on the server. Plaintext codes are shown once and only an HMAC hash is stored.
-- Codes can be single-use or multi-use, optionally expire, and can be revoked.
-- Redemption attempts are rate-limited and a code is not consumed when the account already owns the entitlement.
+The service now uses **SQLite in WAL mode** as the authoritative persistent store for accounts, sessions, purchases, redeem codes, synced Cloud items and collected replay history. The existing `data/store.json` account store is imported automatically on the first start through the V3.3 preload. A timestamped `store.json.pre-sqlite-*.bak` copy is kept so the migration is reversible while the deployment is being verified.
 
-## Start
+The compatibility preload lets the existing proven username/password + Stripe code continue to operate while its account mutations are persisted into SQLite. Do not remove the preload from the systemd service.
 
-Use the package start command so the redeem-code hook is loaded before the commerce server:
+Recommended service command:
 
-```bash
-npm start
+```text
+/usr/local/bin/node --import /home/opc/skytrace-commerce/commerce/redeem-hook.js /home/opc/skytrace-commerce/commerce/server.js
 ```
 
-The equivalent direct command is:
+## Included services
 
-```bash
-node --import ./redeem-hook.js server.js
-```
+- Username + password accounts using scrypt, per-user salts and the server-only pepper.
+- Hashed bearer sessions.
+- Stripe Checkout permanent entitlements and webhook refund handling.
+- Redeem codes: single-use by default, optional multi-use, expiry, labels and revocation.
+- Synced watchlists, alerts, bookmarks and workspaces.
+- Cloud Replay history collected from signed-in SkyTrace clients, retained for 30 days.
+- CSV, GeoJSON and KML Replay+ export.
+- Private token-protected `/admin` dashboard for users, purchases, codes, manual grants and service statistics.
 
-Verify it with:
+Cloud Replay is **community-collected coverage**, not a claim of complete worldwide historical coverage. It contains public flight observations submitted by signed-in SkyTrace clients as they view live traffic.
 
-```bash
-curl http://127.0.0.1:8787/health
-```
+## Redeem codes
 
-`config.json` and `data/store.json` are gitignored and must remain server-side.
-
-## Redeem-code manager
-
-Generate five single-use SkyTrace Pro codes:
+The SQLite code manager can run while the service is online:
 
 ```bash
 node codes.js generate pro 5
-```
-
-Generate 20 Themes codes that expire after 30 days:
-
-```bash
-node codes.js generate themes 20 --days 30 --label launch-giveaway
-```
-
-Generate one shared Pro code that can be redeemed 25 times:
-
-```bash
-node codes.js generate pro 1 --uses 25 --label event-code
-```
-
-List code records without exposing plaintext codes:
-
-```bash
+node codes.js generate pro 1 --uses 25 --label event
+node codes.js generate replay_plus 10 --days 30 --label giveaway
 node codes.js list
+node codes.js revoke <code-id-or-full-code>
 ```
 
-Revoke a code using its ID or the full code:
+Plaintext codes are displayed only when generated. SQLite stores an HMAC hash, not the plaintext code.
+
+## Private admin dashboard
+
+Show the current server-only admin token locally on the backend host:
 
 ```bash
-node codes.js revoke code_xxxxxxxxx
+node admin.js show
 ```
 
-Available product keys are `pro`, `airport_intelligence`, `advanced_aircraft`, `replay_plus`, and `themes`.
+Rotate the token-file version with:
 
-## Public deployment
+```bash
+node admin.js rotate
+```
 
-Keep the commerce process bound to `127.0.0.1` and expose it through the existing HTTPS reverse proxy. Do not expose Stripe secrets, the server pepper, `config.json`, or `data/store.json` to the desktop app or GitHub.
+Restart the service after rotation. Keep the token private and do not put it in GitHub, the desktop app or chat logs.
+
+The dashboard is served at `/admin` on the configured Commerce HTTPS domain. The token is retained only in the browser tab's `sessionStorage`.
+
+## Health check
+
+A migrated service reports fields including:
+
+```json
+{
+  "ok": true,
+  "storage": "sqlite-wal",
+  "redeemCodes": true,
+  "cloudSync": true,
+  "cloudReplay": true,
+  "admin": true
+}
+```
+
+## Secrets
+
+`config.json`, the server pepper, Stripe secret key, webhook secret and admin token are server-only. Do not commit or distribute them.

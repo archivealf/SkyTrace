@@ -1,15 +1,14 @@
 {
   "name": "skytrace-commerce",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
-  "description": "SkyTrace username/password accounts, permanent entitlements, Stripe Checkout and redeem codes.",
+  "description": "SkyTrace SQLite account, entitlement, Stripe, redeem-code, cloud-sync, replay and admin backend.",
   "scripts": {
     "start": "node --import ./redeem-hook.js server.js",
-    "check": "node --check server.js && node --check redeem-hook.js && node --check codes.js",
-    "codes": "node codes.js"
+    "check": "node --check server.js && node --check redeem-hook.js && node --check platform-hook.js && node --check platform-preserve.js && node --check codes.js && node --check admin.js",
+    "codes": "node codes.js",
+    "admin": "node admin.js"
   },
-  "engines": {
-    "node": ">=20.18.0"
-  }
+  "engines": { "node": ">=22.13.0" }
 }
