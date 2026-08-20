@@ -1,0 +1,108 @@
+/* V3.5 Mac UI compatibility and density pass */
+html.skytrace-mac-view-active #sidebar,
+body.skytrace-mac-view-active #sidebar{
+  width:min(330px,calc(100vw - 118px))!important;
+  max-width:min(330px,calc(100vw - 118px))!important;
+}
+#macNativeView{
+  min-width:0!important;
+  min-height:0!important;
+  overflow:hidden!important;
+}
+#macNativeView.active{
+  display:flex!important;
+  flex-direction:column!important;
+}
+#macNativeView .sidebar-head{
+  flex:0 0 auto!important;
+  padding-right:4px!important;
+}
+#macNativeView .mac-native-scroll{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow:auto!important;
+  padding:4px 8px 20px!important;
+  gap:8px!important;
+}
+#macNativeView .mac-native-card{
+  border-radius:13px!important;
+  padding:11px!important;
+}
+#macNativeView .mac-native-card h3{font-size:12px!important}
+#macNativeView .mac-native-card p{font-size:9px!important;line-height:1.45!important}
+#macNativeView .mac-native-btn,
+#macNativeView .mac-native-input,
+#macNativeView .mac-native-select{padding:8px 9px!important;font-size:9px!important}
+.mac-native-mode-tab span{
+  font-size:12px!important;
+  font-weight:600!important;
+  line-height:1!important;
+  opacity:.82!important;
+}
+.mac-native-mode-tab b{font-weight:620!important}
+
+.skytrace-layer-panel{
+  position:relative!important;
+  transition:max-height .2s ease,opacity .2s ease!important;
+}
+.skytrace-layer-toggle{
+  position:absolute!important;
+  top:9px!important;
+  right:9px!important;
+  z-index:4!important;
+  width:24px!important;
+  height:24px!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  border-radius:8px!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  background:rgba(255,255,255,.055)!important;
+  color:#aeb6c5!important;
+  font:600 14px/1 -apple-system,BlinkMacSystemFont,sans-serif!important;
+}
+.skytrace-layer-toggle:hover{background:rgba(255,255,255,.10)!important;color:#fff!important}
+.skytrace-layer-panel.skytrace-collapsed{
+  max-height:46px!important;
+  min-height:46px!important;
+  overflow:hidden!important;
+}
+
+.bottom-status.skytrace-compact-status{
+  width:auto!important;
+  max-width:min(860px,calc(100vw - 250px))!important;
+  padding:6px 10px!important;
+  gap:0!important;
+  border-radius:14px!important;
+}
+.bottom-status.skytrace-compact-status>div{
+  padding:0 12px!important;
+  min-width:0!important;
+}
+.bottom-status.skytrace-compact-status span,
+.bottom-status.skytrace-compact-status small{
+  font-size:7px!important;
+  letter-spacing:.06em!important;
+}
+.bottom-status.skytrace-compact-status strong{
+  font-size:9px!important;
+}
+
+html[data-skytrace-label-density="normal"][data-skytrace-traffic-load="busy"] .aircraft-label{
+  opacity:.72!important;
+}
+html[data-skytrace-label-density="normal"][data-skytrace-traffic-load="dense"] .aircraft-label{
+  opacity:.52!important;
+  transform:scale(.92)!important;
+  transform-origin:center!important;
+}
+html[data-skytrace-label-density="low"][data-skytrace-traffic-load="busy"] .aircraft-label,
+html[data-skytrace-label-density="low"][data-skytrace-traffic-load="dense"] .aircraft-label{
+  opacity:.42!important;
+}
+
+@media(max-width:1200px){
+  html.skytrace-mac-view-active #sidebar,
+  body.skytrace-mac-view-active #sidebar{width:300px!important;max-width:300px!important}
+  .bottom-status.skytrace-compact-status{max-width:calc(100vw - 190px)!important}
+}
