@@ -50,14 +50,16 @@ jobs:
           fi
           [[ "$SKYTRACE_COMMERCE_URL" == https://* ]] || { echo "SKYTRACE_COMMERCE_URL must use HTTPS."; exit 1; }
 
-      - name: Materialize V3.5 Mac Native R3
+      - name: Materialize V3.5 Mac Native R3.3
         run: bash scripts/materialize-v3.5.sh
 
       - name: Enforce commercial provider isolation
         run: node scripts/harden-commercial-build.mjs
 
       - name: Verify V3.5 audited feature set
-        run: node src/build/verify-v35.mjs
+        run: |
+          node src/build/verify-v35.mjs
+          node src/build/verify-v35-ui.mjs
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -72,7 +74,9 @@ jobs:
         run: npm run check
 
       - name: Re-verify materialized runtime
-        run: node src/build/verify-v35.mjs
+        run: |
+          node src/build/verify-v35.mjs
+          node src/build/verify-v35-ui.mjs
 
       - name: Package SkyTrace.app
         run: npx electron-forge package --platform=darwin --arch=${{ matrix.arch }}
@@ -87,10 +91,10 @@ jobs:
           [[ "$VERSION" == "3.5.0" ]] || { echo "Unexpected version: $VERSION"; exit 1; }
           ASAR="$APP/Contents/Resources/app.asar"
           [[ -f "$ASAR" ]] || { echo "app.asar missing"; exit 1; }
-          for marker in 'mac-native-main.js' 'mac-startup-runtime.js' 'mac-startup-guard.js' 'Private Local Replay' 'SkyTrace Command Centre' 'Airport Desk' 'skytrace_desktop' 'X-SkyTrace-Desktop' 'health-auth-runtime-shell-ready' 'Content-Security-Policy'; do
-            grep -aF "$marker" "$ASAR" >/dev/null || { echo "Missing V3.5 R3 marker: $marker"; exit 1; }
+          for marker in 'mac-native-main.js' 'mac-startup-runtime.js' 'mac-startup-guard.js' 'Private Local Replay' 'SkyTrace Command Centre' 'Airport Desk' 'skytrace_desktop' 'X-SkyTrace-Desktop' 'health-auth-runtime-shell-ready' 'Content-Security-Policy' 'mac-ui-fixes.js' 'skytrace-layer-toggle' 'skytrace-mac-view-active'; do
+            grep -aF "$marker" "$ASAR" >/dev/null || { echo "Missing V3.5 R3.3 marker: $marker"; exit 1; }
           done
-          echo "V3.5 R3 intentionally does not require Developer ID signing or Apple notarization."
+          echo "V3.5 R3.3 intentionally does not require Developer ID signing or Apple notarization."
 
       - name: Launch packaged app startup smoke test
         shell: bash
