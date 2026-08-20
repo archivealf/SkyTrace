@@ -1,0 +1,74 @@
+/* SkyTrace Web mobile / iOS layout */
+html,body,#map{height:100dvh;min-height:100%}
+body{overscroll-behavior:none;-webkit-text-size-adjust:100%;touch-action:manipulation}
+button,input{min-height:44px}
+button{-webkit-tap-highlight-color:transparent}
+.traffic-list,.drawer{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.install-hint{flex:0 0 auto;border:1px solid rgba(158,177,255,.16);border-radius:12px;background:rgba(126,149,255,.07);color:#aeb9cf;font-size:10px;line-height:1.45;padding:9px 10px}
+
+@media(display-mode:standalone){
+  body{user-select:none;-webkit-user-select:none}
+  input,.traffic-list,.drawer{user-select:text;-webkit-user-select:text}
+  .install-hint{display:none!important}
+}
+
+@media(max-width:700px){
+  .panel{
+    left:max(10px,env(safe-area-inset-left));
+    right:max(10px,env(safe-area-inset-right));
+    bottom:max(10px,env(safe-area-inset-bottom));
+    top:auto;
+    width:auto;
+    height:min(68dvh,680px);
+    max-height:calc(100dvh - max(20px,env(safe-area-inset-top)) - max(20px,env(safe-area-inset-bottom)));
+    border-radius:22px;
+    padding:14px;
+    gap:10px;
+  }
+  .panel::before{content:"";position:absolute;top:6px;left:50%;width:34px;height:4px;border-radius:999px;background:rgba(255,255,255,.18);transform:translateX(-50%)}
+  .panel-head{padding-top:4px;align-items:center}
+  .panel h1{font-size:23px}
+  .status-pill{padding:7px 10px}
+  .toolbar{grid-template-columns:1fr 1fr;gap:7px}
+  .toolbar button{min-height:44px;font-size:12px}
+  .stats div{padding:10px 12px}
+  .traffic-card{padding:10px;border-radius:15px}
+  .flight{min-height:52px;padding:10px 11px}
+  .flight strong{font-size:13px}
+  .flight small{font-size:10px}
+  .drawer{max-height:24dvh}
+  footer{font-size:9px;line-height:1.4}
+  .maplibregl-ctrl-top-right{top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right))}
+  .maplibregl-ctrl-bottom-right{bottom:calc(min(68dvh,680px) + max(22px,env(safe-area-inset-bottom)))}
+}
+
+@media(max-width:430px){
+  .panel{height:min(72dvh,690px);padding:13px}
+  .panel h1{font-size:21px}
+  .panel small,.muted,footer,.section-copy,label span,#trafficMeta{font-size:9px}
+  .stats b{font-size:20px}
+  .maplibregl-ctrl-bottom-right{bottom:calc(min(72dvh,690px) + max(22px,env(safe-area-inset-bottom)))}
+}
+
+@media(max-width:900px) and (orientation:landscape) and (max-height:520px){
+  .panel{
+    left:max(10px,env(safe-area-inset-left));
+    right:auto;
+    top:max(10px,env(safe-area-inset-top));
+    bottom:max(10px,env(safe-area-inset-bottom));
+    width:min(390px,48vw);
+    height:auto;
+    max-height:none;
+    border-radius:20px;
+  }
+  .panel::before{display:none}
+  .panel-head h1{font-size:19px}
+  .toolbar{grid-template-columns:1fr 1fr}
+  .stats b{font-size:18px}
+  .drawer{max-height:18dvh}
+  .maplibregl-ctrl-bottom-right{bottom:max(10px,env(safe-area-inset-bottom))}
+}
+
+@media(prefers-reduced-motion:reduce){
+  button{transition:none!important}
+}
