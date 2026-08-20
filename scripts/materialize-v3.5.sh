@@ -13,7 +13,8 @@ for file in \
   src/build/apply-v36.mjs \
   src/build/fix-v36-maplibre.mjs \
   src/build/verify-v36.mjs \
-  scripts/vendor-maplibre.mjs; do
+  scripts/vendor-maplibre.mjs \
+  scripts/audit-runtime.mjs; do
   [[ -f "$ROOT/$file" ]] || { echo "Missing V3.5/Product Preview build module: $file" >&2; exit 1; }
   node --check "$ROOT/$file"
 done
@@ -33,4 +34,4 @@ node "$ROOT/src/build/verify-v35.mjs" "$ROOT"
 node "$ROOT/src/build/verify-v35-ui.mjs" "$ROOT"
 node "$ROOT/src/build/verify-v36.mjs" "$ROOT"
 
-echo "Materialized SkyTrace V3.5 Product Preview R4.7 packaged-map runtime with semantic MapLibre version audit (unsigned development build)."
+echo "Materialized SkyTrace V3.5 Product Preview R4.8 packaged-map runtime with third-party vendor audit boundary (unsigned development build)."
