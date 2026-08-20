@@ -82,7 +82,7 @@ button{-webkit-tap-highlight-color:transparent}
   .maplibregl-ctrl-top-right{top:max(8px,var(--skytrace-safe-top));right:max(8px,var(--skytrace-safe-right))}
   .maplibregl-ctrl-bottom-right{
     right:max(8px,var(--skytrace-safe-right));
-    bottom:calc(var(--skytrace-panel-height) + max(18px,var(--skytrace-safe-bottom)))!important;
+    bottom:calc(var(--skytrace-panel-height) + max(8px,var(--skytrace-safe-bottom)) + 8px)!important;
   }
 }
 
@@ -151,11 +151,20 @@ button{-webkit-tap-highlight-color:transparent}
   footer{font-size:7.5px;line-height:1.25}
   .maplibregl-ctrl-top-right{top:max(8px,var(--skytrace-safe-top));right:max(8px,var(--skytrace-safe-right))}
   .maplibregl-ctrl-bottom-right{right:max(8px,var(--skytrace-safe-right));bottom:max(8px,var(--skytrace-safe-bottom))!important}
+  html.ios-keyboard-open .panel{
+    top:calc(var(--skytrace-vv-top) + max(6px,var(--skytrace-safe-top)));
+    bottom:auto;
+    height:auto!important;
+    max-height:calc(var(--skytrace-vvh) - var(--skytrace-safe-top) - 12px);
+    overflow:auto;
+  }
+  html.ios-keyboard-open .install-hint,
+  html.ios-keyboard-open footer{display:none!important}
 }
 
-/* iPad / large touch layout: purpose-built floating panel, not desktop fallback. */
-@media(min-width:701px) and (max-width:1366px) and (pointer:coarse){
-  .panel{
+/* iPad: purpose-built floating panel, never a desktop fallback. */
+@media(min-width:701px) and (max-width:1366px){
+  html.ios-ipad .panel{
     left:max(14px,var(--skytrace-safe-left));
     right:auto;
     top:max(14px,var(--skytrace-safe-top));
@@ -167,31 +176,40 @@ button{-webkit-tap-highlight-color:transparent}
     gap:11px;
     border-radius:24px;
   }
-  html:not(.signed-in) .panel{bottom:auto;height:auto;max-height:min(620px,calc(var(--skytrace-vvh) - var(--skytrace-safe-top) - var(--skytrace-safe-bottom) - 28px))}
-  .panel-head{align-items:center;min-height:44px}
-  .panel h1{font-size:clamp(24px,2.7vw,28px)}
-  .status-pill{max-width:46%;padding:8px 10px;font-size:10px}
-  .login-card{padding:14px;gap:10px}
-  .login-card input{min-height:48px;font-size:16px}
-  .login-card .primary{min-height:48px}
-  .toolbar{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
-  .toolbar button{min-height:44px;padding:8px 6px;font-size:11px}
-  .stats div{min-height:62px;padding:11px 12px}
-  .stats b{font-size:23px}
-  .traffic-card{padding:11px}
-  .section-head h2{font-size:16px}
-  .flight{min-height:58px;padding:11px 12px}
-  .flight strong{font-size:13px}
-  .flight small{font-size:10px}
-  .drawer{max-height:28%;font-size:11px}
-  footer{font-size:9px}
-  .maplibregl-ctrl-top-right{top:max(14px,var(--skytrace-safe-top));right:max(14px,var(--skytrace-safe-right))}
-  .maplibregl-ctrl-bottom-right{right:max(14px,var(--skytrace-safe-right));bottom:max(14px,var(--skytrace-safe-bottom))!important}
+  html.ios-ipad:not(.signed-in) .panel{bottom:auto;height:auto;max-height:min(620px,calc(var(--skytrace-vvh) - var(--skytrace-safe-top) - var(--skytrace-safe-bottom) - 28px))}
+  html.ios-ipad .panel-head{align-items:center;min-height:44px}
+  html.ios-ipad .panel h1{font-size:clamp(24px,2.7vw,28px)}
+  html.ios-ipad .status-pill{max-width:46%;padding:8px 10px;font-size:10px}
+  html.ios-ipad .login-card{padding:14px;gap:10px}
+  html.ios-ipad .login-card input{min-height:48px;font-size:16px}
+  html.ios-ipad .login-card .primary{min-height:48px}
+  html.ios-ipad .toolbar{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+  html.ios-ipad .toolbar button{min-height:44px;padding:8px 6px;font-size:11px}
+  html.ios-ipad .stats div{min-height:62px;padding:11px 12px}
+  html.ios-ipad .stats b{font-size:23px}
+  html.ios-ipad .traffic-card{padding:11px}
+  html.ios-ipad .section-head h2{font-size:16px}
+  html.ios-ipad .flight{min-height:58px;padding:11px 12px}
+  html.ios-ipad .flight strong{font-size:13px}
+  html.ios-ipad .flight small{font-size:10px}
+  html.ios-ipad .drawer{max-height:28%;font-size:11px}
+  html.ios-ipad footer{font-size:9px}
+  html.ios-ipad .maplibregl-ctrl-top-right{top:max(14px,var(--skytrace-safe-top));right:max(14px,var(--skytrace-safe-right))}
+  html.ios-ipad .maplibregl-ctrl-bottom-right{right:max(14px,var(--skytrace-safe-right));bottom:max(14px,var(--skytrace-safe-bottom))!important}
+  html.ios-ipad.ios-keyboard-open .panel{
+    top:calc(var(--skytrace-vv-top) + max(10px,var(--skytrace-safe-top)));
+    bottom:auto;
+    height:auto!important;
+    max-height:calc(var(--skytrace-vvh) - var(--skytrace-safe-top) - 20px);
+    overflow:auto;
+  }
+  html.ios-ipad.ios-keyboard-open .install-hint,
+  html.ios-ipad.ios-keyboard-open footer{display:none!important}
 }
 
-/* Keyboard-visible login state: keep the form inside the visual viewport. */
+/* Keyboard-visible narrow portrait login state. */
 html.ios-keyboard-open .panel{transition:none!important}
-@media(max-width:700px){
+@media(max-width:700px) and (orientation:portrait){
   html.ios-keyboard-open .panel{
     top:calc(var(--skytrace-vv-top) + max(6px,var(--skytrace-safe-top)));
     bottom:auto;
