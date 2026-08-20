@@ -11,3 +11,6 @@ import "./v34-hook.js";
 // Searchable account administration, disable/restore and expiring grants are
 // isolated in their own final preload so they can guard login/account reads.
 import "./admin-v34-hook.js";
+// PWA/iOS assets are served by a small final wrapper so account/API responses
+// remain untouched and are never cached by the web-app service worker.
+import "./pwa-hook.js";
