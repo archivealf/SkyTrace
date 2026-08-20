@@ -32,7 +32,7 @@ execFileSync(process.execPath, [windowsIconTargetScript, windowsIcon], { stdio: 
 let main = fs.readFileSync(mainFile, "utf8");
 
 const importMarker = 'import { app, BrowserWindow, Menu, shell, dialog, nativeImage } from "electron";';
-const servicesImport = 'import { attachWindowDiagnostics, checkForUpdates, desktopLogPath, installDesktopReliability, logDesktopEvent } from "./desktop-services.js";';
+const servicesImport = 'import { attachWindowDiagnostics, checkForUpdates, desktopLogPath, installDesktopReliability, logDesktopEvent, startAutomaticUpdates } from "./desktop-services.js";';
 if (!main.includes(servicesImport)) {
   if (!main.includes(importMarker)) throw new Error("Could not locate Electron import for desktop services.");
   main = main.replace(importMarker, `${importMarker}\n${servicesImport}`);
@@ -62,6 +62,12 @@ if (!main.includes("installDesktopReliability();")) {
   main = main.replace(bootMarker, `${bootMarker}\n  installDesktopReliability();`);
 }
 
+const updaterBootMarker = '  buildMenu(configPath);\n  await createWindow(skyTraceServer.url);';
+if (!main.includes("startAutomaticUpdates(mainWindow);")) {
+  if (!main.includes(updaterBootMarker)) throw new Error("Could not locate automatic updater startup point.");
+  main = main.replace(updaterBootMarker, `${updaterBootMarker}\n  startAutomaticUpdates(mainWindow);`);
+}
+
 const catchMarker = 'app.whenReady().then(boot).catch(async (error) => {\n  console.error(error);';
 if (!main.includes('logDesktopEvent("boot-failed", error);')) {
   if (!main.includes(catchMarker)) throw new Error("Could not locate desktop boot failure handler.");
@@ -69,4 +75,4 @@ if (!main.includes('logDesktopEvent("boot-failed", error);')) {
 }
 
 fs.writeFileSync(mainFile, main);
-console.log("Applied native SkyTrace update checks, diagnostics and Windows build support.");
+console.log("Applied native SkyTrace update checks, signed macOS auto-updates, diagnostics and Windows build support.");
