@@ -40,6 +40,9 @@ requireText("server.js", "desktopApiAuthorized", "desktop API authorization");
 requireText("index.html", "/mac-native-renderer.js", "Mac native renderer load");
 requireText("index.html", "/mac-native.css", "Mac native stylesheet load");
 requireText("desktop-services.js", 'CURRENT_RELEASE_TAG = "v3.5.0"', "V3.5 update channel identity");
+requireText("v3.4-polish.js", "health-and-shell-ready", "startup health watchdog");
+requireText("v3.4-polish.js", '.skytrace-startup[aria-hidden=\"true\"]', "legacy splash hide compatibility");
+requireText("v3.4-polish.js", "loading.remove()", "startup overlay removal fail-safe");
 
 const forge = read("forge.config.cjs");
 for (const paidSigningMarker of ["osxSign", "osxNotarize", "notarize", "APPLE_ID", "CSC_LINK"]) {
@@ -50,4 +53,4 @@ if (failures.length) {
   console.error("SkyTrace V3.5 verification failed:\n- " + failures.join("\n- "));
   process.exit(1);
 }
-console.log("Verified SkyTrace V3.5 Mac Native: unsigned build, native shell, private replay, offline fallback and desktop API hardening are present.");
+console.log("Verified SkyTrace V3.5 Mac Native: unsigned build, native shell, private replay, offline fallback, startup watchdog and desktop API hardening are present.");
