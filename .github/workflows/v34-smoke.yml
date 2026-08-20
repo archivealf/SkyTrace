@@ -44,13 +44,19 @@ jobs:
         run: |
           node --check v3.3-overlay/v3.4-features.js
           node --check v3.3-overlay/v3.4-polish.js
+          node --check v3.3-overlay/desktop-services.js
           node --check v3.3-overlay/scripts/apply-v34.mjs
+          node --check v3.3-overlay/scripts/apply-desktop-services.mjs
           node --check v3.3-overlay/scripts/stabilize-runtime.mjs
           node --check v3.3-overlay/scripts/stabilize-replay.mjs
           node --check v3.3-overlay/scripts/finalize-v3.4.mjs
           node --check scripts/verify-v3.4-release.mjs
           grep -F '.startup-shell' v3.3-overlay/v3.4-polish.css >/dev/null
-          grep -F 'Preparing live aviation data' v3.3-overlay/v3.4-polish.js >/dev/null
+          grep -F '.skytrace-aircraft-detail' v3.3-overlay/v3.4-polish-refine.css >/dev/null
+          grep -F '.skytrace-airport-detail' v3.3-overlay/v3.4-polish-refine.css >/dev/null
+          grep -F 'connecting to aviation data' v3.3-overlay/v3.4-polish.js >/dev/null
+          grep -F 'CURRENT_RELEASE_TAG' v3.3-overlay/desktop-services.js >/dev/null
+          grep -F 'desktop.log' v3.3-overlay/desktop-services.js >/dev/null
           if grep -F 'MutationObserver' v3.3-overlay/v3.4-polish.js >/dev/null; then
             echo "UI polish must not use MutationObserver."
             exit 1
@@ -69,7 +75,7 @@ jobs:
         run: |
           set -euo pipefail
           for host in opensky-network.org api.adsbdb.com api.open-meteo.com api.rainviewer.com; do
-            if grep -R -F "$host" commerce/v34-hook.js commerce/admin-v34-hook.js commerce/web v3.3-overlay/v3.4-features.js v3.3-overlay/v3.4-polish.js; then
+            if grep -R -F "$host" commerce/v34-hook.js commerce/admin-v34-hook.js commerce/web v3.3-overlay/v3.4-features.js v3.3-overlay/v3.4-polish.js v3.3-overlay/desktop-services.js; then
               echo "Restricted provider host found in V3.4 code: $host"
               exit 1
             fi
@@ -89,9 +95,15 @@ jobs:
           grep -F 'LOG_FILE="$LOG_DIR/installer.log"' install-v3.4-rc1 >/dev/null
           grep -F 'npm install --no-audit --no-fund --loglevel=error' install-v3.4-rc1 >/dev/null
           grep -F '/v3.4-polish.css' index.html >/dev/null
+          grep -F '/v3.4-polish-refine.css' index.html >/dev/null
           grep -F '/v3.4-polish.js' index.html >/dev/null
           grep -F '.startup-shell' v3.4-polish.css >/dev/null
+          grep -F '.skytrace-aircraft-detail' v3.4-polish-refine.css >/dev/null
+          grep -F 'label: "Check for Updates…"' electron-main.js >/dev/null
+          grep -F 'label: "Show Diagnostic Log"' electron-main.js >/dev/null
+          grep -F 'api.github.com/repos/archivealf/SkyTrace/releases' desktop-services.js >/dev/null
+          grep -F 'desktop.log' desktop-services.js >/dev/null
           node -e 'const p=require("./package.json"); if(p.engines?.node!==">=22.12.0") throw new Error(`Unexpected materialized Node engine: ${p.engines?.node}`)'
 
       - name: Complete smoke validation
-        run: echo "V3.4.0 RC1 source tree, polished startup/UI, quiet installer, backend, release identity, materializer, commercial hardening, executable audit and desktop checks passed."
+        run: echo "V3.4.0 RC1 source tree, polished startup/detail UI, native updater, diagnostics, quiet installer, backend, release identity, materializer, commercial hardening, executable audit and desktop checks passed."
