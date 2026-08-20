@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#080b11">
+  <meta name="color-scheme" content="dark">
+  <meta name="format-detection" content="telephone=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SkyTrace">
@@ -13,37 +15,37 @@
   <link rel="icon" href="/app/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
   <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
-  <link rel="stylesheet" href="/app/web.css?v=34.2">
-  <link rel="stylesheet" href="/app/web-mobile.css?v=34.2">
+  <link rel="stylesheet" href="/app/web.css?v=34.3">
+  <link rel="stylesheet" href="/app/web-mobile.css?v=34.3">
 </head>
 <body>
-  <div id="map"></div>
-  <aside class="panel">
+  <div id="map" aria-label="Live aviation map"></div>
+  <aside class="panel" aria-label="SkyTrace controls">
     <header class="panel-head">
-      <div>
+      <div class="panel-title">
         <small>SKYTRACE WEB · V3.4</small>
         <h1>Live aviation</h1>
       </div>
-      <span id="status" class="status-pill">Offline</span>
+      <span id="status" class="status-pill" role="status" aria-live="polite">Offline</span>
     </header>
 
-    <section id="login" class="login-card">
+    <section id="login" class="login-card" aria-label="Sign in">
       <p class="section-copy">Sign in to view observed aircraft, Operations and Replay+.</p>
-      <label><span>Username</span><input id="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="SkyTrace username"></label>
-      <label><span>Password</span><input id="password" type="password" autocomplete="current-password" placeholder="Password"></label>
-      <button id="loginBtn" class="primary">Sign in</button>
-      <p id="loginMsg" class="muted">Use the same account as the SkyTrace desktop app.</p>
+      <label><span>Username</span><input id="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" aria-describedby="loginMsg" placeholder="SkyTrace username"></label>
+      <label><span>Password</span><input id="password" type="password" autocomplete="current-password" enterkeyhint="go" aria-describedby="loginMsg" placeholder="Password"></label>
+      <button id="loginBtn" class="primary" type="button">Sign in</button>
+      <p id="loginMsg" class="muted" aria-live="polite">Use the same account as the SkyTrace desktop app.</p>
     </section>
 
-    <section id="app" class="hidden app-shell">
-      <div class="toolbar">
-        <button id="refreshBtn">Refresh</button>
-        <button id="opsBtn">Operations</button>
-        <button id="replayBtn">Replay+</button>
-        <button id="logoutBtn" class="quiet">Sign out</button>
+    <section id="app" class="hidden app-shell" aria-label="Live aviation controls">
+      <div class="toolbar" role="group" aria-label="SkyTrace actions">
+        <button id="refreshBtn" type="button">Refresh</button>
+        <button id="opsBtn" type="button">Operations</button>
+        <button id="replayBtn" type="button">Replay+</button>
+        <button id="logoutBtn" class="quiet" type="button">Sign out</button>
       </div>
 
-      <div class="stats">
+      <div class="stats" aria-label="Traffic summary">
         <div><b id="visible">0</b><span>OBSERVED</span></div>
         <div><b id="alerts">0</b><span>OPS ITEMS</span></div>
       </div>
@@ -51,17 +53,17 @@
       <section class="traffic-card">
         <div class="section-head">
           <div><small>LIVE ADS-B</small><h2>Observed Traffic</h2></div>
-          <span id="trafficMeta">Waiting…</span>
+          <span id="trafficMeta" aria-live="polite">Waiting…</span>
         </div>
         <div id="list" class="traffic-list"><div class="empty-state">Refreshing observed traffic…</div></div>
       </section>
 
-      <div id="drawer" class="drawer hidden"></div>
+      <div id="drawer" class="drawer hidden" role="region" aria-label="SkyTrace detail" aria-live="polite"></div>
     </section>
 
-    <div id="installHint" class="install-hint hidden">Install on iPhone or iPad: use Share → Add to Home Screen.</div>
+    <div id="installHint" class="install-hint hidden" role="note">Install on iPhone or iPad: use Share → Add to Home Screen.</div>
     <footer>OpenFreeMap © OpenMapTiles · Data from OpenStreetMap · Live aircraft: ADSB.lol · Aviation weather: AviationWeather.gov</footer>
   </aside>
-  <script src="/app/web.js?v=34.2"></script>
+  <script src="/app/web.js?v=34.3"></script>
 </body>
 </html>
