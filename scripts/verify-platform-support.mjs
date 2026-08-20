@@ -51,6 +51,8 @@ const sw = path.join(web, "sw.js");
 const mobileCss = path.join(web, "web-mobile.css");
 const webIndex = path.join(web, "index.html");
 const webJs = path.join(web, "web.js");
+const iconSvg = path.join(web, "icon.svg");
+const touchIconBase64 = path.join(web, "apple-touch-icon.png.b64");
 const pwaHook = path.join(root, "commerce", "pwa-hook.js");
 const redeemHook = path.join(root, "commerce", "redeem-hook.js");
 
@@ -66,13 +68,28 @@ requireText(mobileCss, "env(safe-area-inset-bottom,0px)", "iOS bottom safe area"
 requireText(mobileCss, "height:clamp(430px,62dvh,640px)", "balanced iPhone portrait sheet");
 requireText(mobileCss, "width:clamp(380px,38vw,460px)", "purpose-built iPad panel proportions");
 requireText(mobileCss, "grid-template-columns:repeat(4,minmax(0,1fr))", "landscape/iPad toolbar proportions");
-requireText(mobileCss, "html.ios-keyboard-open .panel", "iOS keyboard viewport handling");
-requireText(mobileCss, "var(--skytrace-panel-height)", "measured map-control offset");
+requireText(mobileCss, "html.ios-ipad.ios-keyboard-open .panel", "iPad keyboard viewport handling");
+requireText(mobileCss, "html.ios-keyboard-open .panel", "iPhone keyboard viewport handling");
+requireText(mobileCss, "bottom:calc(var(--skytrace-panel-height) + max(8px,var(--skytrace-safe-bottom)) + 8px)", "measured phone-sheet map offset");
 requireText(webJs, "window.visualViewport", "iOS visual viewport runtime");
+requireText(webJs, "let panelResizeObserver = null", "persistent panel ResizeObserver reference");
+requireText(webJs, "restingViewportHeight", "stable pre-keyboard viewport baseline");
 requireText(webJs, "ResizeObserver", "measured panel proportions");
 requireText(webJs, 'root.classList.toggle("signed-in", inward)', "login/signed-in layout state");
 requireText(webJs, 'root.classList.toggle("ios-keyboard-open", keyboardOpen)', "keyboard visibility state");
 requireText(webJs, 'root.style.setProperty("--skytrace-panel-height"', "panel height CSS bridge");
+requireText(iconSvg, '<rect width="512" height="512" fill="#101114"/>', "full-bleed mask-safe PWA icon");
+
+requireFile(touchIconBase64, "Apple touch icon base64 source");
+const touchPng = Buffer.from(read(touchIconBase64).replace(/\s+/g, ""), "base64");
+const pngSignature = Buffer.from([137,80,78,71,13,10,26,10]);
+if (touchPng.length < 33 || !touchPng.subarray(0,8).equals(pngSignature)) throw new Error("Apple touch icon is not a valid PNG.");
+const touchWidth = touchPng.readUInt32BE(16);
+const touchHeight = touchPng.readUInt32BE(20);
+const touchColorType = touchPng[25];
+if (touchWidth !== 180 || touchHeight !== 180) throw new Error(`Apple touch icon must be 180x180, found ${touchWidth}x${touchHeight}.`);
+if (touchColorType === 4 || touchColorType === 6) throw new Error("Apple touch icon must be full-bleed without an alpha channel.");
+
 requireText(sw, 'const CACHE = "skytrace-web-v34-3"', "versioned PWA cache");
 requireText(sw, '"/app/web-mobile.css?v=34.3"', "cached mobile proportion stylesheet");
 requireText(sw, 'if (!url.pathname.startsWith("/app")) return;', "app-shell-only cache boundary");
