@@ -18,7 +18,6 @@ LOG_DIR="$HOME/Library/Logs/SkyTrace"
 LOG_FILE="$LOG_DIR/installer.log"
 RUNTIME_LOG="$LOG_DIR/desktop.log"
 DATA_DIR="$HOME/Library/Application Support/SkyTrace"
-SOURCE_DIR_FILE="$TMP/source-dir"
 READY_MARKER="renderer-ready: health=true shell=true degraded=false auth=true runtime=true"
 
 : "${SKYTRACE_COMMERCE_URL:=https://skytrace.duckdns.org}"
@@ -77,17 +76,19 @@ on_unexpected_error() {
 trap 'on_unexpected_error "$LINENO"' ERR
 
 run_step() {
-  local number="$1" label="$2"
+  local number="$1" label="$2" status=0
   shift 2
   local started="$SECONDS"
   printf '  %s[%s/8]%s %-30s' "$DIM" "$number" "$RESET" "$label"
   printf '\n--- [%s/8] %s ---\n' "$number" "$label" >> "$LOG_FILE"
+
   if "$@" >> "$LOG_FILE" 2>&1; then
     printf ' %s✓%s %ss\n' "$GREEN" "$RESET" "$((SECONDS - started))"
     return 0
+  else
+    status=$?
   fi
 
-  local status=$?
   printf ' %sfailed%s\n' "$RED" "$RESET" >&2
   printf '\n%s%s failed.%s\n' "$BOLD" "$label" "$RESET" >&2
   printf 'Installer log:\n  %s\n\n' "$LOG_FILE" >&2
