@@ -107,6 +107,7 @@ jobs:
             'pointInPolygon' \
             'showOnboarding' \
             'showWhatsNewIfNeeded' \
+            'setInterval(ensureWorkspace, 750)' \
             'skytrace:file:save-text' \
             'skytrace:system:open-external' \
             '/node_modules/maplibre-gl/dist/maplibre-gl.js'; do
