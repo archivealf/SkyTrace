@@ -69,6 +69,25 @@ if (!detached.includes('/v36-detached.css')) detached = replaceRequired(detached
 if (!detached.includes('/v36-detached.js')) detached = replaceRequired(detached, "</body>", '  <script src="/v36-detached.js"></script>\n</body>', "detached addon runtime");
 write("mac-detached.html", detached);
 
+// Electron documents app.setLoginItemSettings() as unreliable for unsigned Mac
+// builds. Product Preview intentionally remains unsigned, so use a normal
+// per-user LaunchAgent that opens the installed .app at the next login. This
+// needs no admin access, launchctl calls, Gatekeeper bypass, or Apple account.
+let nativeMain = read("mac-native-main.js");
+if (nativeMain.includes("app.setLoginItemSettings")) {
+  const oldLogin = `function setLoginAtStartup(enabled) {\n  try { app.setLoginItemSettings({ openAtLogin: Boolean(enabled), openAsHidden: false }); }\n  catch {}\n}`;
+  const unsignedLogin = `const UNSIGNED_LOGIN_AGENT_LABEL = "io.skytrace.desktop.login";\n\nfunction loginAgentXmlEscape(value) {\n  return String(value || "").replace(/[&<>\"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '\"': "&quot;", "'": "&apos;" })[ch]);\n}\n\nfunction unsignedLoginAgentPath() {\n  return path.join(app.getPath("home"), "Library", "LaunchAgents", \`${'${UNSIGNED_LOGIN_AGENT_LABEL}'}.plist\`);\n}\n\nfunction unsignedAppBundlePath() {\n  return path.dirname(path.dirname(path.dirname(process.execPath)));\n}\n\nfunction getLoginAtStartup() {\n  if (process.platform !== "darwin") return false;\n  try { return fs.existsSync(unsignedLoginAgentPath()); } catch { return false; }\n}\n\nfunction setLoginAtStartup(enabled) {\n  if (process.platform !== "darwin") return false;\n  const plistPath = unsignedLoginAgentPath();\n  try {\n    if (!enabled) {\n      fs.rmSync(plistPath, { force: true });\n      return false;\n    }\n    fs.mkdirSync(path.dirname(plistPath), { recursive: true });\n    const appPath = unsignedAppBundlePath();\n    const plist = [\n      '<?xml version="1.0" encoding="UTF-8"?>',\n      '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',\n      '<plist version="1.0">',\n      '<dict>',\n      '  <key>Label</key>',\n      \`  <string>\${UNSIGNED_LOGIN_AGENT_LABEL}</string>\`,\n      '  <key>ProgramArguments</key>',\n      '  <array>',\n      '    <string>/usr/bin/open</string>',\n      \`    <string>\${loginAgentXmlEscape(appPath)}</string>\`,\n      '  </array>',\n      '  <key>RunAtLoad</key>',\n      '  <true/>',\n      '  <key>LimitLoadToSessionType</key>',\n      '  <string>Aqua</string>',\n      '</dict>',\n      '</plist>'\n    ].join("\\n") + "\\n";\n    fs.writeFileSync(plistPath, plist, { mode: 0o600 });\n    try { fs.chmodSync(plistPath, 0o600); } catch {}\n    return true;\n  } catch (error) {\n    console.error("SkyTrace unsigned login item:", error?.message || error);\n    return false;\n  }\n}`;
+  nativeMain = replaceRequired(nativeMain, oldLogin, unsignedLogin, "unsigned-safe Launch at Login");
+  nativeMain = replaceRequired(
+    nativeMain,
+    'ipcMain.handle("skytrace:login-item:get", () => app.getLoginItemSettings().openAtLogin);',
+    'ipcMain.handle("skytrace:login-item:get", () => getLoginAtStartup());',
+    "LaunchAgent login-item state"
+  );
+  write("mac-native-main.js", nativeMain);
+  check("mac-native-main.js");
+}
+
 const packagePath = target("package.json");
 const pkg = JSON.parse(fs.readFileSync(packagePath, "utf8"));
 pkg.dependencies = { ...(pkg.dependencies || {}), "maplibre-gl": maplibreVersion };
@@ -80,7 +99,7 @@ fs.writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
 const changelog = target("CHANGELOG.md");
 if (fs.existsSync(changelog)) {
   const old = fs.readFileSync(changelog, "utf8");
-  if (!old.includes("Product Preview R4")) fs.writeFileSync(changelog, old.replace(/^# SkyTrace Changelog\s*/, "# SkyTrace Changelog\n\n## Product Preview R4\n\n- Added first-run onboarding and a What's New experience.\n- Added verified GitHub update checks for the unsigned manual-release workflow.\n- Added SkyTrace Timeline: private local airspace rewind, playback speeds, filtering and CSV export.\n- Added named Watchlists 2.0 and circle/polygon geofence alerts.\n- Added an in-app Notification Center with local alert history.\n- Added Command Centre 2.0 and expanded Mac keyboard shortcuts.\n- Added adaptive zoom-based aircraft label decluttering with watchlist priority labels.\n- Added aircraft notes/tags/quick-watch tools and Airport Desk favorites.\n- Replaced CDN-loaded MapLibre JS/CSS with the packaged maplibre-gl dependency.\n\n"));
+  if (!old.includes("Product Preview R4")) fs.writeFileSync(changelog, old.replace(/^# SkyTrace Changelog\s*/, "# SkyTrace Changelog\n\n## Product Preview R4\n\n- Added first-run onboarding and a What's New experience.\n- Added verified GitHub update checks for the unsigned manual-release workflow.\n- Added SkyTrace Timeline: private local airspace rewind, playback speeds, filtering and CSV export.\n- Added named Watchlists 2.0 and circle/polygon geofence alerts.\n- Added an in-app Notification Center with local alert history.\n- Added Command Centre 2.0 and expanded Mac keyboard shortcuts.\n- Added adaptive zoom-based aircraft label decluttering with watchlist priority labels.\n- Added aircraft notes/tags/quick-watch tools and Airport Desk favorites.\n- Replaced CDN-loaded MapLibre JS/CSS with the packaged maplibre-gl dependency.\n- Added an unsigned-safe per-user LaunchAgent fallback for Launch at Login.\n\n"));
 }
 
-console.log(`Applied SkyTrace Product Preview R4 with local MapLibre ${maplibreVersion}.`);
+console.log(`Applied SkyTrace Product Preview R4 with local MapLibre ${maplibreVersion} and unsigned-safe Launch at Login.`);
