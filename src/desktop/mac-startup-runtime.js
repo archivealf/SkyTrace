@@ -58,7 +58,9 @@ export function installMacStartupRuntime({ diagnosticLogPath = "", getMainWindow
   ipcMain.on("skytrace:startup:ready", (_event, payload = {}) => {
     if (readyReported) return;
     readyReported = true;
-    const detail = `health=${payload.health === true} auth=${payload.auth === true} runtime=${payload.runtime === true} shell=${payload.shell === true} degraded=${payload.degraded === true} reason=${clean(payload.reason, 160)} url=${clean(payload.url, 500)}`;
+    // Keep the first three fields stable for installer/workflow compatibility;
+    // auth/runtime extend the stronger R3 readiness contract.
+    const detail = `health=${payload.health === true} shell=${payload.shell === true} degraded=${payload.degraded === true} auth=${payload.auth === true} runtime=${payload.runtime === true} reason=${clean(payload.reason, 160)} url=${clean(payload.url, 500)}`;
     append("renderer-ready", detail);
     if (process.env.SKYTRACE_SMOKE_TEST === "1") {
       setTimeout(() => app.exit(payloadHealthy(payload) ? 0 : 2), 250);
