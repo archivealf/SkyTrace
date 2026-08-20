@@ -68,7 +68,7 @@
 
       <section class="traffic-card">
         <div class="section-head">
-          <div><small>LIVE ADS-B</small><h2>Observed Traffic</h2></div>
+          <div><small>LIVE TRAFFIC</small><h2>Observed Traffic</h2></div>
           <span id="trafficMeta" aria-live="polite">Waiting…</span>
         </div>
         <div id="list" class="traffic-list"><div class="empty-state">Refreshing observed traffic…</div></div>
@@ -78,10 +78,24 @@
     </section>
 
     <div id="installHint" class="install-hint hidden" role="note">Install on iPhone or iPad: use Share → Add to Home Screen.</div>
-    <footer>OpenFreeMap © OpenMapTiles · Data from OpenStreetMap · Live aircraft: ADSB.lol · Aviation weather: AviationWeather.gov</footer>
+    <footer>OpenFreeMap © OpenMapTiles · Data from OpenStreetMap · Live aviation &amp; operations data</footer>
   </aside>
   <script src="/app/airlines.js?v=34.8"></script>
   <script src="/app/web.js?v=34.8"></script>
   <script src="/app/web-mobile.js?v=34.8"></script>
+  <script>
+    (() => {
+      const status = document.getElementById('status');
+      if (!status) return;
+      const sanitiseProviderStatus = () => {
+        const value = String(status.textContent || '').trim();
+        if (!value.includes('·')) return;
+        status.textContent = 'Live';
+        status.title = 'Live aviation data connected';
+      };
+      sanitiseProviderStatus();
+      new MutationObserver(sanitiseProviderStatus).observe(status, { childList: true, characterData: true, subtree: true });
+    })();
+  </script>
 </body>
 </html>
