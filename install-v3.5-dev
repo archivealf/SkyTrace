@@ -1,0 +1,200 @@
+#!/usr/bin/env bash
+set -eEuo pipefail
+
+OWNER="archivealf"
+REPO="SkyTrace"
+REF="v3.5-mac-native"
+APP_NAME="SkyTrace"
+EXPECTED_VERSION="3.5.0"
+EXPECTED_BUNDLE_ID="io.skytrace.desktop"
+EXPECTED_BUILD_MARKER="mac-native-main.js"
+BUILD_LABEL="SkyTrace V3.5 Mac Native"
+PORTABLE_NODE_VERSION="22.23.2"
+
+INSTALL_DIR="$HOME/Applications"
+APP_PATH="$INSTALL_DIR/$APP_NAME.app"
+SOURCE_ZIP="https://github.com/${OWNER}/${REPO}/archive/refs/heads/${REF}.zip"
+LOG_DIR="$HOME/Library/Logs/SkyTrace"
+LOG_FILE="$LOG_DIR/installer.log"
+
+: "${SKYTRACE_COMMERCE_URL:=https://skytrace.duckdns.org}"
+export SKYTRACE_COMMERCE_URL
+export npm_config_audit=false
+export npm_config_fund=false
+export npm_config_update_notifier=false
+
+case "$(uname -m)" in
+  arm64)
+    ARCH="arm64"
+    ARCH_LABEL="Apple Silicon"
+    ARCH_DETAIL="Apple Silicon (arm64)"
+    NODE_DIST_ARCH="arm64"
+    ;;
+  x86_64)
+    ARCH="x64"
+    ARCH_LABEL="Intel"
+    ARCH_DETAIL="Intel (x86_64)"
+    NODE_DIST_ARCH="x64"
+    ;;
+  *)
+    printf 'SkyTrace does not support this Mac architecture: %s\n' "$(uname -m)" >&2
+    exit 1
+    ;;
+esac
+
+if [[ -t 1 && "${TERM:-dumb}" != "dumb" ]]; then
+  BOLD=$'\033[1m'
+  DIM=$'\033[2m'
+  GREEN=$'\033[32m'
+  RED=$'\033[31m'
+  RESET=$'\033[0m'
+else
+  BOLD=""
+  DIM=""
+  GREEN=""
+  RED=""
+  RESET=""
+fi
+
+TMP="$(mktemp -d)"
+mkdir -p "$INSTALL_DIR" "$LOG_DIR"
+: > "$LOG_FILE"
+
+cleanup() { rm -rf "$TMP"; }
+trap cleanup EXIT
+
+on_unexpected_error() {
+  local line="${1:-unknown}"
+  printf '\n%sInstallation stopped unexpectedly.%s\n' "$RED" "$RESET" >&2
+  printf 'Details were saved to:\n  %s\n' "$LOG_FILE" >&2
+  printf '%sFailed near installer line %s.%s\n' "$DIM" "$line" "$RESET" >&2
+}
+trap 'on_unexpected_error "$LINENO"' ERR
+
+run_step() {
+  local number="$1" label="$2"
+  shift 2
+  local started="$SECONDS"
+  printf '  %s[%s/8]%s %-30s' "$DIM" "$number" "$RESET" "$label"
+  printf '\n--- [%s/8] %s ---\n' "$number" "$label" >> "$LOG_FILE"
+  if "$@" >> "$LOG_FILE" 2>&1; then
+    printf ' %s✓%s %ss\n' "$GREEN" "$RESET" "$((SECONDS - started))"
+  else
+    local status=$?
+    printf ' %sfailed%s\n' "$RED" "$RESET" >&2
+    printf '\n%s%s failed.%s\n' "$BOLD" "$label" "$RESET" >&2
+    printf 'Installer log:\n  %s\n\n' "$LOG_FILE" >&2
+    printf '%sLast log lines:%s\n' "$DIM" "$RESET" >&2
+    tail -n 28 "$LOG_FILE" | sed 's/^/  /' >&2 || true
+    exit "$status"
+  fi
+}
+
+node_is_supported() {
+  command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 &&
+  node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major > 22 || (major === 22 && minor >= 12) ? 0 : 1);' >/dev/null 2>&1
+}
+
+prepare_runtime() {
+  if node_is_supported; then
+    printf 'Architecture: %s\nUsing system Node %s\n' "$ARCH_DETAIL" "$(node --version)" >> "$LOG_FILE"
+    return 0
+  fi
+  local archive="node-v${PORTABLE_NODE_VERSION}-darwin-${NODE_DIST_ARCH}.tar.gz"
+  local base="https://nodejs.org/dist/v${PORTABLE_NODE_VERSION}"
+  local archive_path="$TMP/$archive" sums_path="$TMP/SHASUMS256.txt"
+  printf 'System Node is unavailable or below 22.12; using temporary Node %s.\n' "$PORTABLE_NODE_VERSION" >> "$LOG_FILE"
+  curl --fail --location --silent --show-error "$base/$archive" --output "$archive_path"
+  curl --fail --location --silent --show-error "$base/SHASUMS256.txt" --output "$sums_path"
+  local expected actual
+  expected="$(awk -v name="$archive" '$2 == name { print $1; exit }' "$sums_path")"
+  [[ -n "$expected" ]] || { printf 'Could not verify the temporary Node download.\n' >&2; return 1; }
+  actual="$(shasum -a 256 "$archive_path" | awk '{print $1}')"
+  [[ "$actual" == "$expected" ]] || { printf 'Temporary Node checksum mismatch.\n' >&2; return 1; }
+  tar -xzf "$archive_path" -C "$TMP"
+  export PATH="$TMP/node-v${PORTABLE_NODE_VERSION}-darwin-${NODE_DIST_ARCH}/bin:$PATH"
+  node_is_supported
+  printf 'Architecture: %s\nUsing temporary Node %s\n' "$ARCH_DETAIL" "$(node --version)" >> "$LOG_FILE"
+}
+
+download_source() {
+  curl --fail --location --silent --show-error "$SOURCE_ZIP" --output "$TMP/source.zip"
+  mkdir -p "$TMP/source"
+  ditto -x -k "$TMP/source.zip" "$TMP/source"
+  SOURCE_DIR="$(find "$TMP/source" -maxdepth 1 -type d -name 'SkyTrace-*' -print -quit)"
+  [[ -n "$SOURCE_DIR" ]] || { printf 'SkyTrace source directory was not found.\n' >&2; return 1; }
+  cd "$SOURCE_DIR"
+}
+
+prepare_release() {
+  bash scripts/materialize-v3.5.sh
+  node scripts/harden-commercial-build.mjs
+  node src/build/verify-v35.mjs
+  node scripts/audit-runtime.mjs
+}
+
+install_dependencies() { npm install --no-audit --no-fund --loglevel=error; }
+download_data() { npm run --silent data; }
+
+verify_release() {
+  npm run --silent check
+  node src/build/verify-v35.mjs
+  node scripts/audit-runtime.mjs
+}
+
+build_application() {
+  npm run --silent icon:mac
+  npm run --silent package -- --arch="$ARCH"
+  FOUND_APP="$(find out -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit)"
+  [[ -n "$FOUND_APP" ]] || { printf 'SkyTrace.app was not produced.\n' >&2; return 1; }
+}
+
+install_application() {
+  local plist="$FOUND_APP/Contents/Info.plist"
+  local asar="$FOUND_APP/Contents/Resources/app.asar"
+  local built_version built_bundle_id
+  built_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist" 2>/dev/null || true)"
+  built_bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist" 2>/dev/null || true)"
+  [[ "$built_version" == "$EXPECTED_VERSION" ]] || { printf 'Unexpected app version: %s\n' "${built_version:-unknown}" >&2; return 1; }
+  [[ "$built_bundle_id" == "$EXPECTED_BUNDLE_ID" ]] || { printf 'Unexpected bundle ID: %s\n' "${built_bundle_id:-unknown}" >&2; return 1; }
+  [[ -f "$asar" ]] || { printf 'Packaged app.asar is missing.\n' >&2; return 1; }
+  grep -aF "$EXPECTED_BUILD_MARKER" "$asar" >/dev/null || { printf 'V3.5 native runtime marker is missing.\n' >&2; return 1; }
+  grep -aF 'Private Local Replay' "$asar" >/dev/null || { printf 'Private Local Replay is missing from the package.\n' >&2; return 1; }
+  grep -aF 'SkyTrace Command Centre' "$asar" >/dev/null || { printf 'Command Centre is missing from the package.\n' >&2; return 1; }
+  if [[ -d "$APP_PATH" ]]; then rm -rf "$APP_PATH"; fi
+  ditto "$FOUND_APP" "$APP_PATH"
+  INSTALLED_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Contents/Info.plist" 2>/dev/null || true)"
+  INSTALLED_BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Contents/Info.plist" 2>/dev/null || true)"
+  [[ "$INSTALLED_VERSION" == "$EXPECTED_VERSION" ]]
+  [[ "$INSTALLED_BUNDLE_ID" == "$EXPECTED_BUNDLE_ID" ]]
+}
+
+case "$SKYTRACE_COMMERCE_URL" in https://*) ;; *) printf 'SKYTRACE_COMMERCE_URL must use HTTPS.\n' >&2; exit 1 ;; esac
+
+printf '\n%sSkyTrace Installer%s\n' "$BOLD" "$RESET"
+printf '%s────────────────────────────────────────%s\n' "$DIM" "$RESET"
+printf '  Release       %s\n' "$BUILD_LABEL"
+printf '  Mac           %s\n' "$ARCH_LABEL"
+printf '  Signing       Unsigned / no Apple subscription required\n'
+printf '  Destination   ~/Applications/SkyTrace.app\n'
+printf '%s────────────────────────────────────────%s\n\n' "$DIM" "$RESET"
+
+printf 'Installing...\n'
+run_step 1 "Build runtime" prepare_runtime
+run_step 2 "Download release" download_source
+run_step 3 "Prepare SkyTrace" prepare_release
+run_step 4 "Install dependencies" install_dependencies
+run_step 5 "Aviation data" download_data
+run_step 6 "Verify release" verify_release
+run_step 7 "Build application" build_application
+run_step 8 "Install application" install_application
+
+printf '\n%s✓ SkyTrace V3.5 is ready%s\n' "$GREEN$BOLD" "$RESET"
+printf '%s────────────────────────────────────────%s\n' "$DIM" "$RESET"
+printf '  Version       %s\n' "$INSTALLED_VERSION"
+printf '  Architecture  %s\n' "$ARCH_LABEL"
+printf '  Location      ~/Applications/SkyTrace.app\n'
+printf '  Updates       Verified manual GitHub releases\n'
+printf '%s────────────────────────────────────────%s\n' "$DIM" "$RESET"
+printf 'Opening SkyTrace...\n\n'
+open "$APP_PATH"
