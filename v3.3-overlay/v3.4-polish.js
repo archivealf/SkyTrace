@@ -73,8 +73,6 @@
     loading.setAttribute("aria-live", "polite");
     loading.setAttribute("aria-label", "Starting SkyTrace");
 
-    // Keep the first <span> as the live status text: the existing app updates
-    // loading.querySelector("span") if aviation data takes unusually long.
     loading.innerHTML = `
       <div class="startup-shell">
         <span class="startup-status">Preparing live aviation data…</span>
@@ -88,6 +86,39 @@
     return true;
   }
 
+  function polishDetailPanels() {
+    document.querySelectorAll(".flight-card").forEach(panel => {
+      panel.classList.add("skytrace-aircraft-detail");
+      panel.setAttribute("role", "region");
+      panel.setAttribute("aria-label", "Aircraft details");
+    });
+    document.querySelectorAll(".airport-panel").forEach(panel => {
+      panel.classList.add("skytrace-airport-detail");
+      panel.setAttribute("role", "region");
+      panel.setAttribute("aria-label", "Airport details");
+    });
+    document.querySelectorAll(".metadata-empty").forEach(empty => empty.classList.add("skytrace-empty-state"));
+    document.querySelectorAll(".airport-traffic-row").forEach(row => {
+      if (!row.hasAttribute("type")) row.setAttribute("type", "button");
+      if (!row.getAttribute("aria-label")) {
+        const label = String(row.textContent || "").replace(/\s+/g, " ").trim();
+        if (label) row.setAttribute("aria-label", `Open aircraft ${label}`);
+      }
+    });
+  }
+
+  let detailPolishScheduled = false;
+  function scheduleDetailPolish() {
+    if (detailPolishScheduled) return;
+    detailPolishScheduled = true;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        detailPolishScheduled = false;
+        polishDetailPanels();
+      });
+    });
+  }
+
   function polishStaticUi() {
     document.documentElement.classList.add("skytrace-polished");
 
@@ -99,11 +130,13 @@
 
     document.querySelectorAll(".detail-close").forEach(button => {
       if (!button.getAttribute("title")) button.setAttribute("title", "Close");
+      if (!button.getAttribute("aria-label")) button.setAttribute("aria-label", "Close details");
     });
 
     document.querySelectorAll(".mode-tab, .detail-tab, .round-button").forEach(button => {
       if (!button.hasAttribute("type")) button.setAttribute("type", "button");
     });
+    polishDetailPanels();
   }
 
   function boot() {
@@ -112,9 +145,17 @@
     return found;
   }
 
-  // The base bundle's startup element has changed names across builds. Run
-  // immediately and retry once at DOMContentLoaded instead of depending on a
-  // single historical selector.
+  document.addEventListener("click", event => {
+    if (event.target instanceof Element && event.target.closest(".aircraft-row,.airport-row,.airport-traffic-row,.detail-tab,.mode-tab")) {
+      scheduleDetailPolish();
+    }
+  }, true);
+  document.addEventListener("keydown", event => {
+    if ((event.key === "Enter" || event.key === " ") && event.target instanceof Element && event.target.closest(".aircraft-row,.airport-row")) {
+      scheduleDetailPolish();
+    }
+  }, true);
+
   const foundImmediately = boot();
   if (!foundImmediately && document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot, { once: true });
