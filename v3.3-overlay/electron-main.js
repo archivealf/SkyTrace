@@ -112,7 +112,10 @@ async function createWindow(url) {
     }
   });
 
-  mainWindow.once("ready-to-show", () => {
+  // Wait for the renderer document and its startup-polish script to finish
+  // loading before exposing the window. This prevents the legacy loader from
+  // flashing for a frame before the V3.4 launch screen is in place.
+  mainWindow.webContents.once("did-finish-load", () => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
   });
 
