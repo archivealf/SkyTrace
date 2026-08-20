@@ -11,6 +11,16 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SkyTrace">
   <meta name="skytrace-web-build" content="34.8">
+  <script>
+    (() => {
+      const ipad = /iPad/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent) || ipad;
+      document.documentElement.classList.toggle('ios-device', ios);
+      document.documentElement.classList.toggle('ios-ipad', ipad);
+      document.documentElement.classList.toggle('ios-iphone', ios && !ipad);
+      document.documentElement.classList.toggle('standalone-webapp', window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true);
+    })();
+  </script>
   <title>SkyTrace Web</title>
   <link rel="manifest" href="/app/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
