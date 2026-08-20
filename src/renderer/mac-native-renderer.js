@@ -62,8 +62,10 @@
   function applySettings(settings) {
     state.settings = settings || {};
     const profile = state.settings.performanceProfile || "balanced";
-    localStorage.setItem("skytrace.performanceProfile", profile);
-    localStorage.setItem("skytrace.performanceMode", profile === "accuracy" ? "false" : "true");
+    try {
+      localStorage.setItem("skytrace.performanceProfile", profile);
+      localStorage.setItem("skytrace.performanceMode", profile === "accuracy" ? "false" : "true");
+    } catch {}
     document.documentElement.dataset.skytracePerformance = profile;
     document.documentElement.dataset.skytraceLabelDensity = state.settings.trafficLabelDensity || "normal";
     document.documentElement.classList.toggle("skytrace-reduced-motion", Boolean(state.settings.reducedMotion));
@@ -103,7 +105,7 @@
           const cached = cachedFlightResponse();
           if (cached) {
             state.offline = true;
-            updateNativeStatus(cached ? (readCachedFlights()?.flights?.length || 0) : 0, true);
+            updateNativeStatus(readCachedFlights()?.flights?.length || 0, true);
             return cached;
           }
         }
@@ -121,6 +123,10 @@
       }
     };
   }
+
+  // Install before DOMContentLoaded so the very first flight request is covered.
+  patchFetch();
+  window.__skytraceMacFetchEarly = true;
 
   function resolveMap() {
     state.map = state.map || window.__SKYTRACE_MAP__ || null;
@@ -388,16 +394,19 @@
   });
 
   function boot() {
-    patchFetch();
     keyboard();
     installDetachShortcuts();
     watchAlerts();
     ensurePalette();
     ensureMacPanel();
-    const observer = new MutationObserver(() => ensureMacPanel());
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    let panelAttempts = 0;
+    const panelTimer = setInterval(() => {
+      panelAttempts += 1;
+      if ($("macNativeView") || panelAttempts >= 40) { clearInterval(panelTimer); return; }
+      ensureMacPanel();
+    }, 250);
     setInterval(() => updateNativeStatus(readCachedFlights()?.flights?.length || document.querySelectorAll(".aircraft-row").length, state.offline), 5000);
-    loadSettings();
+    void loadSettings();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
