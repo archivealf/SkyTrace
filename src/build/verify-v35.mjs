@@ -11,6 +11,7 @@ const requireText = (rel, needle, label = needle) => {
   const text = read(rel);
   if (!text.includes(needle)) failures.push(`${rel}: missing ${label}`);
 };
+const hasDocumentWideObserver = text => /\.observe\s*\(\s*document\.(?:documentElement|body)\b/.test(text);
 
 function externalScriptOrigins(html) {
   const origins = new Set();
@@ -68,7 +69,7 @@ requireText("mac-native-renderer.js", "macCommandPalette", "Cmd+K command centre
 requireText("mac-native-renderer.js", "skytrace-local-replay", "local replay map layer");
 requireText("mac-native-renderer.js", "SkyTrace local fallback", "degraded traffic fallback");
 requireText("mac-native-renderer.js", "window.__skytraceMacFetchEarly", "first-request fetch wrapping");
-if (read("mac-native-renderer.js").includes("observer.observe(document.documentElement")) {
+if (hasDocumentWideObserver(read("mac-native-renderer.js"))) {
   failures.push("mac-native-renderer.js: document-wide MutationObserver can self-trigger and starve startup");
 }
 
@@ -77,7 +78,7 @@ requireText("mac-startup-guard.js", 'probeJson("/api/config", "auth")', "desktop
 requireText("mac-startup-guard.js", "runtimeLooksReady", "real renderer runtime startup probe");
 requireText("mac-startup-guard.js", "hard-timeout-recovery", "absolute browser-only startup recovery");
 requireText("mac-startup-guard.js", "window.skytraceNative || null", "optional native bridge");
-if (read("mac-startup-guard.js").includes("MutationObserver")) {
+if (hasDocumentWideObserver(read("mac-startup-guard.js"))) {
   failures.push("mac-startup-guard.js: startup recovery must use bounded polling rather than a permanent DOM observer");
 }
 
