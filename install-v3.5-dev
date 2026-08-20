@@ -6,8 +6,8 @@ REPO="SkyTrace"
 APP_NAME="SkyTrace"
 EXPECTED_VERSION="3.5.0"
 EXPECTED_BUNDLE_ID="io.skytrace.desktop"
-BUILD_LABEL="SkyTrace V3.5 Product Preview R4.2 Login-Safe Audited"
-SOURCE_REV="1e693a0232d06d36249b8186bf06419233845211"
+BUILD_LABEL="SkyTrace V3.5 Product Preview R4.3 No-Login Audited"
+SOURCE_REV="9c7274dd1c9e6d4170fc31f3cac764e3161a852e"
 PORTABLE_NODE_VERSION="22.23.2"
 
 INSTALL_DIR="$HOME/Applications"
@@ -17,6 +17,7 @@ LOG_DIR="$HOME/Library/Logs/SkyTrace"
 LOG_FILE="$LOG_DIR/installer.log"
 RUNTIME_LOG="$LOG_DIR/desktop.log"
 DATA_DIR="$HOME/Library/Application Support/SkyTrace"
+LEGACY_LOGIN_PLIST="$HOME/Library/LaunchAgents/io.skytrace.desktop.login.plist"
 READY_MARKER="renderer-ready: health=true shell=true degraded=false auth=true runtime=true"
 
 : "${SKYTRACE_COMMERCE_URL:=https://skytrace.duckdns.org}"
@@ -100,7 +101,7 @@ download_source() {
   ditto -x -k "$TMP/source.zip" "$TMP/source" || return
   SOURCE_DIR="$(find "$TMP/source" -maxdepth 1 -type d -name 'SkyTrace-*' -print -quit)"
   [[ -n "$SOURCE_DIR" && -d "$SOURCE_DIR" ]] || return 1
-  grep -F 'Product Preview R4 audited runtime' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
+  grep -F 'Product Preview R4.3 no-login audited runtime' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
   grep -F 'apply-v36.mjs' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
   grep -F 'verify-v36.mjs' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
   grep -F 'SkyTrace Timeline' "$SOURCE_DIR/src/renderer/v36-product.js" >/dev/null || return 1
@@ -108,10 +109,11 @@ download_source() {
   grep -F 'evaluateGeofences' "$SOURCE_DIR/src/renderer/v36-product.js" >/dev/null || return 1
   grep -F 'setInterval(ensureWorkspace, 750)' "$SOURCE_DIR/src/renderer/v36-detached.js" >/dev/null || return 1
   grep -F 'node_modules/maplibre-gl' "$SOURCE_DIR/src/build/apply-v36.mjs" >/dev/null || return 1
-  grep -F 'UNSIGNED_LOGIN_AGENT_LABEL' "$SOURCE_DIR/src/build/apply-v36.mjs" >/dev/null || return 1
-  grep -F 'Legacy V3.5 verifier compatibility marker' "$SOURCE_DIR/src/build/apply-v36.mjs" >/dev/null || return 1
-  grep -F 'signed-app Electron login item API' "$SOURCE_DIR/src/build/verify-v36.mjs" >/dev/null || return 1
+  grep -F 'Launch at Login was removed from SkyTrace' "$SOURCE_DIR/src/build/apply-v36.mjs" >/dev/null || return 1
+  grep -F 'legacy login plist cleanup' "$SOURCE_DIR/src/build/verify-v36.mjs" >/dev/null || return 1
   grep -F 'margin-left:64px!important' "$SOURCE_DIR/src/renderer/mac-ui-fixes.css" >/dev/null || return 1
+  if grep -F 'Launch at Login' "$SOURCE_DIR/src/renderer/settings/mac-settings.html" >/dev/null; then return 1; fi
+  if grep -F 'getLaunchAtLogin' "$SOURCE_DIR/src/desktop/mac-native-preload.cjs" >/dev/null; then return 1; fi
   printf 'Pinned source revision: %s\n' "$SOURCE_REV"
 }
 
@@ -160,6 +162,10 @@ clear_disposable_caches() {
   done
 }
 
+cleanup_removed_login_item() {
+  rm -f "$LEGACY_LOGIN_PLIST"
+}
+
 smoke_test() {
   local executable="$APP_PATH/Contents/MacOS/SkyTrace" pid ready=0
   [[ -x "$executable" ]] || return 1
@@ -205,11 +211,24 @@ install_application() {
     'setInterval(ensureWorkspace, 750)' \
     'skytrace:file:save-text' \
     'skytrace:system:open-external' \
-    'UNSIGNED_LOGIN_AGENT_LABEL' \
+    'Launch at Login was removed from SkyTrace' \
+    'io.skytrace.desktop.login.plist' \
     '/node_modules/maplibre-gl/dist/maplibre-gl.js'; do
-    grep -aF "$marker" "$asar" >/dev/null || { echo "Missing packaged Product Preview R4.2 marker: $marker"; return 1; }
+    grep -aF "$marker" "$asar" >/dev/null || { echo "Missing packaged Product Preview R4.3 marker: $marker"; return 1; }
+  done
+  for forbidden in \
+    'skytrace:login-item' \
+    'getLaunchAtLogin' \
+    'setLaunchAtLogin' \
+    'v36OnboardLogin' \
+    'Launch SkyTrace at login'; do
+    if grep -aF "$forbidden" "$asar" >/dev/null; then
+      echo "Removed Launch at Login content is still packaged: $forbidden"
+      return 1
+    fi
   done
   stop_existing_app || return
+  cleanup_removed_login_item || return
   clear_disposable_caches || return
   rm -rf "$APP_PATH"
   ditto "$found_app" "$APP_PATH" || return
@@ -224,6 +243,7 @@ printf '  Release       %s\n' "$BUILD_LABEL"
 printf '  Source        %.12s\n' "$SOURCE_REV"
 printf '  Mac           %s\n' "$ARCH_LABEL"
 printf '  Signing       Unsigned / no Apple subscription required\n'
+printf '  Login item    Removed\n'
 printf '  Destination   ~/Applications/SkyTrace.app\n'
 printf '%s────────────────────────────────────────%s\n\n' "$DIM" "$RESET"
 
@@ -234,11 +254,12 @@ run_step 4 "Install dependencies" install_dependencies || fail "Install dependen
 run_step 5 "Aviation data" download_data || fail "Aviation data"
 run_step 6 "Verify Product Preview" verify_release || fail "Verify Product Preview"
 run_step 7 "Build application" build_application || fail "Build application"
-run_step 8 "Install + R4.2 startup test" install_application || fail "Install + R4.2 startup test"
+run_step 8 "Install + R4.3 startup test" install_application || fail "Install + R4.3 startup test"
 
-printf '\n%s✓ SkyTrace V3.5 Product Preview R4.2 passed its audited startup test%s\n' "$GREEN$BOLD" "$RESET"
+printf '\n%s✓ SkyTrace V3.5 Product Preview R4.3 passed its audited startup test%s\n' "$GREEN$BOLD" "$RESET"
 printf '  Version       %s\n' "$EXPECTED_VERSION"
 printf '  Architecture  %s\n' "$ARCH_LABEL"
+printf '  Login item    Removed\n'
 printf '  Location      ~/Applications/SkyTrace.app\n'
 printf '  Runtime log   ~/Library/Logs/SkyTrace/desktop.log\n'
 printf 'Opening SkyTrace...\n\n'
