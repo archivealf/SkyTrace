@@ -80,8 +80,10 @@ body.skytrace-mac-view-active #sidebar{
 }
 .mac-native-mode-tab b{font-weight:620!important}
 
+/* Preserve the base map/layer panel's native fixed/right-side positioning.
+   The R3.3 rule forced position:relative, which moved this panel into normal
+   document flow and left it hidden behind the navigation rail. */
 .skytrace-layer-panel{
-  position:relative!important;
   transition:max-height .2s ease,opacity .2s ease!important;
 }
 .skytrace-layer-toggle{
@@ -141,9 +143,20 @@ html[data-skytrace-label-density="low"][data-skytrace-traffic-load="dense"] .air
 }
 
 @media(max-width:1200px) and (min-width:901px){
+  /* On compact desktop windows the base sheet sits underneath the 64px rail.
+     Offset the sheet as a whole instead of padding every view, which preserves
+     metric grids and list widths while keeping headings fully visible. */
   html:not(.skytrace-mac-view-active) #sidebar,
-  body:not(.skytrace-mac-view-active) #sidebar{width:380px!important;max-width:380px!important}
+  body:not(.skytrace-mac-view-active) #sidebar{
+    width:330px!important;
+    max-width:330px!important;
+    margin-left:64px!important;
+  }
   html.skytrace-mac-view-active #sidebar,
-  body.skytrace-mac-view-active #sidebar{width:300px!important;max-width:300px!important}
+  body.skytrace-mac-view-active #sidebar{
+    width:300px!important;
+    max-width:300px!important;
+    margin-left:64px!important;
+  }
   .bottom-status.skytrace-compact-status{max-width:calc(100vw - 190px)!important}
 }
