@@ -1,4 +1,12 @@
-/* SkyTrace iPhone interactive bottom sheet */
+/* SkyTrace iPhone interactive bottom sheet + iOS map viewport guard */
+
+/* The map is already fixed to all four viewport edges in web.css. Do not also
+   force it to VisualViewport height: on iOS that can expose the page background
+   below the WebGL canvas when Safari/Home Screen chrome changes size. */
+html.ios-device,html.ios-device body{height:100%!important;min-height:100%!important;width:100%}
+html.ios-device body{position:fixed;inset:0;overflow:hidden}
+html.ios-device #map{position:fixed!important;inset:0!important;width:auto!important;height:auto!important;min-height:0!important}
+
 .sheet-handle{display:none}
 
 @media(max-width:700px) and (orientation:portrait){
