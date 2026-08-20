@@ -83,6 +83,7 @@ fi
 node "$OVERLAY/scripts/optimize-performance.mjs" "$ROOT"
 node "$OVERLAY/scripts/stabilize-runtime.mjs" "$ROOT"
 node "$OVERLAY/scripts/stabilize-replay.mjs" "$ROOT"
+node "$OVERLAY/scripts/apply-desktop-services.mjs" "$ROOT"
 node - "$ROOT/index.html" "$ROOT/app.v3.js" <<'NODE'
 const fs = require("fs");
 const htmlFile = process.argv[2];
@@ -111,4 +112,4 @@ node "$OVERLAY/scripts/finalize-v3.4.mjs" "$ROOT"
 rm -rf "$ROOT/source-payload-fixed" "$ROOT/.github"
 rm -f "$ROOT/trigger-build.txt"
 rm -rf "$OVERLAY"
-echo "Materialized SkyTrace V3.4.0 RC1 with Cloud, Operations, Replay+, Airport Intelligence, UI polish and runtime stability fixes."
+echo "Materialized SkyTrace V3.4.0 RC1 with Cloud, Operations, Replay+, Airport Intelligence, native updates, diagnostics, UI polish and runtime stability fixes."
