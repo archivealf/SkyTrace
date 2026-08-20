@@ -43,6 +43,101 @@
 .metric,.telemetry-row>div,.metadata-item{background:rgba(255,255,255,.038)!important}
 .detail-close{box-shadow:inset 0 1px rgba(255,255,255,.04)!important}
 
+/* Aircraft + airport details ------------------------------------------ */
+.skytrace-aircraft-detail,.skytrace-airport-detail{
+  overflow:hidden!important;
+  border-color:rgba(255,255,255,.12)!important;
+  background:linear-gradient(160deg,rgba(133,155,255,.055),transparent 22%),rgba(8,11,17,.955)!important;
+}
+.skytrace-aircraft-detail .detail-head,.skytrace-airport-detail .detail-head,
+.skytrace-aircraft-detail .detail-header,.skytrace-airport-detail .detail-header{
+  padding-bottom:14px!important;
+  margin-bottom:12px!important;
+  border-bottom:1px solid rgba(255,255,255,.07)!important;
+}
+.skytrace-aircraft-detail h1,.skytrace-aircraft-detail h2,.skytrace-aircraft-detail h3,
+.skytrace-airport-detail h1,.skytrace-airport-detail h2,.skytrace-airport-detail h3{
+  letter-spacing:-.035em!important;
+  font-weight:680!important;
+}
+.skytrace-aircraft-detail .eyebrow,.skytrace-airport-detail .eyebrow{
+  color:#8791a1!important;
+  letter-spacing:.18em!important;
+}
+.skytrace-aircraft-detail .telemetry-row,.skytrace-airport-detail .telemetry-row,
+.skytrace-aircraft-detail .metadata-grid,.skytrace-airport-detail .metadata-grid{
+  gap:8px!important;
+}
+.skytrace-aircraft-detail .telemetry-row>div,.skytrace-airport-detail .telemetry-row>div,
+.skytrace-aircraft-detail .metadata-item,.skytrace-airport-detail .metadata-item{
+  min-height:58px;
+  padding:10px 11px!important;
+  border-radius:13px!important;
+}
+.skytrace-aircraft-detail .telemetry-row strong,.skytrace-airport-detail .telemetry-row strong,
+.skytrace-aircraft-detail .metadata-item strong,.skytrace-airport-detail .metadata-item strong{
+  font-size:11px!important;
+  color:#edf1f7!important;
+}
+.skytrace-aircraft-detail .telemetry-row span,.skytrace-airport-detail .telemetry-row span,
+.skytrace-aircraft-detail .metadata-item span,.skytrace-airport-detail .metadata-item span{
+  display:block;
+  margin-bottom:4px;
+  font-size:7px!important;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.skytrace-aircraft-detail .detail-tabs,.skytrace-airport-detail .detail-tabs{
+  margin:10px 0 12px!important;
+}
+.skytrace-aircraft-detail .detail-tab,.skytrace-airport-detail .detail-tab{
+  font-weight:630!important;
+  letter-spacing:.01em!important;
+}
+.skytrace-airport-detail .ops-list{
+  max-height:244px!important;
+  gap:7px!important;
+  padding-right:4px!important;
+}
+.skytrace-airport-detail .airport-traffic-row{
+  min-height:55px;
+  border-radius:13px!important;
+  background:rgba(255,255,255,.035)!important;
+  border-color:rgba(255,255,255,.072)!important;
+  padding:10px 11px!important;
+}
+.skytrace-airport-detail .airport-traffic-row:hover{
+  background:rgba(133,155,255,.075)!important;
+  border-color:rgba(151,171,255,.15)!important;
+}
+.skytrace-airport-detail .airport-traffic-main b{font-size:10px!important;font-weight:670!important;color:#edf1f7!important}
+.skytrace-airport-detail .airport-traffic-main small,
+.skytrace-airport-detail .airport-traffic-metrics small{color:#7d8797!important;font-size:8px!important}
+.skytrace-airport-detail .airport-traffic-metrics b{font-size:9px!important;color:#dce3ef!important}
+.skytrace-empty-state{
+  min-height:90px;
+  display:grid!important;
+  place-items:center;
+  padding:18px!important;
+  text-align:center;
+  border:1px dashed rgba(255,255,255,.085)!important;
+  border-radius:13px!important;
+  background:rgba(255,255,255,.018)!important;
+  color:#7f8998!important;
+  line-height:1.5!important;
+}
+.skytrace-aircraft-detail button:not(.detail-close):not(.detail-tab),
+.skytrace-airport-detail button:not(.detail-close):not(.detail-tab):not(.airport-traffic-row){
+  min-height:34px;
+  border-color:rgba(255,255,255,.085)!important;
+  background:rgba(255,255,255,.04)!important;
+}
+.skytrace-aircraft-detail button:not(.detail-close):not(.detail-tab):hover,
+.skytrace-airport-detail button:not(.detail-close):not(.detail-tab):not(.airport-traffic-row):hover{
+  background:rgba(255,255,255,.07)!important;
+  border-color:rgba(255,255,255,.13)!important;
+}
+
 /* Native controls used in the right-side map panel. */
 input[type="checkbox"]{accent-color:#9eb1ff}
 select{
@@ -94,6 +189,9 @@ select{
 .performance-mode .maplibregl-ctrl-group,.performance-mode .maplibregl-ctrl-attrib,.performance-mode .bottom-status{
   backdrop-filter:none!important;
   -webkit-backdrop-filter:none!important;
+}
+.performance-mode .skytrace-aircraft-detail,.performance-mode .skytrace-airport-detail{
+  background:rgba(8,11,17,.96)!important;
 }
 
 @media(max-width:1100px){
