@@ -58,7 +58,7 @@ fail() {
 run_step() {
   local number="$1" label="$2" status=0 started="$SECONDS"
   shift 2
-  printf '  %s[%s/8]%s %-31s' "$DIM" "$number" "$RESET"
+  printf '  %s[%s/8]%s %-31s' "$DIM" "$number" "$RESET" "$label"
   printf '\n--- [%s/8] %s ---\n' "$number" "$label" >> "$LOG_FILE"
   if "$@" >> "$LOG_FILE" 2>&1; then
     printf ' %s✓%s %ss\n' "$GREEN" "$RESET" "$((SECONDS-started))"
