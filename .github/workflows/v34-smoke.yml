@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - v3.3-commerce
   workflow_dispatch:
 
 permissions:
@@ -57,6 +60,7 @@ jobs:
           grep -F 'connecting to aviation data' v3.3-overlay/v3.4-polish.js >/dev/null
           grep -F 'CURRENT_RELEASE_TAG' v3.3-overlay/desktop-services.js >/dev/null
           grep -F 'desktop.log' v3.3-overlay/desktop-services.js >/dev/null
+          grep -F 'uncaughtExceptionMonitor' v3.3-overlay/desktop-services.js >/dev/null
           if grep -F 'MutationObserver' v3.3-overlay/v3.4-polish.js >/dev/null; then
             echo "UI polish must not use MutationObserver."
             exit 1
@@ -103,6 +107,7 @@ jobs:
           grep -F 'label: "Show Diagnostic Log"' electron-main.js >/dev/null
           grep -F 'api.github.com/repos/archivealf/SkyTrace/releases' desktop-services.js >/dev/null
           grep -F 'desktop.log' desktop-services.js >/dev/null
+          grep -F 'uncaughtExceptionMonitor' desktop-services.js >/dev/null
           node -e 'const p=require("./package.json"); if(p.engines?.node!==">=22.12.0") throw new Error(`Unexpected materialized Node engine: ${p.engines?.node}`)'
 
       - name: Complete smoke validation
