@@ -58,6 +58,8 @@ http.createServer = function pwaCreateServer(...args) {
     if (req.method === "GET") {
       if (url.pathname === "/app/manifest.webmanifest") return serveFile(res, "manifest.webmanifest", "application/manifest+json; charset=utf-8", "public, max-age=3600");
       if (url.pathname === "/app/web-mobile.css") return serveFile(res, "web-mobile.css", "text/css; charset=utf-8", "no-cache");
+      if (url.pathname === "/app/web-mobile-interactions.css") return serveFile(res, "web-mobile-interactions.css", "text/css; charset=utf-8", "no-cache");
+      if (url.pathname === "/app/web-mobile.js") return serveFile(res, "web-mobile.js", "text/javascript; charset=utf-8", "no-cache");
       if (url.pathname === "/app/icon.svg") return serveFile(res, "icon.svg", "image/svg+xml; charset=utf-8", "public, max-age=86400");
       if (url.pathname === "/app/apple-touch-icon.png") return serveBase64(res, "apple-touch-icon.png.b64", "image/png", "public, max-age=86400");
       if (url.pathname === "/app/sw.js") {
