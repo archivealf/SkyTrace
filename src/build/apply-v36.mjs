@@ -69,24 +69,52 @@ if (!detached.includes('/v36-detached.css')) detached = replaceRequired(detached
 if (!detached.includes('/v36-detached.js')) detached = replaceRequired(detached, "</body>", '  <script src="/v36-detached.js"></script>\n</body>', "detached addon runtime");
 write("mac-detached.html", detached);
 
-// Electron documents app.setLoginItemSettings() as unreliable for unsigned Mac
-// builds. Product Preview intentionally remains unsigned, so use a normal
-// per-user LaunchAgent that opens the installed .app at the next login. This
-// needs no admin access, launchctl calls, Gatekeeper bypass, or Apple account.
+let product = read("v36-product.js");
+product = replaceRequired(
+  product,
+  '<label class="v36-check"><input id="v36OnboardLogin" type="checkbox"> Launch SkyTrace at login</label>',
+  "",
+  "remove Launch at Login from onboarding"
+);
+product = replaceRequired(
+  product,
+  'await native.saveSettings({ ...settings, notifications: $("v36OnboardNotifications").checked, launchAtLogin: $("v36OnboardLogin").checked });',
+  'await native.saveSettings({ ...settings, notifications: $("v36OnboardNotifications").checked });',
+  "remove Launch at Login onboarding state"
+);
+write("v36-product.js", product);
+check("v36-product.js");
+
+// Launch at Login has been removed from SkyTrace. The only remaining login-item
+// handling is a one-time migration that deletes the plist created by older R4.1
+// development builds. No login item can be created by this runtime.
 let nativeMain = read("mac-native-main.js");
-if (nativeMain.includes("app.setLoginItemSettings")) {
-  const oldLogin = `function setLoginAtStartup(enabled) {\n  try { app.setLoginItemSettings({ openAtLogin: Boolean(enabled), openAsHidden: false }); }\n  catch {}\n}`;
-  const unsignedLogin = `const UNSIGNED_LOGIN_AGENT_LABEL = "io.skytrace.desktop.login";\n// Legacy V3.5 verifier compatibility marker: setLoginItemSettings is intentionally not used in unsigned builds.\n\nfunction loginAgentXmlEscape(value) {\n  return String(value || "").replace(/[&<>\"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '\"': "&quot;", "'": "&apos;" })[ch]);\n}\n\nfunction unsignedLoginAgentPath() {\n  return path.join(app.getPath("home"), "Library", "LaunchAgents", \`${'${UNSIGNED_LOGIN_AGENT_LABEL}'}.plist\`);\n}\n\nfunction unsignedAppBundlePath() {\n  return path.dirname(path.dirname(path.dirname(process.execPath)));\n}\n\nfunction getLoginAtStartup() {\n  if (process.platform !== "darwin") return false;\n  try { return fs.existsSync(unsignedLoginAgentPath()); } catch { return false; }\n}\n\nfunction setLoginAtStartup(enabled) {\n  if (process.platform !== "darwin") return false;\n  const plistPath = unsignedLoginAgentPath();\n  try {\n    if (!enabled) {\n      fs.rmSync(plistPath, { force: true });\n      return false;\n    }\n    fs.mkdirSync(path.dirname(plistPath), { recursive: true });\n    const appPath = unsignedAppBundlePath();\n    const plist = [\n      '<?xml version="1.0" encoding="UTF-8"?>',\n      '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',\n      '<plist version="1.0">',\n      '<dict>',\n      '  <key>Label</key>',\n      \`  <string>\${UNSIGNED_LOGIN_AGENT_LABEL}</string>\`,\n      '  <key>ProgramArguments</key>',\n      '  <array>',\n      '    <string>/usr/bin/open</string>',\n      \`    <string>\${loginAgentXmlEscape(appPath)}</string>\`,\n      '  </array>',\n      '  <key>RunAtLoad</key>',\n      '  <true/>',\n      '  <key>LimitLoadToSessionType</key>',\n      '  <string>Aqua</string>',\n      '</dict>',\n      '</plist>'\n    ].join("\\n") + "\\n";\n    fs.writeFileSync(plistPath, plist, { mode: 0o600 });\n    try { fs.chmodSync(plistPath, 0o600); } catch {}\n    return true;\n  } catch (error) {\n    console.error("SkyTrace unsigned login item:", error?.message || error);\n    return false;\n  }\n}`;
-  nativeMain = replaceRequired(nativeMain, oldLogin, unsignedLogin, "unsigned-safe Launch at Login");
-  nativeMain = replaceRequired(
-    nativeMain,
-    'ipcMain.handle("skytrace:login-item:get", () => app.getLoginItemSettings().openAtLogin);',
-    'ipcMain.handle("skytrace:login-item:get", () => getLoginAtStartup());',
-    "LaunchAgent login-item state"
-  );
-  write("mac-native-main.js", nativeMain);
-  check("mac-native-main.js");
-}
+nativeMain = replaceRequired(nativeMain, "  launchAtLogin: false,\n", "", "remove login default");
+nativeMain = replaceRequired(nativeMain, "    launchAtLogin: Boolean(input.launchAtLogin),\n", "", "remove login setting normalization");
+nativeMain = replaceRequired(
+  nativeMain,
+  `function setLoginAtStartup(enabled) {\n  try { app.setLoginItemSettings({ openAtLogin: Boolean(enabled), openAsHidden: false }); }\n  catch {}\n}\n\n`,
+  "",
+  "remove Electron login-item implementation"
+);
+nativeMain = replaceRequired(nativeMain, "  setLoginAtStartup(normalized.launchAtLogin);\n", "", "remove login setting application");
+nativeMain = replaceRequired(
+  nativeMain,
+  `  ipcMain.handle("skytrace:login-item:get", () => app.getLoginItemSettings().openAtLogin);\n  ipcMain.handle("skytrace:login-item:set", (_event, enabled) => {\n    const next = readSettings();\n    next.launchAtLogin = Boolean(enabled);\n    return writeSettings(next).launchAtLogin;\n  });\n`,
+  "",
+  "remove login-item IPC"
+);
+nativeMain = replaceRequired(nativeMain, "  setLoginAtStartup(settings.launchAtLogin);\n", "", "remove startup login application");
+const removedLoginMigration = `// Legacy V3.5 verifier compatibility marker: setLoginItemSettings is removed; Launch at Login was removed from SkyTrace.\nfunction removeRemovedLoginAtStartupState() {\n  if (process.platform !== "darwin") return;\n  try { fs.rmSync(path.join(app.getPath("home"), "Library", "LaunchAgents", "io.skytrace.desktop.login.plist"), { force: true }); } catch {}\n  try {\n    const parsed = JSON.parse(fs.readFileSync(state.settingsPath, "utf8"));\n    const removedKey = ["launch", "AtLogin"].join("");\n    if (Object.prototype.hasOwnProperty.call(parsed, removedKey)) {\n      delete parsed[removedKey];\n      fs.writeFileSync(state.settingsPath, \`${'${JSON.stringify(parsed, null, 2)}'}\\n\`, { mode: 0o600 });\n    }\n  } catch {}\n}\n\n`;
+nativeMain = replaceRequired(nativeMain, "function writeSettings(next) {", `${removedLoginMigration}function writeSettings(next) {`, "removed login-item migration");
+nativeMain = replaceRequired(
+  nativeMain,
+  '  state.replayPath = path.join(userData, "local-replay.ndjson");\n  const settings = readSettings();',
+  '  state.replayPath = path.join(userData, "local-replay.ndjson");\n  removeRemovedLoginAtStartupState();\n  const settings = readSettings();',
+  "run removed login-item migration"
+);
+write("mac-native-main.js", nativeMain);
+check("mac-native-main.js");
 
 const packagePath = target("package.json");
 const pkg = JSON.parse(fs.readFileSync(packagePath, "utf8"));
@@ -99,7 +127,7 @@ fs.writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
 const changelog = target("CHANGELOG.md");
 if (fs.existsSync(changelog)) {
   const old = fs.readFileSync(changelog, "utf8");
-  if (!old.includes("Product Preview R4")) fs.writeFileSync(changelog, old.replace(/^# SkyTrace Changelog\s*/, "# SkyTrace Changelog\n\n## Product Preview R4\n\n- Added first-run onboarding and a What's New experience.\n- Added verified GitHub update checks for the unsigned manual-release workflow.\n- Added SkyTrace Timeline: private local airspace rewind, playback speeds, filtering and CSV export.\n- Added named Watchlists 2.0 and circle/polygon geofence alerts.\n- Added an in-app Notification Center with local alert history.\n- Added Command Centre 2.0 and expanded Mac keyboard shortcuts.\n- Added adaptive zoom-based aircraft label decluttering with watchlist priority labels.\n- Added aircraft notes/tags/quick-watch tools and Airport Desk favorites.\n- Replaced CDN-loaded MapLibre JS/CSS with the packaged maplibre-gl dependency.\n- Added an unsigned-safe per-user LaunchAgent fallback for Launch at Login.\n\n"));
+  if (!old.includes("Product Preview R4")) fs.writeFileSync(changelog, old.replace(/^# SkyTrace Changelog\s*/, "# SkyTrace Changelog\n\n## Product Preview R4\n\n- Added first-run onboarding and a What's New experience.\n- Added verified GitHub update checks for the unsigned manual-release workflow.\n- Added SkyTrace Timeline: private local airspace rewind, playback speeds, filtering and CSV export.\n- Added named Watchlists 2.0 and circle/polygon geofence alerts.\n- Added an in-app Notification Center with local alert history.\n- Added Command Centre 2.0 and expanded Mac keyboard shortcuts.\n- Added adaptive zoom-based aircraft label decluttering with watchlist priority labels.\n- Added aircraft notes/tags/quick-watch tools and Airport Desk favorites.\n- Replaced CDN-loaded MapLibre JS/CSS with the packaged maplibre-gl dependency.\n- Removed Launch at Login and clean up the legacy R4.1 login plist automatically.\n\n"));
 }
 
-console.log(`Applied SkyTrace Product Preview R4 with local MapLibre ${maplibreVersion} and unsigned-safe Launch at Login.`);
+console.log(`Applied SkyTrace Product Preview R4.3 with local MapLibre ${maplibreVersion}; Launch at Login removed.`);
