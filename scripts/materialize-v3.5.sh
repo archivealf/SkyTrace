@@ -8,7 +8,8 @@ for file in \
   src/build/fix-v35-audit.mjs \
   src/build/fix-v35-server.mjs \
   src/build/fix-v35-ui.mjs \
-  src/build/verify-v35.mjs; do
+  src/build/verify-v35.mjs \
+  src/build/verify-v35-ui.mjs; do
   [[ -f "$ROOT/$file" ]] || { echo "Missing V3.5 build module: $file" >&2; exit 1; }
   node --check "$ROOT/$file"
 done
@@ -23,5 +24,6 @@ node "$ROOT/src/build/fix-v35-audit.mjs" "$ROOT"
 node "$ROOT/src/build/fix-v35-server.mjs" "$ROOT"
 node "$ROOT/src/build/fix-v35-ui.mjs" "$ROOT"
 node "$ROOT/src/build/verify-v35.mjs" "$ROOT"
+node "$ROOT/src/build/verify-v35-ui.mjs" "$ROOT"
 
 echo "Materialized SkyTrace V3.5 Mac Native R3.3 UI audited runtime (unsigned development build)."
