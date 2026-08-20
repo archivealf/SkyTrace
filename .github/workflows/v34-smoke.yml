@@ -1,0 +1,122 @@
+name: SkyTrace V3.4.0 RC1 Smoke
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - v3.3-commerce
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Audit complete source tree
+        run: node scripts/audit-runtime.mjs
+
+      - name: Verify Windows and iOS source support
+        run: node scripts/verify-platform-support.mjs
+
+      - name: Verify quiet installer contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n install
+          bash -n install-v3.4-rc1
+          grep -F 'PORTABLE_NODE_VERSION="22.23.2"' install-v3.4-rc1 >/dev/null
+          grep -F 'LOG_FILE="$LOG_DIR/installer.log"' install-v3.4-rc1 >/dev/null
+          grep -F 'npm install --no-audit --no-fund --loglevel=error' install-v3.4-rc1 >/dev/null
+          grep -F 'run_step 8 "Install application"' install-v3.4-rc1 >/dev/null
+          if grep -F 'SkyTrace installer: preparing' install >/dev/null; then
+            echo "Noisy legacy launcher message returned."
+            exit 1
+          fi
+          node -e 'const p=require("./package.json"); if(p.engines?.node!==">=22.12.0") throw new Error(`Unexpected Node engine: ${p.engines?.node}`)'
+
+      - name: Syntax-check V3.4 release transforms and UI polish
+        run: |
+          node --check v3.3-overlay/v3.4-features.js
+          node --check v3.3-overlay/v3.4-polish.js
+          node --check v3.3-overlay/desktop-services.js
+          node --check v3.3-overlay/scripts/check-runtime.mjs
+          node --check v3.3-overlay/scripts/generate-skytrace-ico.mjs
+          node --check v3.3-overlay/scripts/apply-v34.mjs
+          node --check v3.3-overlay/scripts/apply-desktop-services.mjs
+          node --check v3.3-overlay/scripts/stabilize-runtime.mjs
+          node --check v3.3-overlay/scripts/stabilize-replay.mjs
+          node --check v3.3-overlay/scripts/finalize-v3.4.mjs
+          node --check scripts/verify-v3.4-release.mjs
+          node --check scripts/verify-platform-support.mjs
+          grep -F '.startup-shell' v3.3-overlay/v3.4-polish.css >/dev/null
+          grep -F '.skytrace-aircraft-detail' v3.3-overlay/v3.4-polish-refine.css >/dev/null
+          grep -F '.skytrace-airport-detail' v3.3-overlay/v3.4-polish-refine.css >/dev/null
+          grep -F 'connecting to aviation data' v3.3-overlay/v3.4-polish.js >/dev/null
+          grep -F 'CURRENT_RELEASE_TAG' v3.3-overlay/desktop-services.js >/dev/null
+          grep -F 'desktop.log' v3.3-overlay/desktop-services.js >/dev/null
+          grep -F 'uncaughtExceptionMonitor' v3.3-overlay/desktop-services.js >/dev/null
+          if grep -F 'MutationObserver' v3.3-overlay/v3.4-polish.js >/dev/null; then
+            echo "UI polish must not use MutationObserver."
+            exit 1
+          fi
+
+      - name: Run commerce integration and PWA checks
+        run: npm --prefix commerce run check
+
+      - name: Verify monitoring and restore tools
+        run: |
+          node --check commerce/monitor.js
+          node --check commerce/restore.js
+
+      - name: Check restricted-provider isolation in V3.4 files
+        shell: bash
+        run: |
+          set -euo pipefail
+          for host in opensky-network.org api.adsbdb.com api.open-meteo.com api.rainviewer.com; do
+            if grep -R -F "$host" commerce/v34-hook.js commerce/admin-v34-hook.js commerce/pwa-hook.js commerce/web v3.3-overlay/v3.4-features.js v3.3-overlay/v3.4-polish.js v3.3-overlay/desktop-services.js; then
+              echo "Restricted provider host found in V3.4 code: $host"
+              exit 1
+            fi
+          done
+
+      - name: Materialize harden verify and audit V3.4.0 RC1
+        env:
+          SKYTRACE_COMMERCE_URL: https://skytrace.example.invalid
+        run: |
+          bash scripts/materialize-v3.4.sh
+          node scripts/harden-commercial-build.mjs
+          node scripts/verify-v3.4-release.mjs
+          node scripts/verify-platform-support.mjs
+          npm run check
+          node scripts/audit-runtime.mjs
+          bash -n install
+          bash -n install-v3.4-rc1
+          grep -F 'LOG_FILE="$LOG_DIR/installer.log"' install-v3.4-rc1 >/dev/null
+          grep -F 'npm install --no-audit --no-fund --loglevel=error' install-v3.4-rc1 >/dev/null
+          grep -F '/v3.4-polish.css' index.html >/dev/null
+          grep -F '/v3.4-polish-refine.css' index.html >/dev/null
+          grep -F '/v3.4-polish.js' index.html >/dev/null
+          grep -F '.startup-shell' v3.4-polish.css >/dev/null
+          grep -F '.skytrace-aircraft-detail' v3.4-polish-refine.css >/dev/null
+          grep -F 'label: "Check for Updates…"' electron-main.js >/dev/null
+          grep -F 'label: "Show Diagnostic Log"' electron-main.js >/dev/null
+          grep -F 'api.github.com/repos/archivealf/SkyTrace/releases' desktop-services.js >/dev/null
+          grep -F 'desktop.log' desktop-services.js >/dev/null
+          grep -F 'uncaughtExceptionMonitor' desktop-services.js >/dev/null
+          test -s assets/SkyTrace.ico
+          node -e 'const p=require("./package.json"); if(p.engines?.node!==">=22.12.0") throw new Error(`Unexpected materialized Node engine: ${p.engines?.node}`)'
+
+      - name: Complete smoke validation
+        run: echo "V3.4.0 RC1 source tree, macOS/Windows desktop support, iPhone/iPad PWA, polished UI, updater, diagnostics, quiet installer, backend, materializer and runtime audits passed."

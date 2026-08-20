@@ -1,0 +1,31 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8787,
+    "publicUrl": "http://127.0.0.1:8787"
+  },
+  "security": {
+    "pepper": "GENERATE_A_LONG_RANDOM_SECRET_HERE",
+    "sessionDays": 30,
+    "allowRegistration": true,
+    "minPasswordLength": 10
+  },
+  "stripe": {
+    "enabled": false,
+    "secretKey": "",
+    "webhookSecret": ""
+  },
+  "operations": {
+    "notamFeedUrl": "",
+    "notamBearerToken": ""
+  },
+  "products": {
+    "pro": { "priceId": "price_1U5rD119iuWs3yVBZ1Cl1iGe" },
+    "airport_intelligence": { "priceId": "price_1U5rDF19iuWs3yVBUcK38gRO" },
+    "advanced_aircraft": { "priceId": "price_1U5rDQ19iuWs3yVBoKeBPTfW" },
+    "replay_plus": { "priceId": "price_1U5rDX19iuWs3yVBTTWlnAWk" },
+    "themes": { "priceId": "price_1U5rDg19iuWs3yVBgPZmFESI" }
+  },
+  "dataFile": "data/store.json",
+  "sqliteFile": "data/store.sqlite3"
+}

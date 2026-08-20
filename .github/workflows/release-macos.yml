@@ -1,12 +1,15 @@
-name: Build SkyTrace V3.2 macOS
+name: Build SkyTrace V3.4.0 RC1 macOS
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
     tags:
-      - "v*"
+      - "v3.4.0-rc1"
 
 permissions:
   contents: write
@@ -19,10 +22,14 @@ jobs:
         include:
           - runner: macos-15
             arch: arm64
+            architecture_label: Apple Silicon
           - runner: macos-15-intel
             arch: x64
+            architecture_label: Intel
 
     runs-on: ${{ matrix.runner }}
+    env:
+      SKYTRACE_COMMERCE_URL: ${{ vars.SKYTRACE_COMMERCE_URL }}
 
     steps:
       - name: Check out source
@@ -33,13 +40,38 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Verify and materialize V3.2 source
-        run: bash scripts/materialize-v3.2.sh
+      - name: Require public commerce URL for packaged builds
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${SKYTRACE_COMMERCE_URL:-}" ]]; then
+            echo "Repository variable SKYTRACE_COMMERCE_URL is required for packaged V3.4.0 RC1 builds."
+            exit 1
+          fi
+          case "$SKYTRACE_COMMERCE_URL" in
+            https://*) ;;
+            *) echo "SKYTRACE_COMMERCE_URL must use HTTPS."; exit 1 ;;
+          esac
+
+      - name: Materialize V3.4.0 RC1 source
+        run: bash scripts/materialize-v3.4.sh
+
+      - name: Enforce commercial provider isolation
+        run: node scripts/harden-commercial-build.mjs
+
+      - name: Verify V3.4.0 RC1 release identity
+        run: node scripts/verify-v3.4-release.mjs
+
+      - name: Audit materialized runtime
+        run: node scripts/audit-runtime.mjs
+
+      - name: Verify commerce backend and V3.4 integration
+        run: npm --prefix commerce run check
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Download free aviation reference data
+      - name: Download free commercial aviation reference data
         run: npm run data
 
       - name: Build macOS icon
@@ -48,10 +80,74 @@ jobs:
       - name: Verify JavaScript
         run: npm run check
 
-      - name: Package SkyTrace.app
+      - name: Re-verify release identity and runtime audit
+        run: |
+          node scripts/verify-v3.4-release.mjs
+          node scripts/audit-runtime.mjs
+
+      - name: Package SkyTrace.app for ${{ matrix.architecture_label }}
         run: npm run package -- --arch=${{ matrix.arch }}
 
-      - name: Create release ZIP and checksum
+      - name: Scan packaged app identity and runtime payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$(find out -maxdepth 3 -name 'SkyTrace.app' -type d -print -quit)"
+          [[ -n "$APP" ]] || { echo "SkyTrace.app was not found."; exit 1; }
+
+          PLIST="$APP/Contents/Info.plist"
+          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")"
+          BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")"
+          ASAR="$APP/Contents/Resources/app.asar"
+
+          [[ "$VERSION" == "3.4.0" ]] || { echo "Unexpected packaged version: $VERSION"; exit 1; }
+          [[ "$BUNDLE_ID" == "io.skytrace.desktop" ]] || { echo "Unexpected bundle ID: $BUNDLE_ID"; exit 1; }
+          [[ -f "$ASAR" ]] || { echo "Packaged app.asar is missing."; exit 1; }
+          [[ ! -d "$APP/Contents/Resources/app" ]] || { echo "Unexpected unpacked runtime app directory found."; exit 1; }
+
+          grep -aF '3.4.0-rc1' "$ASAR" >/dev/null || { echo "V3.4.0 RC1 build marker is missing from app.asar."; exit 1; }
+          grep -aF 'V3.4.0 RC1' "$ASAR" >/dev/null || { echo "Visible V3.4.0 RC1 label is missing from app.asar."; exit 1; }
+          grep -aF 'startup-shell' "$ASAR" >/dev/null || { echo "Polished startup screen is missing from app.asar."; exit 1; }
+          grep -aF 'connecting to aviation data' "$ASAR" >/dev/null || { echo "Selector-independent startup takeover is missing from app.asar."; exit 1; }
+          grep -aF 'Preparing live aviation data' "$ASAR" >/dev/null || { echo "Startup status UI is missing from app.asar."; exit 1; }
+          grep -aF 'v3.4-polish.css' "$ASAR" >/dev/null || { echo "V3.4 UI polish stylesheet is missing from app.asar."; exit 1; }
+          grep -aF 'v3.4-polish-refine.css' "$ASAR" >/dev/null || { echo "V3.4 detail refinement stylesheet is missing from app.asar."; exit 1; }
+          grep -aF 'skytrace-aircraft-detail' "$ASAR" >/dev/null || { echo "Aircraft detail polish is missing from app.asar."; exit 1; }
+          grep -aF 'skytrace-airport-detail' "$ASAR" >/dev/null || { echo "Airport detail polish is missing from app.asar."; exit 1; }
+          grep -aF 'Check for Updates…' "$ASAR" >/dev/null || { echo "Native update menu is missing from app.asar."; exit 1; }
+          grep -aF 'api.github.com/repos/archivealf/SkyTrace/releases' "$ASAR" >/dev/null || { echo "Verified release update source is missing from app.asar."; exit 1; }
+          grep -aF 'desktop.log' "$ASAR" >/dev/null || { echo "Desktop diagnostics are missing from app.asar."; exit 1; }
+          grep -aF 'skytrace.performanceMode' "$ASAR" >/dev/null || { echo "Performance Mode marker is missing from app.asar."; exit 1; }
+          grep -aF 'function flightsForMap()' "$ASAR" >/dev/null || { echo "Adaptive renderer is missing from app.asar."; exit 1; }
+          grep -aF 'Have a SkyTrace code?' "$ASAR" >/dev/null || { echo "Redeem-code UI is missing from app.asar."; exit 1; }
+          grep -aF '/api/account/redeem' "$ASAR" >/dev/null || { echo "Redeem-code account route is missing from app.asar."; exit 1; }
+          grep -aF 'Operational weather' "$ASAR" >/dev/null || { echo "V3.4 Operations UI is missing from app.asar."; exit 1; }
+          grep -aF 'Global Replay+' "$ASAR" >/dev/null || { echo "V3.4 Global Replay UI is missing from app.asar."; exit 1; }
+          grep -aF 'Aircraft profile' "$ASAR" >/dev/null || { echo "V3.4 aircraft profile UI is missing from app.asar."; exit 1; }
+          grep -aF '/api/v34/operations' "$ASAR" >/dev/null || { echo "V3.4 Operations API bridge is missing from app.asar."; exit 1; }
+          grep -aF 'data-airport-traffic-icao' "$ASAR" >/dev/null || { echo "Optimized airport traffic renderer is missing from app.asar."; exit 1; }
+
+          for stale in '3.3.1-performance-rc' 'V3.3.1 RC' 'V3.2 FREE' 'Installing SkyTrace v3.2.0 Free Stack'; do
+            if grep -aF "$stale" "$ASAR" >/dev/null; then
+              echo "Stale pre-RC1 release marker survived packaging: $stale"
+              exit 1
+            fi
+          done
+
+          for host in opensky-network.org api.adsbdb.com api.open-meteo.com api.rainviewer.com; do
+            if grep -aF "$host" "$ASAR" >/dev/null; then
+              echo "Restricted provider host survived packaging: $host"
+              exit 1
+            fi
+          done
+
+          for marker in api.adsb.lol vrs-standing-data.adsb.lol api.met.no gibs.earthdata.nasa.gov 'Precipitation'; do
+            grep -aF "$marker" "$ASAR" >/dev/null || { echo "Expected free commercial provider marker is missing: $marker"; exit 1; }
+          done
+
+          echo "Verified packaged SkyTrace V3.4.0 RC1 polished detail UI, updater and diagnostics for ${{ matrix.architecture_label }} ($VERSION, $BUNDLE_ID)."
+
+      - name: Create RC1 ZIP and checksum
         shell: bash
         run: |
           set -euo pipefail
@@ -61,58 +157,63 @@ jobs:
             find out -maxdepth 4 -print
             exit 1
           fi
-          ZIP="SkyTrace-mac-${{ matrix.arch }}.zip"
+          ZIP="SkyTrace-3.4.0-RC1-mac-${{ matrix.arch }}.zip"
           ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
           shasum -a 256 "$ZIP" > "${ZIP}.sha256"
 
       - name: Build DMG
         run: npm run make -- --arch=${{ matrix.arch }}
 
-      - name: Collect DMG
+      - name: Collect RC1 DMG
         shell: bash
         run: |
           set -euo pipefail
           DMG="$(find out/make -name '*.dmg' -type f -print -quit || true)"
-          if [[ -n "$DMG" ]]; then
-            cp "$DMG" "SkyTrace-mac-${{ matrix.arch }}.dmg"
+          if [[ -z "$DMG" ]]; then
+            echo "SkyTrace DMG was not produced."
+            find out/make -maxdepth 5 -print || true
+            exit 1
           fi
+          cp "$DMG" "SkyTrace-3.4.0-RC1-mac-${{ matrix.arch }}.dmg"
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SkyTrace-mac-${{ matrix.arch }}
+          name: SkyTrace-3.4.0-RC1-mac-${{ matrix.arch }}
           path: |
-            SkyTrace-mac-${{ matrix.arch }}.zip
-            SkyTrace-mac-${{ matrix.arch }}.zip.sha256
-            SkyTrace-mac-${{ matrix.arch }}.dmg
-          if-no-files-found: warn
+            SkyTrace-3.4.0-RC1-mac-${{ matrix.arch }}.zip
+            SkyTrace-3.4.0-RC1-mac-${{ matrix.arch }}.zip.sha256
+            SkyTrace-3.4.0-RC1-mac-${{ matrix.arch }}.dmg
+          if-no-files-found: error
 
   release:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Check out release notes
+        uses: actions/checkout@v4
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-assets
           merge-multiple: true
 
-      - name: Publish V3.2 release
+      - name: Publish explicitly tagged RC1 release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            TAG="${GITHUB_REF_NAME}"
-          else
-            TAG="v3.2.0"
-          fi
+          TAG="${GITHUB_REF_NAME}"
+          [[ "$TAG" == "v3.4.0-rc1" ]] || { echo "Unexpected release tag: $TAG"; exit 1; }
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "SkyTrace $TAG" \
-              --notes "SkyTrace V3.2 Free Stack for macOS. Free live ADS-B, local aircraft data, airport intelligence, aviation weather, telemetry timeline, Apple Silicon and Intel builds."
+              --title "SkyTrace V3.4.0 RC1" \
+              --notes-file CHANGELOG.md \
+              --prerelease
           fi
           gh release upload "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber

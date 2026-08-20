@@ -1,0 +1,31 @@
+{
+  "name": "skytrace-desktop",
+  "productName": "SkyTrace",
+  "version": "3.4.0",
+  "private": true,
+  "description": "SkyTrace V3.4 aviation intelligence for macOS and Windows with accounts, Cloud Replay+, Operations, aircraft profiles and performance-optimized UI.",
+  "type": "module",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "electron-forge start",
+    "web": "node server.js",
+    "data": "node scripts/update-aviation-data.mjs",
+    "icon:mac": "bash scripts/make-mac-icon.sh",
+    "app:mac": "npm run icon:mac && electron-forge package --platform=darwin",
+    "app:win": "electron-forge package --platform=win32 --arch=x64",
+    "package": "electron-forge package",
+    "make:mac": "npm run icon:mac && electron-forge make --platform=darwin",
+    "make:win": "electron-forge make --platform=win32 --arch=x64",
+    "make": "electron-forge make",
+    "check": "node scripts/check-runtime.mjs"
+  },
+  "engines": { "node": ">=22.12.0" },
+  "devDependencies": {
+    "electron": "43.2.0",
+    "@electron-forge/cli": "7.11.2",
+    "@electron-forge/maker-dmg": "7.11.2",
+    "@electron-forge/maker-squirrel": "7.11.2",
+    "@electron-forge/maker-zip": "7.11.2"
+  },
+  "config": { "forge": "./forge.config.cjs" }
+}

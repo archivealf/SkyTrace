@@ -1,0 +1,16 @@
+{
+  "server": { "port": 3000 },
+  "providers": {
+    "live": "adsblol",
+    "liveStaleCache": true,
+    "aircraftEnrichment": true,
+    "routes": true,
+    "aviationWeather": true,
+    "generalWeather": true,
+    "precipitation": true
+  },
+  "commerce": {
+    "enabled": true,
+    "baseUrl": "http://127.0.0.1:8787"
+  }
+}

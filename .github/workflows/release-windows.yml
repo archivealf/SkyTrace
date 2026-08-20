@@ -1,0 +1,142 @@
+name: Build SkyTrace V3.4.0 RC1 Windows
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - v3.3-commerce
+    tags:
+      - "v3.4.0-rc1"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    env:
+      SKYTRACE_COMMERCE_URL: ${{ vars.SKYTRACE_COMMERCE_URL }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Require public commerce URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${SKYTRACE_COMMERCE_URL:-}" ]] || { echo "Repository variable SKYTRACE_COMMERCE_URL is required."; exit 1; }
+          case "$SKYTRACE_COMMERCE_URL" in
+            https://*) ;;
+            *) echo "SKYTRACE_COMMERCE_URL must use HTTPS."; exit 1 ;;
+          esac
+
+      - name: Materialize V3.4.0 RC1 source
+        shell: bash
+        run: bash scripts/materialize-v3.4.sh
+
+      - name: Enforce commercial provider isolation
+        run: node scripts/harden-commercial-build.mjs
+
+      - name: Verify release identity
+        run: node scripts/verify-v3.4-release.mjs
+
+      - name: Audit runtime
+        run: node scripts/audit-runtime.mjs
+
+      - name: Verify commerce and PWA backend
+        run: npm --prefix commerce run check
+
+      - name: Install desktop build dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Download aviation reference data
+        run: npm run data
+
+      - name: Verify cross-platform JavaScript
+        run: npm run check
+
+      - name: Verify Windows build assets
+        shell: pwsh
+        run: |
+          if (!(Test-Path "assets/SkyTrace.ico")) { throw "SkyTrace.ico was not generated." }
+          if (!(Test-Path "scripts/check-runtime.mjs")) { throw "Cross-platform runtime checker is missing." }
+          $ico = Get-Item "assets/SkyTrace.ico"
+          if ($ico.Length -lt 1024) { throw "SkyTrace.ico is unexpectedly small." }
+          Write-Host "Windows icon: $($ico.Length) bytes"
+
+      - name: Package SkyTrace for Windows x64
+        run: npm run package -- --platform=win32 --arch=x64
+
+      - name: Scan packaged Windows runtime
+        shell: pwsh
+        run: |
+          $asar = Get-ChildItem -Path out -Filter app.asar -Recurse | Select-Object -First 1
+          $exe = Get-ChildItem -Path out -Filter SkyTrace.exe -Recurse | Select-Object -First 1
+          if (!$asar) { throw "Packaged app.asar was not found." }
+          if (!$exe) { throw "Packaged SkyTrace.exe was not found." }
+          $env:SKYTRACE_ASAR = $asar.FullName
+          node -e "const fs=require('fs');const b=fs.readFileSync(process.env.SKYTRACE_ASAR);for(const m of ['3.4.0-rc1','Check for Updates','desktop.log','startup-shell','Operational weather','Global Replay+'])if(!b.includes(Buffer.from(m)))throw new Error('Missing packaged marker: '+m);"
+          $version = $exe.VersionInfo.ProductVersion
+          Write-Host "Packaged SkyTrace.exe version: $version"
+
+      - name: Build Windows installer and ZIP
+        run: npm run make -- --platform=win32 --arch=x64
+
+      - name: Collect Windows RC1 artifacts
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem -Path out/make -Filter SkyTraceSetup.exe -Recurse | Select-Object -First 1
+          $zip = Get-ChildItem -Path out/make -Filter *.zip -Recurse | Select-Object -First 1
+          if (!$setup) { throw "SkyTrace Squirrel Setup.exe was not produced." }
+          if (!$zip) { throw "SkyTrace Windows ZIP was not produced." }
+          Copy-Item $setup.FullName "SkyTrace-3.4.0-RC1-Windows-x64-Setup.exe"
+          Copy-Item $zip.FullName "SkyTrace-3.4.0-RC1-Windows-x64.zip"
+          (Get-FileHash "SkyTrace-3.4.0-RC1-Windows-x64-Setup.exe" -Algorithm SHA256).Hash.ToLower() + "  SkyTrace-3.4.0-RC1-Windows-x64-Setup.exe" | Set-Content "SkyTrace-3.4.0-RC1-Windows-x64-Setup.exe.sha256"
+          (Get-FileHash "SkyTrace-3.4.0-RC1-Windows-x64.zip" -Algorithm SHA256).Hash.ToLower() + "  SkyTrace-3.4.0-RC1-Windows-x64.zip" | Set-Content "SkyTrace-3.4.0-RC1-Windows-x64.zip.sha256"
+
+      - name: Upload Windows workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SkyTrace-3.4.0-RC1-Windows-x64
+          path: |
+            SkyTrace-3.4.0-RC1-Windows-x64-Setup.exe
+            SkyTrace-3.4.0-RC1-Windows-x64-Setup.exe.sha256
+            SkyTrace-3.4.0-RC1-Windows-x64.zip
+            SkyTrace-3.4.0-RC1-Windows-x64.zip.sha256
+          if-no-files-found: error
+
+  release-windows:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: build-windows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release notes
+        uses: actions/checkout@v4
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: SkyTrace-3.4.0-RC1-Windows-x64
+          path: release-assets
+
+      - name: Attach Windows build to explicit RC1 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          [[ "$TAG" == "v3.4.0-rc1" ]] || { echo "Unexpected release tag: $TAG"; exit 1; }
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "SkyTrace V3.4.0 RC1" --notes-file CHANGELOG.md --prerelease
+          fi
+          gh release upload "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber

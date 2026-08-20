@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+set -euo pipefail
+exec bash <(curl -fsSL "https://raw.githubusercontent.com/archivealf/SkyTrace/v3.3-commerce/install-v3.4-rc1")
