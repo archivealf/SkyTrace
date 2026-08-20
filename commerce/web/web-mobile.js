@@ -15,7 +15,7 @@
   if (productLabel && isiPhone) productLabel.textContent = "SKYTRACE iPHONE · V3.4";
   else if (productLabel && isiPad) productLabel.textContent = "SKYTRACE iPAD · V3.4";
 
-  root.classList.add("skytrace-mobile-34-4");
+  root.classList.add("skytrace-mobile-34-6");
 
   let collapsed = false;
   let dragging = false;
@@ -37,6 +37,7 @@
     root.classList.toggle("sheet-collapsed", collapsed);
     handle.setAttribute("aria-expanded", String(!collapsed));
     handle.setAttribute("aria-label", collapsed ? "Expand controls" : "Minimise controls");
+    panel.setAttribute("aria-expanded", String(!collapsed));
     panel.style.removeProperty("--skytrace-sheet-drag");
     requestAnimationFrame(() => {
       measurePanel();
@@ -44,7 +45,7 @@
     });
     if (announce) {
       const status = document.getElementById("status");
-      if (status) status.title = collapsed ? "Controls minimised — swipe up to expand" : status.textContent || "Controls expanded";
+      if (status) status.title = collapsed ? "Controls minimised — swipe up or tap the card to expand" : status.textContent || "Controls expanded";
     }
   }
 
@@ -64,7 +65,7 @@
     if (!dragging) return;
     dragDistance = event.clientY - dragStartY;
     const translated = startedCollapsed
-      ? Math.max(-90, Math.min(24, dragDistance))
+      ? Math.max(-110, Math.min(24, dragDistance))
       : Math.max(-14, Math.min(190, dragDistance));
     panel.style.setProperty("--skytrace-sheet-drag", `${translated}px`);
     if (Math.abs(dragDistance) > 3) event.preventDefault();
@@ -81,7 +82,7 @@
     if (Math.abs(dragDistance) > 8) ignoreClickUntil = Date.now() + 350;
 
     if (!startedCollapsed && dragDistance > 54) setCollapsed(true, true);
-    else if (startedCollapsed && dragDistance < -34) setCollapsed(false, true);
+    else if (startedCollapsed && dragDistance < -30) setCollapsed(false, true);
     else setCollapsed(startedCollapsed);
   }
 
@@ -99,6 +100,12 @@
     }
     if (!phonePortrait()) return;
     setCollapsed(!collapsed, true);
+  });
+
+  panel.addEventListener("click", event => {
+    if (!collapsed || Date.now() < ignoreClickUntil || !phonePortrait()) return;
+    if (event.target.closest?.("#sheetHandle")) return;
+    setCollapsed(false, true);
   });
 
   handle.addEventListener("keydown", event => {
