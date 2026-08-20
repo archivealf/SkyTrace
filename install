@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RC_INSTALLER="https://raw.githubusercontent.com/archivealf/SkyTrace/v3.3-commerce/install-v3.4-rc1"
+RC_INSTALLER="https://raw.githubusercontent.com/archivealf/SkyTrace/main/install-v3.4-rc1"
 TMP="$(mktemp)"
-trap 'rm -f "$TMP"' EXIT
+PATCHED="${TMP}.main"
+trap 'rm -f "$TMP" "$PATCHED"' EXIT
 
 if ! curl --fail --location --silent --show-error "$RC_INSTALLER" --output "$TMP"; then
   printf 'Could not download the SkyTrace installer. Check your internet connection and try again.\n' >&2
   exit 1
 fi
 
-bash "$TMP"
+# The RC1 installer kept the historical development-branch default for compatibility.
+# The public entry point always installs the current main branch.
+sed 's/^REF="v3\.3-commerce"$/REF="main"/' "$TMP" > "$PATCHED"
+
+if ! grep -q '^REF="main"$' "$PATCHED"; then
+  printf 'Could not select the current SkyTrace main branch.\n' >&2
+  exit 1
+fi
+
+bash "$PATCHED"
