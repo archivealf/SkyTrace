@@ -6,8 +6,8 @@ REPO="SkyTrace"
 APP_NAME="SkyTrace"
 EXPECTED_VERSION="3.5.0"
 EXPECTED_BUNDLE_ID="io.skytrace.desktop"
-BUILD_LABEL="SkyTrace V3.5 Product Preview R4.7 MapLibre Version-Fixed"
-SOURCE_REV="557854a1bea41c496193df5074a3ef14e47c0eb1"
+BUILD_LABEL="SkyTrace V3.5 Product Preview R4.8 Third-Party Audit-Fixed"
+SOURCE_REV="d2ba542ee8e09f68e8bc7c617b188fdc827ffa7d"
 PORTABLE_NODE_VERSION="22.23.2"
 
 INSTALL_DIR="$HOME/Applications"
@@ -101,9 +101,10 @@ download_source() {
   ditto -x -k "$TMP/source.zip" "$TMP/source" || return
   SOURCE_DIR="$(find "$TMP/source" -maxdepth 1 -type d -name 'SkyTrace-*' -print -quit)"
   [[ -n "$SOURCE_DIR" && -d "$SOURCE_DIR" ]] || return 1
-  grep -F 'Product Preview R4.7 packaged-map runtime with semantic MapLibre version audit' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
+  grep -F 'Product Preview R4.8 packaged-map runtime with third-party vendor audit boundary' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
   grep -F 'fix-v36-maplibre.mjs' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
   grep -F 'vendor-maplibre.mjs' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
+  grep -F '"node_modules", "vendor"' "$SOURCE_DIR/scripts/audit-runtime.mjs" >/dev/null || return 1
   grep -F '/vendor/maplibre-gl/maplibre-gl.js' "$SOURCE_DIR/src/build/fix-v36-maplibre.mjs" >/dev/null || return 1
   grep -F 'needVersionFile' "$SOURCE_DIR/src/build/verify-v36.mjs" >/dev/null || return 1
   grep -F 'semantic VERSION validation' "$SOURCE_DIR/src/build/verify-v36.mjs" >/dev/null || return 1
@@ -227,7 +228,7 @@ install_application() {
     'io.skytrace.desktop.login.plist' \
     '/vendor/maplibre-gl/maplibre-gl.js' \
     '/vendor/maplibre-gl/maplibre-gl.css'; do
-    grep -aF "$marker" "$asar" >/dev/null || { echo "Missing packaged Product Preview R4.7 marker: $marker"; return 1; }
+    grep -aF "$marker" "$asar" >/dev/null || { echo "Missing packaged Product Preview R4.8 marker: $marker"; return 1; }
   done
   stop_existing_app || return
   cleanup_removed_login_item || return
@@ -257,9 +258,9 @@ run_step 4 "Install + vendor MapLibre" install_dependencies || fail "Install dep
 run_step 5 "Aviation data" download_data || fail "Aviation data"
 run_step 6 "Verify Product Preview" verify_release || fail "Verify Product Preview"
 run_step 7 "Build application" build_application || fail "Build application"
-run_step 8 "Install + R4.7 startup test" install_application || fail "Install + R4.7 startup test"
+run_step 8 "Install + R4.8 startup test" install_application || fail "Install + R4.8 startup test"
 
-printf '\n%s✓ SkyTrace V3.5 Product Preview R4.7 passed its audited startup test%s\n' "$GREEN$BOLD" "$RESET"
+printf '\n%s✓ SkyTrace V3.5 Product Preview R4.8 passed its audited startup test%s\n' "$GREEN$BOLD" "$RESET"
 printf '  Version       %s\n' "$EXPECTED_VERSION"
 printf '  Architecture  %s\n' "$ARCH_LABEL"
 printf '  Login item    Removed\n'
