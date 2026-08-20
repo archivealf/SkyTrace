@@ -3,6 +3,7 @@
   const native = window.skytraceNative;
   if (!native?.isMac) return;
 
+  const MAX_OFFLINE_CACHE_MS = 30 * 60_000;
   const state = {
     settings: null,
     map: null,
@@ -26,31 +27,45 @@
     toast.timer = setTimeout(() => node.classList.add("hidden"), ms);
   }
 
+  function cachedSnapshotAge(snapshot) {
+    const at = Number(snapshot?.cachedAt || snapshot?.fetchedAt || 0);
+    return Number.isFinite(at) && at > 0 ? Math.max(0, Date.now() - at) : Infinity;
+  }
+
   function readCachedFlights() {
-    if (state.cachedFlights) return state.cachedFlights;
+    if (state.cachedFlights) {
+      if (cachedSnapshotAge(state.cachedFlights) <= MAX_OFFLINE_CACHE_MS) return state.cachedFlights;
+      state.cachedFlights = null;
+    }
     try {
       const cached = JSON.parse(localStorage.getItem("skytrace.mac.lastFlightSnapshot") || "null");
-      if (cached?.flights?.length) state.cachedFlights = cached;
+      if (cached?.flights?.length && cachedSnapshotAge(cached) <= MAX_OFFLINE_CACHE_MS) {
+        state.cachedFlights = cached;
+        return cached;
+      }
+      localStorage.removeItem("skytrace.mac.lastFlightSnapshot");
     } catch {}
-    return state.cachedFlights;
+    return null;
   }
 
   function saveCachedFlights(snapshot) {
-    state.cachedFlights = snapshot;
-    try {
-      localStorage.setItem("skytrace.mac.lastFlightSnapshot", JSON.stringify({ ...snapshot, cachedAt: Date.now() }));
-    } catch {}
+    const cached = { ...snapshot, cachedAt: Date.now() };
+    state.cachedFlights = cached;
+    try { localStorage.setItem("skytrace.mac.lastFlightSnapshot", JSON.stringify(cached)); }
+    catch {}
   }
 
   function cachedFlightResponse() {
     const cached = readCachedFlights();
     if (!cached) return null;
+    const ageMs = cachedSnapshotAge(cached);
     const payload = {
       ...cached,
       ok: true,
       stale: true,
       degraded: true,
       source: "SkyTrace local fallback",
+      staleAgeSeconds: Math.floor(ageMs / 1000),
       fetchedAt: cached.fetchedAt || cached.cachedAt || Date.now()
     };
     return new Response(JSON.stringify(payload), {
@@ -124,7 +139,6 @@
     };
   }
 
-  // Install before DOMContentLoaded so the very first flight request is covered.
   patchFetch();
   window.__skytraceMacFetchEarly = true;
 
@@ -134,8 +148,10 @@
   }
 
   function switchView(name) {
+    if (name === "mac") ensureMacPanel();
     const button = q(`.mode-tab[data-view="${CSS.escape(name)}"]`);
     if (button) button.click();
+    else if (name === "mac") switchMac();
   }
 
   function searchMain(value) {
@@ -261,7 +277,7 @@
   function renderMacPanel() {
     if (!$("macNativeView")) return;
     if ($("macPerformance")) $("macPerformance").value = state.settings?.performanceProfile || "balanced";
-    if ($("macConnectionText")) $("macConnectionText").textContent = state.offline ? "Degraded mode: showing the last cached traffic snapshot while live data reconnects." : "Live aviation data connected.";
+    if ($("macConnectionText")) $("macConnectionText").textContent = state.offline ? "Degraded mode: showing a recent cached traffic snapshot while live data reconnects." : "Live aviation data connected.";
     if ($("macNativeStatus")) $("macNativeStatus").textContent = state.offline ? "Degraded" : "Live";
     native.getLaunchAtLogin().then(value => { if ($("macLaunchLogin")) $("macLaunchLogin").checked = Boolean(value); }).catch(() => {});
     native.getAlertsPaused().then(value => { if ($("macAlertsPaused")) $("macAlertsPaused").checked = Boolean(value); }).catch(() => {});
@@ -402,7 +418,9 @@
     let panelAttempts = 0;
     const panelTimer = setInterval(() => {
       panelAttempts += 1;
-      if ($("macNativeView") || panelAttempts >= 40) { clearInterval(panelTimer); return; }
+      const panelReady = Boolean($("macNativeView"));
+      const buttonReady = Boolean(q('.flightdeck-rail [data-view="mac"]'));
+      if ((panelReady && buttonReady) || panelAttempts >= 40) { clearInterval(panelTimer); return; }
       ensureMacPanel();
     }, 250);
     setInterval(() => updateNativeStatus(readCachedFlights()?.flights?.length || document.querySelectorAll(".aircraft-row").length, state.offline), 5000);
