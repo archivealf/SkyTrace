@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(process.argv[2] || ".");
@@ -7,9 +8,26 @@ const overlayRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const source = path.join(overlayRoot, "desktop-services.js");
 const target = path.join(root, "desktop-services.js");
 const mainFile = path.join(root, "electron-main.js");
+const runtimeCheckSource = path.join(overlayRoot, "scripts", "check-runtime.mjs");
+const runtimeCheckTarget = path.join(root, "scripts", "check-runtime.mjs");
+const windowsIconSource = path.join(overlayRoot, "scripts", "generate-skytrace-ico.mjs");
+const windowsIconTargetScript = path.join(root, "scripts", "generate-skytrace-ico.mjs");
+const windowsIcon = path.join(root, "assets", "SkyTrace.ico");
 
-if (!fs.existsSync(source)) throw new Error("Desktop services source is missing.");
+for (const [file, label] of [
+  [source, "Desktop services source"],
+  [runtimeCheckSource, "Cross-platform runtime checker"],
+  [windowsIconSource, "Windows icon generator"]
+]) {
+  if (!fs.existsSync(file)) throw new Error(`${label} is missing.`);
+}
+
+fs.mkdirSync(path.join(root, "scripts"), { recursive: true });
+fs.mkdirSync(path.join(root, "assets"), { recursive: true });
 fs.copyFileSync(source, target);
+fs.copyFileSync(runtimeCheckSource, runtimeCheckTarget);
+fs.copyFileSync(windowsIconSource, windowsIconTargetScript);
+execFileSync(process.execPath, [windowsIconTargetScript, windowsIcon], { stdio: "inherit" });
 
 let main = fs.readFileSync(mainFile, "utf8");
 
@@ -51,4 +69,4 @@ if (!main.includes('logDesktopEvent("boot-failed", error);')) {
 }
 
 fs.writeFileSync(mainFile, main);
-console.log("Applied native SkyTrace update checks and desktop diagnostics.");
+console.log("Applied native SkyTrace update checks, diagnostics and Windows build support.");
