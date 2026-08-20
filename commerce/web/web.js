@@ -7,6 +7,9 @@ let flights = [];
 let ops = null;
 let refreshTimer = null;
 let viewportFrame = 0;
+let panelResizeObserver = null;
+let viewportOrientation = window.matchMedia("(orientation: landscape)").matches ? "landscape" : "portrait";
+let restingViewportHeight = Math.max(1, Math.round(window.visualViewport?.height || window.innerHeight || 1));
 
 const iOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const iPadDevice = /iPad/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -50,17 +53,31 @@ function updatePanelMetrics() {
   root.style.setProperty("--skytrace-panel-height", `${Math.max(0, Math.ceil(rect.height))}px`);
 }
 
+function isEditingControl() {
+  const active = document.activeElement;
+  return Boolean(active && (active.matches?.("input,textarea,select") || active.isContentEditable));
+}
+
 function updateViewportMetrics() {
   const vv = window.visualViewport;
   const height = Math.max(1, Math.round(vv?.height || window.innerHeight || document.documentElement.clientHeight || 1));
   const width = Math.max(1, Math.round(vv?.width || window.innerWidth || document.documentElement.clientWidth || 1));
   const offsetTop = Math.max(0, Math.round(vv?.offsetTop || 0));
+  const orientation = window.matchMedia("(orientation: landscape)").matches ? "landscape" : "portrait";
+
+  if (orientation !== viewportOrientation) {
+    viewportOrientation = orientation;
+    restingViewportHeight = height;
+  }
+
+  const editing = isEditingControl();
+  const keyboardOpen = iOSDevice && editing && (restingViewportHeight - height) > 90;
+  if (!editing) restingViewportHeight = Math.max(restingViewportHeight, height);
+  else if (!keyboardOpen && height > restingViewportHeight) restingViewportHeight = height;
+
   root.style.setProperty("--skytrace-vvh", `${height}px`);
   root.style.setProperty("--skytrace-vvw", `${width}px`);
   root.style.setProperty("--skytrace-vv-top", `${offsetTop}px`);
-
-  const layoutHeight = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
-  const keyboardOpen = iOSDevice && layoutHeight > 0 && (layoutHeight - height) > 120;
   root.classList.toggle("ios-keyboard-open", keyboardOpen);
 
   cancelAnimationFrame(viewportFrame);
@@ -75,10 +92,10 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener("scroll", updateViewportMetrics, { passive: true });
 }
 window.addEventListener("resize", updateViewportMetrics, { passive: true });
-window.addEventListener("orientationchange", () => setTimeout(updateViewportMetrics, 80), { passive: true });
+window.addEventListener("orientationchange", () => setTimeout(updateViewportMetrics, 100), { passive: true });
 
 if ("ResizeObserver" in window && panel) {
-  const panelResizeObserver = new ResizeObserver(() => updatePanelMetrics());
+  panelResizeObserver = new ResizeObserver(() => updatePanelMetrics());
   panelResizeObserver.observe(panel);
 }
 
@@ -335,7 +352,7 @@ $("logoutBtn").onclick = () => {
 };
 
 document.addEventListener("focusin", () => { if (iOSDevice) setTimeout(updateViewportMetrics, 60); });
-document.addEventListener("focusout", () => { if (iOSDevice) setTimeout(updateViewportMetrics, 120); });
+document.addEventListener("focusout", () => { if (iOSDevice) setTimeout(updateViewportMetrics, 160); });
 map.on("moveend", () => token && refresh());
 map.on("load", () => token && refresh());
 window.addEventListener("focus", () => token && refresh());
