@@ -8,7 +8,7 @@ const read = rel => { try { return fs.readFileSync(path.join(root, rel), "utf8")
 const need = (rel, token, label) => { if (!read(rel).includes(token)) failures.push(`${rel}: missing ${label}`); };
 const forbid = (rel, token, label) => { if (read(rel).includes(token)) failures.push(`${rel}: forbidden ${label}`); };
 
-for (const rel of ["v36-native-main.js", "v36-product.js", "v36-settings.js", "v36-detached.js"]) {
+for (const rel of ["v36-native-main.js", "v36-product.js", "v36-settings.js", "v36-detached.js", "mac-native-main.js"]) {
   const file = path.join(root, rel);
   if (!fs.existsSync(file)) { failures.push(`missing ${rel}`); continue; }
   const checked = spawnSync(process.execPath, ["--check", file], { encoding: "utf8" });
@@ -25,6 +25,11 @@ need("electron-main.js", "installV36ProductNative();", "Product Preview native I
 need("mac-native-preload.cjs", "skytrace:app:version", "version bridge");
 need("mac-native-preload.cjs", "skytrace:file:save-text", "native export bridge");
 need("mac-native-preload.cjs", "skytrace:system:open-external", "safe external release bridge");
+need("mac-native-main.js", "UNSIGNED_LOGIN_AGENT_LABEL", "unsigned login LaunchAgent label");
+need("mac-native-main.js", 'path.join(app.getPath("home"), "Library", "LaunchAgents"', "per-user LaunchAgents path");
+need("mac-native-main.js", '"/usr/bin/open"', "LaunchAgent app opener");
+need("mac-native-main.js", "getLoginAtStartup()", "LaunchAgent state reader");
+forbid("mac-native-main.js", "app.setLoginItemSettings", "signed-app Electron login item API");
 need("v36-product.js", "showOnboarding", "first-run onboarding");
 need("v36-product.js", "checkForUpdates", "update checker");
 need("v36-product.js", "SkyTrace Timeline", "Timeline UI");
@@ -46,4 +51,4 @@ if (failures.length) {
   console.error("SkyTrace Product Preview verification failed:\n- " + failures.join("\n- "));
   process.exit(1);
 }
-console.log("Verified Product Preview R4: onboarding, updates, local MapLibre, Timeline, Watchlists 2.0, geofences, Notification Center, refresh-resilient enhanced workspaces, Command Centre 2.0, What's New and keyboard shortcuts.");
+console.log("Verified Product Preview R4: onboarding, updates, local MapLibre, unsigned-safe Launch at Login, Timeline, Watchlists 2.0, geofences, Notification Center, refresh-resilient enhanced workspaces, Command Centre 2.0, What's New and keyboard shortcuts.");
