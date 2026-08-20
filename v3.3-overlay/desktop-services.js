@@ -80,8 +80,9 @@ export function installDesktopReliability() {
   if (reliabilityInstalled) return;
   reliabilityInstalled = true;
 
-  process.on("uncaughtException", error => logDesktopEvent("uncaughtException", error));
-  process.on("unhandledRejection", reason => logDesktopEvent("unhandledRejection", reason instanceof Error ? reason : String(reason)));
+  process.on("uncaughtExceptionMonitor", (error, origin) => {
+    logDesktopEvent("uncaughtException", `${origin || "unknown"}: ${error?.stack || error?.message || String(error)}`);
+  });
   app.on("render-process-gone", (_event, webContents, details) => {
     logDesktopEvent("render-process-gone", `${details?.reason || "unknown"} exit=${details?.exitCode ?? "?"} url=${webContents?.getURL?.() || ""}`);
   });
