@@ -53,7 +53,7 @@ footer{display:block;flex:0 0 auto;line-height:1.5;letter-spacing:0;padding:0 2p
 .maplibregl-ctrl-group button{background-color:transparent!important}
 .maplibregl-ctrl-group button+button{border-top-color:rgba(255,255,255,.10)!important}
 
-@media(max-height:700px) and (min-width:1367px){
+@media(max-height:700px) and (min-width:701px){
   .panel{top:10px;bottom:10px}
   .drawer{max-height:22vh}
 }
