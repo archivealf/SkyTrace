@@ -26,4 +26,4 @@ node "$ROOT/src/build/fix-v35-ui.mjs" "$ROOT"
 node "$ROOT/src/build/verify-v35.mjs" "$ROOT"
 node "$ROOT/src/build/verify-v35-ui.mjs" "$ROOT"
 
-echo "Materialized SkyTrace V3.5 Mac Native R3.3 UI audited runtime (unsigned development build)."
+echo "Materialized SkyTrace V3.5 Mac Native R3.5 rail-safe UI audited runtime (unsigned development build)."
