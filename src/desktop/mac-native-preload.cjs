@@ -21,8 +21,6 @@ contextBridge.exposeInMainWorld("skytraceNative", {
   openConfig: () => ipcRenderer.invoke("skytrace:system:open-config"),
   showDataFolder: () => ipcRenderer.invoke("skytrace:system:show-data"),
   showDiagnosticLog: () => ipcRenderer.invoke("skytrace:system:show-log"),
-  getLaunchAtLogin: () => ipcRenderer.invoke("skytrace:login-item:get"),
-  setLaunchAtLogin: enabled => ipcRenderer.invoke("skytrace:login-item:set", Boolean(enabled)),
   notify: payload => ipcRenderer.invoke("skytrace:notification:show", payload),
   getAlertsPaused: () => ipcRenderer.invoke("skytrace:alerts:get-paused"),
   setAlertsPaused: paused => ipcRenderer.invoke("skytrace:alerts:set-paused", Boolean(paused)),
