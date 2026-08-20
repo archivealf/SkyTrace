@@ -27,6 +27,9 @@ jobs:
       - name: Audit complete source tree
         run: node scripts/audit-runtime.mjs
 
+      - name: Verify Windows and iOS source support
+        run: node scripts/verify-platform-support.mjs
+
       - name: Verify quiet installer contract
         shell: bash
         run: |
@@ -48,12 +51,15 @@ jobs:
           node --check v3.3-overlay/v3.4-features.js
           node --check v3.3-overlay/v3.4-polish.js
           node --check v3.3-overlay/desktop-services.js
+          node --check v3.3-overlay/scripts/check-runtime.mjs
+          node --check v3.3-overlay/scripts/generate-skytrace-ico.mjs
           node --check v3.3-overlay/scripts/apply-v34.mjs
           node --check v3.3-overlay/scripts/apply-desktop-services.mjs
           node --check v3.3-overlay/scripts/stabilize-runtime.mjs
           node --check v3.3-overlay/scripts/stabilize-replay.mjs
           node --check v3.3-overlay/scripts/finalize-v3.4.mjs
           node --check scripts/verify-v3.4-release.mjs
+          node --check scripts/verify-platform-support.mjs
           grep -F '.startup-shell' v3.3-overlay/v3.4-polish.css >/dev/null
           grep -F '.skytrace-aircraft-detail' v3.3-overlay/v3.4-polish-refine.css >/dev/null
           grep -F '.skytrace-airport-detail' v3.3-overlay/v3.4-polish-refine.css >/dev/null
@@ -66,7 +72,7 @@ jobs:
             exit 1
           fi
 
-      - name: Run commerce integration checks
+      - name: Run commerce integration and PWA checks
         run: npm --prefix commerce run check
 
       - name: Verify monitoring and restore tools
@@ -79,7 +85,7 @@ jobs:
         run: |
           set -euo pipefail
           for host in opensky-network.org api.adsbdb.com api.open-meteo.com api.rainviewer.com; do
-            if grep -R -F "$host" commerce/v34-hook.js commerce/admin-v34-hook.js commerce/web v3.3-overlay/v3.4-features.js v3.3-overlay/v3.4-polish.js v3.3-overlay/desktop-services.js; then
+            if grep -R -F "$host" commerce/v34-hook.js commerce/admin-v34-hook.js commerce/pwa-hook.js commerce/web v3.3-overlay/v3.4-features.js v3.3-overlay/v3.4-polish.js v3.3-overlay/desktop-services.js; then
               echo "Restricted provider host found in V3.4 code: $host"
               exit 1
             fi
@@ -92,6 +98,7 @@ jobs:
           bash scripts/materialize-v3.4.sh
           node scripts/harden-commercial-build.mjs
           node scripts/verify-v3.4-release.mjs
+          node scripts/verify-platform-support.mjs
           npm run check
           node scripts/audit-runtime.mjs
           bash -n install
@@ -108,7 +115,8 @@ jobs:
           grep -F 'api.github.com/repos/archivealf/SkyTrace/releases' desktop-services.js >/dev/null
           grep -F 'desktop.log' desktop-services.js >/dev/null
           grep -F 'uncaughtExceptionMonitor' desktop-services.js >/dev/null
+          test -s assets/SkyTrace.ico
           node -e 'const p=require("./package.json"); if(p.engines?.node!==">=22.12.0") throw new Error(`Unexpected materialized Node engine: ${p.engines?.node}`)'
 
       - name: Complete smoke validation
-        run: echo "V3.4.0 RC1 source tree, polished startup/detail UI, native updater, diagnostics, quiet installer, backend, release identity, materializer, commercial hardening, executable audit and desktop checks passed."
+        run: echo "V3.4.0 RC1 source tree, macOS/Windows desktop support, iPhone/iPad PWA, polished UI, updater, diagnostics, quiet installer, backend, materializer and runtime audits passed."
