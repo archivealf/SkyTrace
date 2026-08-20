@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SkyTrace">
-  <rect x="28" y="28" width="456" height="456" rx="110" fill="#101114" stroke="#2a2c31" stroke-width="6"/>
-  <path d="M256 161l23 71 74 24-74 24-23 94-23-94-74-24 74-24z" fill="#d5d6d9"/>
+  <rect width="512" height="512" fill="#101114"/>
+  <rect x="32" y="32" width="448" height="448" rx="108" fill="none" stroke="#2b2e36" stroke-width="5"/>
+  <path d="M256 128l42 92 98 36-98 34-42 112-42-112-98-34 98-36z" fill="#dedfe3"/>
 </svg>
