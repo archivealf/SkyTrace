@@ -115,10 +115,11 @@ jobs:
             '/node_modules/maplibre-gl/dist/maplibre-gl.js'; do
             grep -aF "$marker" "$ASAR" >/dev/null || { echo "Missing Product Preview R4.3 marker: $marker"; exit 1; }
           done
+          # Getter/setter names are checked against the actual runtime files by
+          # verify-v36.mjs. Do not scan those names across the entire ASAR, where
+          # unrelated dependency/internal text can create false positives.
           for forbidden in \
             'skytrace:login-item' \
-            'getLaunchAtLogin' \
-            'setLaunchAtLogin' \
             'v36OnboardLogin' \
             'Launch SkyTrace at login'; do
             if grep -aF "$forbidden" "$ASAR" >/dev/null; then
