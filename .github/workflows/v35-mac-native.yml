@@ -1,0 +1,121 @@
+name: Build SkyTrace V3.5 Mac Native
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - v3.5-mac-native
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  mac-native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+            label: Apple-Silicon
+          - runner: macos-15-intel
+            arch: x64
+            label: Intel
+    runs-on: ${{ matrix.runner }}
+    env:
+      SKYTRACE_COMMERCE_URL: ${{ vars.SKYTRACE_COMMERCE_URL }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate account service URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${SKYTRACE_COMMERCE_URL:-}" ]]; then
+            echo "Repository variable SKYTRACE_COMMERCE_URL is required."
+            exit 1
+          fi
+          [[ "$SKYTRACE_COMMERCE_URL" == https://* ]] || { echo "SKYTRACE_COMMERCE_URL must use HTTPS."; exit 1; }
+
+      - name: Materialize V3.5 Mac Native
+        run: bash scripts/materialize-v3.5.sh
+
+      - name: Enforce commercial provider isolation
+        run: node scripts/harden-commercial-build.mjs
+
+      - name: Verify V3.5 native feature set
+        run: node src/build/verify-v35.mjs
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Download aviation reference data
+        run: npm run data
+
+      - name: Build Mac icon
+        run: npm run icon:mac
+
+      - name: Syntax and runtime checks
+        run: npm run check
+
+      - name: Re-verify materialized runtime
+        run: node src/build/verify-v35.mjs
+
+      - name: Package SkyTrace.app
+        run: npx electron-forge package --platform=darwin --arch=${{ matrix.arch }}
+
+      - name: Inspect packaged V3.5 payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$(find out -maxdepth 3 -name 'SkyTrace.app' -type d -print -quit)"
+          [[ -n "$APP" ]] || { echo "SkyTrace.app was not found."; exit 1; }
+          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
+          [[ "$VERSION" == "3.5.0" ]] || { echo "Unexpected version: $VERSION"; exit 1; }
+          ASAR="$APP/Contents/Resources/app.asar"
+          [[ -f "$ASAR" ]] || { echo "app.asar missing"; exit 1; }
+          for marker in 'mac-native-main.js' 'Private Local Replay' 'SkyTrace Command Centre' 'Airport Desk' 'skytrace_desktop' 'Content-Security-Policy'; do
+            grep -aF "$marker" "$ASAR" >/dev/null || { echo "Missing V3.5 marker: $marker"; exit 1; }
+          done
+          echo "V3.5 intentionally does not require Developer ID signing or Apple notarization."
+
+      - name: Create ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$(find out -maxdepth 3 -name 'SkyTrace.app' -type d -print -quit)"
+          ZIP="SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
+          shasum -a 256 "$ZIP" > "$ZIP.sha256"
+
+      - name: Create DMG
+        run: npx electron-forge make --platform=darwin --arch=${{ matrix.arch }}
+
+      - name: Collect DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          DMG="$(find out/make -name '*.dmg' -type f -print -quit)"
+          [[ -n "$DMG" ]] || { echo "DMG was not produced."; exit 1; }
+          cp "$DMG" "SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.dmg"
+          shasum -a 256 "SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.dmg" > "SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.dmg.sha256"
+
+      - name: Upload unsigned Mac artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SkyTrace-3.5.0-Mac-Native-${{ matrix.label }}
+          path: |
+            SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.zip
+            SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.zip.sha256
+            SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.dmg
+            SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.dmg.sha256
+          if-no-files-found: error
