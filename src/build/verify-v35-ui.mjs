@@ -33,6 +33,9 @@ requireText("mac-ui-fixes.js", "skytrace-compact-status", "compact bottom status
 requireText("mac-ui-fixes.js", "syncFreshness", "unified freshness updater");
 requireText("mac-ui-fixes.js", "skytraceTrafficLoad", "adaptive traffic density state");
 requireText("mac-ui-fixes.css", "skytrace-mac-view-active #sidebar", "narrow Mac sheet layout");
+requireText("mac-ui-fixes.css", "html:not(.skytrace-mac-view-active) #sidebar", "bounded normal desktop sheet layout");
+requireText("mac-ui-fixes.css", "overflow-x:hidden!important", "horizontal overflow containment");
+requireText("mac-ui-fixes.css", "width:380px!important", "narrow-window normal sheet cap");
 requireText("mac-ui-fixes.css", "data-skytrace-traffic-load=\"dense\"", "dense traffic label treatment");
 
 if (failures.length) {
@@ -40,4 +43,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log("Verified V3.5 Mac UI pass: visible Mac panel, isolated tab switching, compact HUD, collapsible map controls, unified freshness and adaptive label density.");
+console.log("Verified V3.5 Mac UI pass: visible Mac panel, isolated tab switching, bounded normal sheets, no horizontal sidebar overflow, compact HUD, collapsible map controls, unified freshness and adaptive label density.");
