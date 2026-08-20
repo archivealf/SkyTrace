@@ -1,0 +1,22 @@
+{
+  "name": "SkyTrace",
+  "short_name": "SkyTrace",
+  "description": "Live aviation intelligence, Operations and Replay+.",
+  "id": "/app/",
+  "start_url": "/app/",
+  "scope": "/app/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#05070b",
+  "theme_color": "#080b11",
+  "orientation": "any",
+  "categories": ["travel", "navigation", "utilities"],
+  "icons": [
+    {
+      "src": "/app/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
