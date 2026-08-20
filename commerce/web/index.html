@@ -1,12 +1,19 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#080b11">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SkyTrace">
   <title>SkyTrace Web</title>
+  <link rel="manifest" href="/app/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
+  <link rel="icon" href="/app/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
   <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
-  <link rel="stylesheet" href="/app/web.css?v=34.1">
+  <link rel="stylesheet" href="/app/web.css?v=34.2">
 </head>
 <body>
   <div id="map"></div>
@@ -21,7 +28,7 @@
 
     <section id="login" class="login-card">
       <p class="section-copy">Sign in to view observed aircraft, Operations and Replay+.</p>
-      <label><span>Username</span><input id="username" autocomplete="username" placeholder="SkyTrace username"></label>
+      <label><span>Username</span><input id="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="SkyTrace username"></label>
       <label><span>Password</span><input id="password" type="password" autocomplete="current-password" placeholder="Password"></label>
       <button id="loginBtn" class="primary">Sign in</button>
       <p id="loginMsg" class="muted">Use the same account as the SkyTrace desktop app.</p>
@@ -51,8 +58,9 @@
       <div id="drawer" class="drawer hidden"></div>
     </section>
 
+    <div id="installHint" class="install-hint hidden">Install on iPhone or iPad: use Share → Add to Home Screen.</div>
     <footer>OpenFreeMap © OpenMapTiles · Data from OpenStreetMap · Live aircraft: ADSB.lol · Aviation weather: AviationWeather.gov</footer>
   </aside>
-  <script src="/app/web.js?v=34.1"></script>
+  <script src="/app/web.js?v=34.2"></script>
 </body>
 </html>
