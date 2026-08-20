@@ -14,6 +14,16 @@ const needFile = (rel, label) => {
     if (!stat.isFile() || stat.size < 32) failures.push(`${rel}: invalid ${label}`);
   } catch { failures.push(`${rel}: missing ${label}`); }
 };
+const needVersionFile = (rel, label) => {
+  const file = path.join(root, rel);
+  try {
+    const stat = fs.statSync(file);
+    const value = fs.readFileSync(file, "utf8").trim();
+    if (!stat.isFile() || !/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(value)) {
+      failures.push(`${rel}: invalid ${label}`);
+    }
+  } catch { failures.push(`${rel}: missing ${label}`); }
+};
 
 for (const rel of ["v36-native-main.js", "v36-product.js", "v36-settings.js", "v36-detached.js", "mac-native-main.js"]) {
   const file = path.join(root, rel);
@@ -41,7 +51,7 @@ need("mac-native-preload.cjs", "skytrace:system:open-external", "safe external r
 if (fs.existsSync(path.join(root, "node_modules", "maplibre-gl", "package.json"))) {
   needFile("vendor/maplibre-gl/maplibre-gl.js", "vendored MapLibre JS");
   needFile("vendor/maplibre-gl/maplibre-gl.css", "vendored MapLibre CSS");
-  needFile("vendor/maplibre-gl/VERSION", "vendored MapLibre version marker");
+  needVersionFile("vendor/maplibre-gl/VERSION", "vendored MapLibre version marker");
 }
 
 need("mac-native-main.js", "Launch at Login was removed from SkyTrace", "removed login feature migration marker");
@@ -77,4 +87,4 @@ if (failures.length) {
   console.error("SkyTrace Product Preview verification failed:\n- " + failures.join("\n- "));
   process.exit(1);
 }
-console.log("Verified Product Preview R4.6: packaged vendored MapLibre, onboarding, updates, Timeline, Watchlists 2.0, geofences, Notification Center, refresh-resilient enhanced workspaces, Command Centre 2.0, What's New and keyboard shortcuts; Launch at Login is removed and legacy login state is cleaned up.");
+console.log("Verified Product Preview R4.7: packaged vendored MapLibre with semantic VERSION validation, onboarding, updates, Timeline, Watchlists 2.0, geofences, Notification Center, refresh-resilient enhanced workspaces, Command Centre 2.0, What's New and keyboard shortcuts; Launch at Login is removed and legacy login state is cleaned up.");
