@@ -50,16 +50,17 @@ jobs:
           fi
           [[ "$SKYTRACE_COMMERCE_URL" == https://* ]] || { echo "SKYTRACE_COMMERCE_URL must use HTTPS."; exit 1; }
 
-      - name: Materialize V3.5 Mac Native R3.4
+      - name: Materialize V3.5 Product Preview R4
         run: bash scripts/materialize-v3.5.sh
 
       - name: Enforce commercial provider isolation
         run: node scripts/harden-commercial-build.mjs
 
-      - name: Verify V3.5 audited feature set
+      - name: Verify audited feature set
         run: |
           node src/build/verify-v35.mjs
           node src/build/verify-v35-ui.mjs
+          node src/build/verify-v36.mjs
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -77,11 +78,12 @@ jobs:
         run: |
           node src/build/verify-v35.mjs
           node src/build/verify-v35-ui.mjs
+          node src/build/verify-v36.mjs
 
       - name: Package SkyTrace.app
         run: npx electron-forge package --platform=darwin --arch=${{ matrix.arch }}
 
-      - name: Inspect packaged V3.5 payload
+      - name: Inspect packaged Product Preview payload
         shell: bash
         run: |
           set -euo pipefail
@@ -91,10 +93,26 @@ jobs:
           [[ "$VERSION" == "3.5.0" ]] || { echo "Unexpected version: $VERSION"; exit 1; }
           ASAR="$APP/Contents/Resources/app.asar"
           [[ -f "$ASAR" ]] || { echo "app.asar missing"; exit 1; }
-          for marker in 'mac-native-main.js' 'mac-startup-runtime.js' 'mac-startup-guard.js' 'Private Local Replay' 'SkyTrace Command Centre' 'Airport Desk' 'skytrace_desktop' 'X-SkyTrace-Desktop' 'health-auth-runtime-shell-ready' 'Content-Security-Policy' 'mac-ui-fixes.js' 'skytrace-layer-toggle' 'skytrace-mac-view-active' 'width:380px!important' 'overflow-x:hidden!important'; do
-            grep -aF "$marker" "$ASAR" >/dev/null || { echo "Missing V3.5 R3.4 marker: $marker"; exit 1; }
+          for marker in \
+            'mac-startup-runtime.js' \
+            'mac-startup-guard.js' \
+            'health-auth-runtime-shell-ready' \
+            'mac-ui-fixes.js' \
+            'skytrace-layer-toggle' \
+            'margin-left:64px!important' \
+            'v36-product.js' \
+            'SkyTrace Timeline' \
+            'evaluateWatchlists' \
+            'evaluateGeofences' \
+            'pointInPolygon' \
+            'showOnboarding' \
+            'showWhatsNewIfNeeded' \
+            'skytrace:file:save-text' \
+            'skytrace:system:open-external' \
+            '/node_modules/maplibre-gl/dist/maplibre-gl.js'; do
+            grep -aF "$marker" "$ASAR" >/dev/null || { echo "Missing Product Preview marker: $marker"; exit 1; }
           done
-          echo "V3.5 R3.4 intentionally does not require Developer ID signing or Apple notarization."
+          echo "Product Preview R4 intentionally remains unsigned and uses verified manual release installation."
 
       - name: Launch packaged app startup smoke test
         shell: bash
@@ -133,7 +151,7 @@ jobs:
           fi
 
           wait "$PID"
-          echo "Packaged SkyTrace reached a healthy renderer, authorized local API and MapLibre runtime."
+          echo "Packaged SkyTrace reached a healthy renderer, authorized local API and local MapLibre runtime."
 
       - name: Create ZIP
         shell: bash
