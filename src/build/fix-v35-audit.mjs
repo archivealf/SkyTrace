@@ -23,6 +23,20 @@ if (!app.includes("window.__SKYTRACE_MAP__=state.map=new maplibregl.Map(")) {
 }
 write("app.v3.js", app);
 
+// The V3.4 polish layer used a generic `.loading` fallback. That can match
+// unrelated component spinners and turn them into a full-screen startup layer.
+// Keep startup detection limited to known launch-screen markers.
+let polish = read("v3.4-polish.js");
+const unsafeStartupSelector = 'document.getElementById("loading") || document.querySelector(".loading, .loading-screen, .startup-screen, [data-loading]")';
+const safeStartupSelector = 'document.getElementById("loading") || document.querySelector(".loading-screen, .startup-screen, .skytrace-startup, [data-loading=\\"true\\"]")';
+if (polish.includes(unsafeStartupSelector)) {
+  polish = polish.replace(unsafeStartupSelector, safeStartupSelector);
+}
+if (polish.includes('document.querySelector(".loading, .loading-screen')) {
+  throw new Error("V3.5 startup polish still contains the unsafe generic .loading selector.");
+}
+write("v3.4-polish.js", polish);
+
 let main = read("mac-native-main.js");
 
 // Child windows use the same privileged preload as the main app. Prevent them
@@ -81,4 +95,4 @@ if (!main.includes("await state.replayQueue.catch(() => {});\n  const settings =
 }
 write("mac-native-main.js", main);
 
-console.log("Applied V3.5 audited runtime repairs: map exposure, privileged child-window navigation guards, replay throttling and replay write serialization.");
+console.log("Applied V3.5 audited runtime repairs: safe startup selector, map exposure, privileged child-window navigation guards, replay throttling and replay write serialization.");
