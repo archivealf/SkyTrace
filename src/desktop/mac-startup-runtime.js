@@ -36,6 +36,15 @@ function attachWindowMilestones(attempt = 0) {
     if (isMainFrame) append("renderer-did-fail-load", `${code} ${description} ${validatedURL}`);
   });
   contents.on("unresponsive", () => append("renderer-unresponsive", contents.getURL()));
+  contents.on("responsive", () => append("renderer-responsive", contents.getURL()));
+}
+
+function payloadHealthy(payload = {}) {
+  return payload.health === true &&
+    payload.auth === true &&
+    payload.runtime === true &&
+    payload.shell === true &&
+    payload.degraded !== true;
 }
 
 export function installMacStartupRuntime({ diagnosticLogPath = "", getMainWindow } = {}) {
@@ -49,10 +58,10 @@ export function installMacStartupRuntime({ diagnosticLogPath = "", getMainWindow
   ipcMain.on("skytrace:startup:ready", (_event, payload = {}) => {
     if (readyReported) return;
     readyReported = true;
-    const detail = `health=${payload.health === true} shell=${payload.shell === true} degraded=${payload.degraded === true} reason=${clean(payload.reason, 160)} url=${clean(payload.url, 500)}`;
+    const detail = `health=${payload.health === true} auth=${payload.auth === true} runtime=${payload.runtime === true} shell=${payload.shell === true} degraded=${payload.degraded === true} reason=${clean(payload.reason, 160)} url=${clean(payload.url, 500)}`;
     append("renderer-ready", detail);
     if (process.env.SKYTRACE_SMOKE_TEST === "1") {
-      setTimeout(() => app.exit(payload.health === true && payload.shell === true ? 0 : 2), 250);
+      setTimeout(() => app.exit(payloadHealthy(payload) ? 0 : 2), 250);
     }
   });
 
@@ -65,7 +74,7 @@ export function installMacStartupRuntime({ diagnosticLogPath = "", getMainWindow
   if (process.env.SKYTRACE_SMOKE_TEST === "1") {
     const timer = setTimeout(() => {
       if (!readyReported) {
-        append("startup-smoke-timeout", "renderer never reported a healthy ready state");
+        append("startup-smoke-timeout", "renderer never reported a healthy authenticated runtime state");
         app.exit(3);
       }
     }, 30000);
