@@ -1,7 +1,6 @@
-/* SkyTrace Web mobile / iPhone / iPad proportion system */
+/* SkyTrace iPhone / iPad client — unified mobile layout (PWA 34.7) */
 :root{
   --skytrace-vvh:100dvh;
-  --skytrace-vvw:100vw;
   --skytrace-vv-top:0px;
   --skytrace-panel-height:0px;
   --skytrace-safe-top:env(safe-area-inset-top,0px);
@@ -11,222 +10,193 @@
   --skytrace-touch:44px;
 }
 
-html,body,#map{height:var(--skytrace-vvh,100dvh);min-height:100%;width:100%}
-html{background:#05070b}
-body{overscroll-behavior:none;-webkit-text-size-adjust:100%;touch-action:manipulation}
-button,input{min-height:var(--skytrace-touch)}
-input{font-size:16px}
-button{-webkit-tap-highlight-color:transparent}
-.panel-title{min-width:0}
-.panel-title h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.status-pill{max-width:min(48%,210px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2}
-.flight{width:100%;text-align:left}
-.traffic-list,.drawer{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-.install-hint{flex:0 0 auto;border:1px solid rgba(158,177,255,.16);border-radius:12px;background:rgba(126,149,255,.07);color:#aeb9cf;font-size:10px;line-height:1.45;padding:9px 10px}
-.maplibregl-ctrl-group button{min-width:var(--skytrace-touch);min-height:var(--skytrace-touch)}
-.maplibregl-ctrl-attrib{max-width:min(68vw,310px);font-size:10px}
+/* Full-screen map rules. VisualViewport must never size the WebGL map. */
+html,body{width:100%;min-width:100%;margin:0;background:#05070b}
+html.ios-device,html.ios-device body{height:100%;min-height:100%;overflow:hidden}
+html.ios-device #map{position:fixed;inset:0;width:auto;height:auto;min-height:0}
 
+/* Installed iOS web apps can report viewport heights excluding safe areas.
+   100vh is intentionally used here for the full layout viewport; safe-area
+   env() values are applied only to interactive controls. */
 @media(display-mode:standalone){
+  html.ios-device,html.ios-device body{height:100vh!important;min-height:100vh!important;max-height:100vh!important}
+  html.ios-device #map{
+    position:fixed!important;
+    top:0!important;
+    left:0!important;
+    right:auto!important;
+    bottom:auto!important;
+    width:100vw!important;
+    height:100vh!important;
+    min-height:100vh!important;
+    max-height:100vh!important;
+  }
   body{user-select:none;-webkit-user-select:none}
-  input,.traffic-list,.drawer{user-select:text;-webkit-user-select:text}
+  input,textarea,.traffic-list,.drawer{user-select:text;-webkit-user-select:text}
   .install-hint{display:none!important}
 }
 
-/* iPhone and narrow split-view: measured bottom sheet. */
+button,input,textarea{font-size:16px}
+button,input{min-height:var(--skytrace-touch)}
+button{-webkit-tap-highlight-color:transparent}
+textarea{-webkit-appearance:none;appearance:none}
+.panel-title{min-width:0}
+.panel-title h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status-pill{max-width:min(48%,220px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2}
+.traffic-list,.drawer{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.install-hint{flex:0 0 auto;border:1px solid rgba(158,177,255,.16);border-radius:12px;background:rgba(126,149,255,.07);color:#aeb9cf;font-size:10px;line-height:1.45;padding:9px 10px}
+
+/* Livery-aware list rows and detail cards. */
+.flight{width:100%;grid-template-columns:36px minmax(0,1fr) auto;align-items:center;text-align:left}
+.flight-livery,.detail-livery{display:grid;place-items:center;flex:0 0 auto}
+.flight-livery{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08)}
+.flight-livery svg{width:28px;height:28px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.34))}
+.flight-copy{min-width:0}
+.flight-copy strong,.flight-copy small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.flight.selected{border-color:rgba(202,214,255,.42);background:rgba(145,168,255,.12);box-shadow:0 0 0 1px rgba(202,214,255,.08) inset}
+.flight-metrics{display:block;text-align:right;white-space:nowrap;font-weight:750;color:#e8edf7}
+.flight-metrics small{margin-top:3px;color:#9aa3b3;font-weight:600}
+
+.aircraft-detail,.operations-detail,.replay-detail{display:grid;gap:12px}
+.detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.detail-identity{display:flex;align-items:center;gap:10px;min-width:0}
+.detail-identity>div{min-width:0}
+.detail-livery{width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10)}
+.detail-livery svg{width:39px;height:39px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
+.detail-head small,.detail-section-title,.note-field>span{display:block;color:#8f9bad;font-size:8px;font-weight:750;letter-spacing:.11em}
+.detail-head h3{margin:2px 0 0;font-size:19px;line-height:1.08;letter-spacing:-.02em}
+.detail-head p{margin:4px 0 0;color:#9da7b8;font-size:10px;line-height:1.35}
+.detail-close{flex:0 0 44px;width:44px;height:44px;padding:0;border-radius:13px;font-size:22px;line-height:1}
+.detail-alert{padding:9px 10px;border:1px solid rgba(255,122,122,.28);border-radius:12px;background:rgba(255,70,70,.09);color:#ffc6c6;font-size:10px;font-weight:750}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.detail-grid>div{min-height:59px;padding:9px 10px;border:1px solid rgba(255,255,255,.085);border-radius:12px;background:rgba(255,255,255,.035)}
+.detail-grid span{display:block;color:#8792a5;font-size:7.5px;font-weight:750;letter-spacing:.09em}
+.detail-grid b{display:block;margin-top:5px;font-size:14px;line-height:1.1}
+.detail-grid.compact>div{min-height:52px}
+.detail-meta{display:flex;flex-wrap:wrap;gap:6px}
+.detail-meta span{padding:6px 8px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.035);color:#9aa5b7;font-size:8px;font-weight:700}
+.detail-meta b{color:#e7ecf5}
+.detail-advanced{display:grid;gap:9px;padding-top:2px}
+.detail-message{padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:11px;background:rgba(255,255,255,.035);font-size:10px;line-height:1.45}
+.muted-detail{color:#9ca6b7}
+.note-field{display:grid;gap:6px}
+.note-field textarea{width:100%;min-height:76px;resize:vertical;border:1px solid rgba(255,255,255,.13);border-radius:11px;background:rgba(255,255,255,.045);color:#f4f6fa;padding:10px;font:inherit;outline:none}
+.note-field textarea:focus{border-color:rgba(210,220,255,.38);background:rgba(255,255,255,.07)}
+.note-save{min-height:44px}
+.ops-list{display:grid;gap:6px}
+.ops-list>div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 10px;border:1px solid rgba(255,255,255,.08);border-radius:11px;background:rgba(255,255,255,.035)}
+.ops-list span{font-size:10px;color:#a6afbf}.ops-list b{font-size:13px}
+
+/* Map controls respect safe areas but the map itself does not shrink to them. */
+.maplibregl-ctrl-group button{min-width:var(--skytrace-touch);min-height:var(--skytrace-touch)}
+.maplibregl-ctrl-icon{filter:invert(1) grayscale(1) brightness(1.65)}
+.maplibregl-ctrl-attrib{max-width:min(68vw,320px);font-size:10px}
+.maplibregl-ctrl-top-right{top:max(8px,var(--skytrace-safe-top));right:max(8px,var(--skytrace-safe-right))}
+
+.sheet-handle{display:none}
+
+/* iPhone portrait — map-first, draggable bottom sheet. */
 @media(max-width:700px) and (orientation:portrait){
   .panel{
     left:max(8px,var(--skytrace-safe-left));
     right:max(8px,var(--skytrace-safe-right));
-    bottom:max(8px,var(--skytrace-safe-bottom));
     top:auto;
+    bottom:max(8px,var(--skytrace-safe-bottom));
     width:auto;
-    height:clamp(430px,62dvh,640px);
-    max-height:calc(var(--skytrace-vvh) - var(--skytrace-safe-top) - var(--skytrace-safe-bottom) - 16px);
-    border-radius:22px;
-    padding:14px;
-    gap:10px;
+    height:clamp(470px,66vh,670px);
+    max-height:calc(100vh - var(--skytrace-safe-top) - var(--skytrace-safe-bottom) - 16px);
+    padding:15px 13px 12px;
+    gap:9px;
+    border-radius:24px;
+    border-color:rgba(180,194,255,.18);
+    background:linear-gradient(180deg,rgba(12,16,24,.965),rgba(7,10,16,.95));
+    box-shadow:0 28px 78px rgba(0,0,0,.50),0 0 0 1px rgba(255,255,255,.025) inset;
+    overflow:hidden;
   }
-  html:not(.signed-in) .panel{
-    height:auto;
-    max-height:calc(var(--skytrace-vvh) - var(--skytrace-safe-top) - var(--skytrace-safe-bottom) - 20px);
+  html:not(.signed-in) .panel{height:auto;max-height:calc(var(--skytrace-vvh) - var(--skytrace-safe-top) - 16px)}
+  .panel::before{display:none}
+  .sheet-handle{
+    position:absolute;z-index:12;top:0;left:50%;display:grid;place-items:center;
+    width:104px;height:44px;min-height:44px;padding:0;border:0;background:transparent;
+    transform:translateX(-50%);touch-action:none;cursor:grab
   }
-  .panel::before{content:"";position:absolute;top:6px;left:50%;width:34px;height:4px;border-radius:999px;background:rgba(255,255,255,.18);transform:translateX(-50%);pointer-events:none}
-  .panel-head{padding-top:5px;align-items:center;gap:10px;min-height:39px}
-  .panel h1{font-size:clamp(20px,5.6vw,24px);line-height:1.04}
+  .sheet-handle:active{transform:translateX(-50%)}
+  .sheet-handle span{display:block;width:44px;height:5px;border-radius:999px;background:rgba(218,224,239,.52);box-shadow:0 1px 0 rgba(255,255,255,.08) inset;transition:width .18s ease,background .18s ease}
+  .panel-head{padding-top:14px;align-items:center;gap:9px;min-height:48px}
+  .panel h1{font-size:22px;line-height:1.03}
   .panel small,.muted,footer,.section-copy,label span,#trafficMeta{font-size:9.5px}
   .status-pill{max-width:44%;padding:7px 9px;font-size:9.5px}
   .login-card{gap:9px;padding:12px;border-radius:15px}
-  .login-card label{gap:6px}
-  .login-card input{min-height:48px;padding:11px 12px;border-radius:12px}
-  .login-card .primary{min-height:48px}
+  .login-card label{gap:6px}.login-card input,.login-card .primary{min-height:48px}
   .app-shell{gap:8px}
   .toolbar{grid-template-columns:1fr 1fr;gap:7px}
   .toolbar button{min-height:44px;padding:8px 7px;font-size:12px;border-radius:11px}
-  .stats{gap:7px}
-  .stats div{min-height:55px;padding:9px 11px;border-radius:13px}
-  .stats b{font-size:clamp(19px,5.3vw,22px)}
-  .stats span{margin-top:4px;font-size:8px}
+  .stats{gap:7px}.stats div{min-height:55px;padding:9px 11px;border-radius:13px}.stats b{font-size:21px}.stats span{font-size:8px}
   .traffic-card{min-height:0;padding:9px;border-radius:15px}
-  .section-head{padding:2px 2px 8px;gap:8px}
-  .section-head h2{font-size:14px}
-  #trafficMeta{max-width:46%;text-align:right;line-height:1.25}
+  .section-head{padding:2px 2px 8px;gap:8px}.section-head h2{font-size:14px}#trafficMeta{max-width:46%;text-align:right;line-height:1.25}
   .traffic-list{min-height:0;padding-right:1px}
-  .flight{min-height:54px;gap:8px;margin-bottom:6px;padding:10px 11px;border-radius:12px}
-  .flight strong{font-size:13px}
-  .flight small{font-size:10px;line-height:1.25}
-  .flight-metrics{font-size:10px!important;line-height:1.35!important}
-  .empty-state{min-height:112px;padding:16px;font-size:11px}
-  .drawer{max-height:min(25dvh,220px);padding:11px;border-radius:14px;font-size:11px}
-  .install-hint{font-size:9.5px;padding:8px 9px}
-  footer{line-height:1.35;padding:0 1px}
-  .maplibregl-ctrl-top-right{top:max(8px,var(--skytrace-safe-top));right:max(8px,var(--skytrace-safe-right))}
-  .maplibregl-ctrl-bottom-right{
-    right:max(8px,var(--skytrace-safe-right));
-    bottom:calc(var(--skytrace-panel-height) + max(8px,var(--skytrace-safe-bottom)) + 8px)!important;
-  }
+  .flight{min-height:58px;gap:8px;margin-bottom:6px;padding:8px 9px;border-radius:13px}
+  .flight-livery{width:36px;height:36px}.flight-livery svg{width:30px;height:30px}
+  .flight-copy strong{font-size:12.5px}.flight-copy small{font-size:9.5px;line-height:1.25}.flight-metrics{font-size:10px}.flight-metrics small{font-size:9px!important}
+  .empty-state{min-height:120px;padding:16px;font-size:11px}
+  .drawer{flex:0 0 auto;max-height:min(43%,310px);padding:11px;border-radius:15px;font-size:11px}
+  .install-hint{font-size:9.5px;padding:8px 9px}footer{font-size:8.5px;line-height:1.3}
+  .maplibregl-ctrl-bottom-right{right:max(8px,var(--skytrace-safe-right));bottom:calc(var(--skytrace-panel-height) + max(8px,var(--skytrace-safe-bottom)) + 8px)!important}
+
+  .panel.sheet-dragging{transform:translateY(var(--skytrace-sheet-drag,0px));transition:none!important;will-change:transform}
+  .panel:not(.sheet-dragging){transition:height .24s cubic-bezier(.2,.75,.25,1),max-height .24s cubic-bezier(.2,.75,.25,1),transform .2s ease,border-radius .2s ease}
+  .panel.sheet-collapsed{height:122px!important;min-height:122px;max-height:122px!important;padding:16px 13px 27px;gap:0;cursor:pointer}
+  .panel.sheet-collapsed::after{content:"Swipe up or tap for controls";position:absolute;left:0;right:0;bottom:9px;color:rgba(205,213,229,.65);font-size:9px;font-weight:700;letter-spacing:.035em;text-align:center;pointer-events:none}
+  .panel.sheet-collapsed .sheet-handle span{width:50px;background:rgba(228,233,246,.76)}
+  .panel.sheet-collapsed .panel-head{min-height:68px;padding-top:12px}
+  .panel.sheet-collapsed .panel-title small{font-size:8px;letter-spacing:.08em}.panel.sheet-collapsed .panel-title h1{margin-top:2px;font-size:18px}.panel.sheet-collapsed .status-pill{max-width:42%;padding:6px 8px;font-size:9px}
+  .panel.sheet-collapsed .login-card,.panel.sheet-collapsed .app-shell,.panel.sheet-collapsed .install-hint,.panel.sheet-collapsed footer{display:none!important}
 }
 
-/* Very short phones get a slightly higher sheet but smaller fixed minimum. */
-@media(max-width:700px) and (orientation:portrait) and (max-height:700px){
-  html.signed-in .panel{height:clamp(360px,68dvh,480px)}
-  .panel{padding:12px;gap:8px}
-  .panel-head{min-height:35px}
-  .panel h1{font-size:20px}
-  .toolbar{gap:6px}
-  .toolbar button{min-height:42px;font-size:11px}
-  .stats div{min-height:48px;padding:8px 10px}
-  .stats b{font-size:18px}
-  .traffic-card{padding:8px}
-  .drawer{max-height:min(22dvh,160px)}
-  .install-hint{display:none}
-  footer{font-size:8px}
+/* Short and narrow phones retain useful map + control space. */
+@media(max-width:700px) and (orientation:portrait) and (max-height:740px){
+  html.signed-in .panel{height:clamp(400px,68vh,510px);padding:12px 11px 10px;gap:7px}
+  .panel-head{min-height:43px}.panel h1{font-size:20px}.toolbar{gap:5px}.toolbar button{min-height:42px;font-size:11px}
+  .stats div{min-height:48px;padding:7px 9px}.stats b{font-size:18px}.traffic-card{padding:7px}.drawer{max-height:38%}.install-hint{display:none}footer{font-size:7.5px}
 }
-
-/* Narrow iPhones retain balanced spacing without crowding the status pill. */
 @media(max-width:390px) and (orientation:portrait){
-  .panel{left:max(6px,var(--skytrace-safe-left));right:max(6px,var(--skytrace-safe-right));bottom:max(6px,var(--skytrace-safe-bottom));padding:11px;border-radius:20px}
-  .panel-head{gap:8px}
-  .panel h1{font-size:19px}
-  .status-pill{max-width:42%;font-size:9px;padding:6px 8px}
-  .toolbar button{font-size:11px}
-  .stats div{padding-left:9px;padding-right:9px}
-  .flight{padding-left:9px;padding-right:9px}
-  .flight strong{font-size:12px}
-  .flight small,.flight-metrics{font-size:9.5px!important}
+  .panel{left:max(6px,var(--skytrace-safe-left));right:max(6px,var(--skytrace-safe-right));bottom:max(6px,var(--skytrace-safe-bottom));border-radius:21px}
+  .panel-head{gap:7px}.panel h1{font-size:19px}.status-pill{max-width:42%;font-size:9px}.toolbar button{font-size:10.5px}
+  .flight{grid-template-columns:33px minmax(0,1fr) auto;padding-left:7px;padding-right:7px}.flight-livery{width:32px;height:32px}.flight-livery svg{width:27px;height:27px}
+  .flight-copy strong{font-size:12px}.flight-copy small,.flight-metrics,.flight-metrics small{font-size:9px!important}
+  .panel.sheet-collapsed{height:116px!important;min-height:116px;max-height:116px!important}
 }
 
-/* iPhone landscape: full-height side panel so the map keeps useful width. */
+/* iPhone landscape — full-height side panel keeps the map useful. */
 @media(max-width:960px) and (orientation:landscape) and (max-height:560px){
-  .panel{
-    left:max(8px,var(--skytrace-safe-left));
-    right:auto;
-    top:max(8px,var(--skytrace-safe-top));
-    bottom:max(8px,var(--skytrace-safe-bottom));
-    width:clamp(340px,44vw,430px);
-    height:auto;
-    max-height:none;
-    padding:11px;
-    gap:7px;
-    border-radius:18px;
-  }
-  html:not(.signed-in) .panel{bottom:auto;height:auto;max-height:calc(var(--skytrace-vvh) - var(--skytrace-safe-top) - var(--skytrace-safe-bottom) - 16px)}
-  .panel::before{display:none}
-  .panel-head{align-items:center;min-height:34px}
-  .panel h1{font-size:18px}
-  .status-pill{padding:6px 8px;font-size:9px}
-  .toolbar{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
-  .toolbar button{min-height:42px;padding:6px 4px;font-size:10px}
-  .stats{gap:5px}
-  .stats div{min-height:44px;padding:7px 9px}
-  .stats b{font-size:17px}
-  .stats span{font-size:7px;margin-top:3px}
-  .traffic-card{padding:7px}
-  .section-head{padding-bottom:6px}
-  .section-head h2{font-size:13px}
-  .flight{min-height:48px;padding:8px 9px}
-  .flight strong{font-size:12px}
-  .flight small,.flight-metrics{font-size:9px!important}
-  .drawer{max-height:36%;padding:9px}
-  .install-hint{display:none}
-  footer{font-size:7.5px;line-height:1.25}
-  .maplibregl-ctrl-top-right{top:max(8px,var(--skytrace-safe-top));right:max(8px,var(--skytrace-safe-right))}
+  .panel{left:max(8px,var(--skytrace-safe-left));right:auto;top:max(8px,var(--skytrace-safe-top));bottom:max(8px,var(--skytrace-safe-bottom));width:clamp(350px,43vw,440px);height:auto;max-height:none;padding:11px;gap:7px;border-radius:19px}
+  html:not(.signed-in) .panel{bottom:auto;height:auto;max-height:calc(var(--skytrace-vvh) - var(--skytrace-safe-top) - 12px)}
+  .sheet-handle{display:none}.panel-head{padding-top:0;min-height:38px}.panel h1{font-size:18px}.status-pill{padding:6px 8px;font-size:9px}
+  .toolbar{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}.toolbar button{min-height:42px;padding:6px 4px;font-size:10px}
+  .stats{gap:5px}.stats div{min-height:44px;padding:7px 9px}.stats b{font-size:17px}.stats span{font-size:7px}
+  .traffic-card{padding:7px}.section-head{padding-bottom:6px}.section-head h2{font-size:13px}.flight{min-height:50px;padding:7px}.flight-livery{width:30px;height:30px}.flight-livery svg{width:25px;height:25px}.flight-copy strong{font-size:11.5px}.flight-copy small,.flight-metrics{font-size:8.5px!important}
+  .drawer{max-height:44%;padding:9px}.install-hint{display:none}footer{font-size:7.5px;line-height:1.2}
   .maplibregl-ctrl-bottom-right{right:max(8px,var(--skytrace-safe-right));bottom:max(8px,var(--skytrace-safe-bottom))!important}
-  html.ios-keyboard-open .panel{
-    top:calc(var(--skytrace-vv-top) + max(6px,var(--skytrace-safe-top)));
-    bottom:auto;
-    height:auto!important;
-    max-height:calc(var(--skytrace-vvh) - var(--skytrace-safe-top) - 12px);
-    overflow:auto;
-  }
-  html.ios-keyboard-open .install-hint,
-  html.ios-keyboard-open footer{display:none!important}
 }
 
-/* iPad: purpose-built floating panel, never a desktop fallback. */
+/* iPad gets a true tablet layout, independent of mouse/trackpad pointer type. */
 @media(min-width:701px) and (max-width:1366px){
-  html.ios-ipad .panel{
-    left:max(14px,var(--skytrace-safe-left));
-    right:auto;
-    top:max(14px,var(--skytrace-safe-top));
-    bottom:max(14px,var(--skytrace-safe-bottom));
-    width:clamp(380px,38vw,460px);
-    height:auto;
-    max-height:none;
-    padding:16px;
-    gap:11px;
-    border-radius:24px;
-  }
-  html.ios-ipad:not(.signed-in) .panel{bottom:auto;height:auto;max-height:min(620px,calc(var(--skytrace-vvh) - var(--skytrace-safe-top) - var(--skytrace-safe-bottom) - 28px))}
-  html.ios-ipad .panel-head{align-items:center;min-height:44px}
-  html.ios-ipad .panel h1{font-size:clamp(24px,2.7vw,28px)}
-  html.ios-ipad .status-pill{max-width:46%;padding:8px 10px;font-size:10px}
-  html.ios-ipad .login-card{padding:14px;gap:10px}
-  html.ios-ipad .login-card input{min-height:48px;font-size:16px}
-  html.ios-ipad .login-card .primary{min-height:48px}
-  html.ios-ipad .toolbar{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
-  html.ios-ipad .toolbar button{min-height:44px;padding:8px 6px;font-size:11px}
-  html.ios-ipad .stats div{min-height:62px;padding:11px 12px}
-  html.ios-ipad .stats b{font-size:23px}
-  html.ios-ipad .traffic-card{padding:11px}
-  html.ios-ipad .section-head h2{font-size:16px}
-  html.ios-ipad .flight{min-height:58px;padding:11px 12px}
-  html.ios-ipad .flight strong{font-size:13px}
-  html.ios-ipad .flight small{font-size:10px}
-  html.ios-ipad .drawer{max-height:28%;font-size:11px}
-  html.ios-ipad footer{font-size:9px}
-  html.ios-ipad .maplibregl-ctrl-top-right{top:max(14px,var(--skytrace-safe-top));right:max(14px,var(--skytrace-safe-right))}
+  html.ios-ipad .panel{left:max(14px,var(--skytrace-safe-left));right:auto;top:max(14px,var(--skytrace-safe-top));bottom:max(14px,var(--skytrace-safe-bottom));width:clamp(400px,39vw,480px);height:auto;max-height:none;padding:16px;gap:11px;border-radius:24px}
+  html.ios-ipad:not(.signed-in) .panel{bottom:auto;height:auto;max-height:min(620px,calc(var(--skytrace-vvh) - var(--skytrace-safe-top) - 20px))}
+  html.ios-ipad .sheet-handle{display:none}html.ios-ipad .panel-head{padding-top:0;min-height:44px}html.ios-ipad .panel h1{font-size:26px}html.ios-ipad .status-pill{max-width:46%;font-size:10px}
+  html.ios-ipad .login-card input,html.ios-ipad .login-card .primary{min-height:48px}html.ios-ipad .toolbar{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}html.ios-ipad .toolbar button{min-height:44px;font-size:11px}
+  html.ios-ipad .stats div{min-height:62px}html.ios-ipad .stats b{font-size:23px}html.ios-ipad .flight{min-height:60px}html.ios-ipad .drawer{max-height:42%;font-size:11px}html.ios-ipad footer{font-size:9px}
   html.ios-ipad .maplibregl-ctrl-bottom-right{right:max(14px,var(--skytrace-safe-right));bottom:max(14px,var(--skytrace-safe-bottom))!important}
-  html.ios-ipad.ios-keyboard-open .panel{
-    top:calc(var(--skytrace-vv-top) + max(10px,var(--skytrace-safe-top)));
-    bottom:auto;
-    height:auto!important;
-    max-height:calc(var(--skytrace-vvh) - var(--skytrace-safe-top) - 20px);
-    overflow:auto;
-  }
-  html.ios-ipad.ios-keyboard-open .install-hint,
-  html.ios-ipad.ios-keyboard-open footer{display:none!important}
 }
 
-/* Keyboard-visible narrow portrait login state. */
+/* iOS keyboard: only the control surface follows VisualViewport. */
 html.ios-keyboard-open .panel{transition:none!important}
-@media(max-width:700px) and (orientation:portrait){
-  html.ios-keyboard-open .panel{
-    top:calc(var(--skytrace-vv-top) + max(6px,var(--skytrace-safe-top)));
-    bottom:auto;
-    height:auto!important;
-    max-height:calc(var(--skytrace-vvh) - var(--skytrace-safe-top) - 12px);
-    overflow:auto;
-  }
-  html.ios-keyboard-open .install-hint,
-  html.ios-keyboard-open footer{display:none!important}
+@media(max-width:960px){
+  html.ios-keyboard-open .panel{top:calc(var(--skytrace-vv-top) + max(6px,var(--skytrace-safe-top)));bottom:auto;height:auto!important;max-height:calc(var(--skytrace-vvh) - var(--skytrace-safe-top) - 10px);overflow:auto}
+  html.ios-keyboard-open .install-hint,html.ios-keyboard-open footer{display:none!important}
+  html.ios-keyboard-open .sheet-handle{pointer-events:none;opacity:.35}
   html.ios-keyboard-open .maplibregl-ctrl-bottom-right{bottom:max(8px,var(--skytrace-safe-bottom))!important}
 }
 
-@media(hover:none) and (pointer:coarse){
-  button:active{transform:none}
-  .maplibregl-ctrl-group{border-radius:12px!important}
-}
-
-@media(prefers-reduced-motion:reduce){
-  button{transition:none!important}
-}
+@media(hover:none) and (pointer:coarse){button:active{transform:none}.maplibregl-ctrl-group{border-radius:12px!important}}
+@media(prefers-reduced-motion:reduce){.panel,.sheet-handle span,button{transition:none!important}}
