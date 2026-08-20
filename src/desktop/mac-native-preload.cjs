@@ -12,6 +12,9 @@ const on = (channel, handler) => {
 contextBridge.exposeInMainWorld("skytraceNative", {
   isMac: process.platform === "darwin",
   platform: process.platform,
+  getVersion: () => ipcRenderer.invoke("skytrace:app:version"),
+  openExternal: url => ipcRenderer.invoke("skytrace:system:open-external", String(url || "")),
+  saveTextFile: payload => ipcRenderer.invoke("skytrace:file:save-text", payload || {}),
   openSettings: () => ipcRenderer.invoke("skytrace:settings:open"),
   getSettings: () => ipcRenderer.invoke("skytrace:settings:get"),
   saveSettings: settings => ipcRenderer.invoke("skytrace:settings:save", settings),
