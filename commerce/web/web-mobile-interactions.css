@@ -1,11 +1,19 @@
-/* SkyTrace iPhone interactive bottom sheet + iOS map viewport guard */
+/* SkyTrace iPhone interactive bottom sheet + iOS map safe-area guard */
 
-/* The map is already fixed to all four viewport edges in web.css. Do not also
-   force it to VisualViewport height: on iOS that can expose the page background
-   below the WebGL canvas when Safari/Home Screen chrome changes size. */
+/* Keep the WebGL map on the layout viewport, but extend it underneath the
+   iPhone home-indicator inset. VisualViewport is only for sheet/keyboard math. */
 html.ios-device,html.ios-device body{height:100%!important;min-height:100%!important;width:100%}
 html.ios-device body{position:fixed;inset:0;overflow:hidden}
-html.ios-device #map{position:fixed!important;inset:0!important;width:auto!important;height:auto!important;min-height:0!important}
+html.ios-device #map{
+  position:fixed!important;
+  top:0!important;
+  right:0!important;
+  bottom:calc(0px - env(safe-area-inset-bottom,0px))!important;
+  left:0!important;
+  width:auto!important;
+  height:auto!important;
+  min-height:0!important;
+}
 
 .sheet-handle{display:none}
 
@@ -25,7 +33,7 @@ html.ios-device #map{position:fixed!important;inset:0!important;width:auto!impor
     left:50%;
     display:grid;
     place-items:center;
-    width:82px;
+    width:96px;
     height:44px;
     min-height:44px;
     padding:0;
@@ -65,22 +73,37 @@ html.ios-device #map{position:fixed!important;inset:0!important;width:auto!impor
   }
 
   html.ios-iphone .panel.sheet-collapsed{
-    height:100px!important;
-    min-height:100px;
-    max-height:100px!important;
-    padding:16px 14px 12px;
+    height:122px!important;
+    min-height:122px;
+    max-height:122px!important;
+    padding:16px 14px 26px;
     gap:0;
     overflow:hidden;
     border-radius:22px;
+    cursor:pointer;
+  }
+
+  html.ios-iphone .panel.sheet-collapsed::after{
+    content:"Swipe up or tap to show controls";
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:9px;
+    color:rgba(205,213,229,.62);
+    font-size:9px;
+    font-weight:700;
+    letter-spacing:.035em;
+    text-align:center;
+    pointer-events:none;
   }
 
   html.ios-iphone .panel.sheet-collapsed .sheet-handle span{
-    width:48px;
-    background:rgba(228,233,246,.68);
+    width:50px;
+    background:rgba(228,233,246,.74);
   }
 
   html.ios-iphone .panel.sheet-collapsed .panel-head{
-    min-height:64px;
+    min-height:68px;
     padding-top:12px;
     align-items:center;
   }
@@ -116,9 +139,9 @@ html.ios-device #map{position:fixed!important;inset:0!important;width:auto!impor
 
 @media(max-width:390px) and (orientation:portrait){
   html.ios-iphone .panel.sheet-collapsed{
-    height:94px!important;
-    min-height:94px;
-    max-height:94px!important;
+    height:116px!important;
+    min-height:116px;
+    max-height:116px!important;
     padding-left:11px;
     padding-right:11px;
   }
