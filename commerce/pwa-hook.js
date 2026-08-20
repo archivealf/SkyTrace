@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = path.join(__dirname, "web");
+const AIRLINES_FILE = path.resolve(__dirname, "..", "airlines.v2.2.js");
 const previousCreateServer = http.createServer.bind(http);
 
 function headers(res, type, cache = "no-store") {
@@ -22,14 +23,17 @@ function localFile(name) {
   return fs.existsSync(target) ? target : null;
 }
 
-function serveFile(res, name, type, cache) {
-  const file = localFile(name);
-  if (!file) {
+function servePath(res, file, type, cache) {
+  if (!file || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
     res.statusCode = 404;
     return res.end("Not found");
   }
   headers(res, type, cache);
   fs.createReadStream(file).pipe(res);
+}
+
+function serveFile(res, name, type, cache) {
+  return servePath(res, localFile(name), type, cache);
 }
 
 function serveBase64(res, name, type, cache) {
@@ -56,10 +60,11 @@ http.createServer = function pwaCreateServer(...args) {
   const wrapped = (req, res) => {
     const url = new URL(req.url || "/", "http://localhost");
     if (req.method === "GET") {
-      if (url.pathname === "/app/manifest.webmanifest") return serveFile(res, "manifest.webmanifest", "application/manifest+json; charset=utf-8", "public, max-age=3600");
+      if (url.pathname === "/app/manifest.webmanifest") return serveFile(res, "manifest.webmanifest", "application/manifest+json; charset=utf-8", "no-cache");
       if (url.pathname === "/app/web-mobile.css") return serveFile(res, "web-mobile.css", "text/css; charset=utf-8", "no-cache");
-      if (url.pathname === "/app/web-mobile-interactions.css") return serveFile(res, "web-mobile-interactions.css", "text/css; charset=utf-8", "no-cache");
       if (url.pathname === "/app/web-mobile.js") return serveFile(res, "web-mobile.js", "text/javascript; charset=utf-8", "no-cache");
+      if (url.pathname === "/app/web-ios-aircraft.js") return serveFile(res, "web-ios-aircraft.js", "text/javascript; charset=utf-8", "no-cache");
+      if (url.pathname === "/app/airlines.js") return servePath(res, AIRLINES_FILE, "text/javascript; charset=utf-8", "no-cache");
       if (url.pathname === "/app/icon.svg") return serveFile(res, "icon.svg", "image/svg+xml; charset=utf-8", "public, max-age=86400");
       if (url.pathname === "/app/apple-touch-icon.png") return serveBase64(res, "apple-touch-icon.png.b64", "image/png", "public, max-age=86400");
       if (url.pathname === "/app/sw.js") {
