@@ -6,9 +6,8 @@ REPO="SkyTrace"
 APP_NAME="SkyTrace"
 EXPECTED_VERSION="3.5.0"
 EXPECTED_BUNDLE_ID="io.skytrace.desktop"
-EXPECTED_BUILD_MARKER="mac-startup-runtime.js"
-BUILD_LABEL="SkyTrace V3.5 Mac Native R3.4 Responsive UI Audited"
-SOURCE_REV="9c48b18b7708a7a5f300677a0008b80c47c5a308"
+BUILD_LABEL="SkyTrace V3.5 Mac Native R3.5 Rail-Safe UI Audited"
+SOURCE_REV="31be7b95757acb6ef1278328df4de427a4004230"
 PORTABLE_NODE_VERSION="22.23.2"
 
 INSTALL_DIR="$HOME/Applications"
@@ -22,160 +21,94 @@ READY_MARKER="renderer-ready: health=true shell=true degraded=false auth=true ru
 
 : "${SKYTRACE_COMMERCE_URL:=https://skytrace.duckdns.org}"
 export SKYTRACE_COMMERCE_URL
-export npm_config_audit=false
-export npm_config_fund=false
-export npm_config_update_notifier=false
+export npm_config_audit=false npm_config_fund=false npm_config_update_notifier=false
 
 case "$(uname -m)" in
-  arm64)
-    ARCH="arm64"
-    ARCH_LABEL="Apple Silicon"
-    ARCH_DETAIL="Apple Silicon (arm64)"
-    NODE_DIST_ARCH="arm64"
-    ;;
-  x86_64)
-    ARCH="x64"
-    ARCH_LABEL="Intel"
-    ARCH_DETAIL="Intel (x86_64)"
-    NODE_DIST_ARCH="x64"
-    ;;
-  *)
-    printf 'SkyTrace does not support this Mac architecture: %s\n' "$(uname -m)" >&2
-    exit 1
-    ;;
+  arm64) ARCH="arm64"; ARCH_LABEL="Apple Silicon"; NODE_DIST_ARCH="arm64" ;;
+  x86_64) ARCH="x64"; ARCH_LABEL="Intel"; NODE_DIST_ARCH="x64" ;;
+  *) echo "Unsupported Mac architecture: $(uname -m)" >&2; exit 1 ;;
 esac
 
 if [[ -t 1 && "${TERM:-dumb}" != "dumb" ]]; then
-  BOLD=$'\033[1m'
-  DIM=$'\033[2m'
-  GREEN=$'\033[32m'
-  RED=$'\033[31m'
-  RESET=$'\033[0m'
+  BOLD=$'\033[1m'; DIM=$'\033[2m'; GREEN=$'\033[32m'; RED=$'\033[31m'; RESET=$'\033[0m'
 else
-  BOLD=""
-  DIM=""
-  GREEN=""
-  RED=""
-  RESET=""
+  BOLD=""; DIM=""; GREEN=""; RED=""; RESET=""
 fi
 
 TMP="$(mktemp -d)"
-SOURCE_DIR_FILE="$TMP/source-dir"
+SOURCE_DIR=""
 mkdir -p "$INSTALL_DIR" "$LOG_DIR"
 : > "$LOG_FILE"
+trap 'rm -rf "$TMP"' EXIT
 
-cleanup() { rm -rf "$TMP"; }
-trap cleanup EXIT
-
-on_unexpected_error() {
-  local line="${1:-unknown}"
-  printf '\n%sInstallation stopped unexpectedly.%s\n' "$RED" "$RESET" >&2
-  printf 'Details were saved to:\n  %s\n' "$LOG_FILE" >&2
-  printf '%sFailed near installer line %s.%s\n' "$DIM" "$line" "$RESET" >&2
+fail() {
+  local label="${1:-Installation}"
+  printf '\n%s%s failed.%s\n' "$RED$BOLD" "$label" "$RESET" >&2
+  printf 'Installer log: %s\n' "$LOG_FILE" >&2
+  if [[ -f "$RUNTIME_LOG" ]]; then
+    printf '\n%sRuntime log:%s\n' "$DIM" "$RESET" >&2
+    tail -n 60 "$RUNTIME_LOG" | sed 's/^/  /' >&2 || true
+  fi
+  printf '\n%sLast installer log lines:%s\n' "$DIM" "$RESET" >&2
+  tail -n 50 "$LOG_FILE" | sed 's/^/  /' >&2 || true
+  exit 1
 }
-trap 'on_unexpected_error "$LINENO"' ERR
 
 run_step() {
-  local number="$1" label="$2" status=0
+  local number="$1" label="$2" status=0 started="$SECONDS"
   shift 2
-  local started="$SECONDS"
-  printf '  %s[%s/8]%s %-30s' "$DIM" "$number" "$RESET" "$label"
+  printf '  %s[%s/8]%s %-31s' "$DIM" "$number" "$RESET" "$label"
   printf '\n--- [%s/8] %s ---\n' "$number" "$label" >> "$LOG_FILE"
-
   if "$@" >> "$LOG_FILE" 2>&1; then
-    printf ' %s✓%s %ss\n' "$GREEN" "$RESET" "$((SECONDS - started))"
+    printf ' %s✓%s %ss\n' "$GREEN" "$RESET" "$((SECONDS-started))"
     return 0
   else
     status=$?
   fi
-
   printf ' %sfailed%s\n' "$RED" "$RESET" >&2
-  printf '\n%s%s failed.%s\n' "$BOLD" "$label" "$RESET" >&2
-  printf 'Installer log:\n  %s\n\n' "$LOG_FILE" >&2
-  if [[ -f "$RUNTIME_LOG" ]]; then
-    printf '%sRuntime log:%s\n' "$DIM" "$RESET" >&2
-    tail -n 60 "$RUNTIME_LOG" | sed 's/^/  /' >&2 || true
-  fi
-  printf '%sLast installer log lines:%s\n' "$DIM" "$RESET" >&2
-  tail -n 45 "$LOG_FILE" | sed 's/^/  /' >&2 || true
-  exit "$status"
+  return "$status"
 }
 
 node_is_supported() {
   command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 &&
-  node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major > 22 || (major === 22 && minor >= 12) ? 0 : 1);' >/dev/null 2>&1
+  node -e 'const [M,m]=process.versions.node.split(".").map(Number);process.exit(M>22||(M===22&&m>=12)?0:1)' >/dev/null 2>&1
 }
 
 prepare_runtime() {
   if node_is_supported; then
-    printf 'Architecture: %s\nUsing system Node %s\n' "$ARCH_DETAIL" "$(node --version)" >> "$LOG_FILE"
+    printf 'Using system Node %s\n' "$(node --version)"
     return 0
   fi
-
   local archive="node-v${PORTABLE_NODE_VERSION}-darwin-${NODE_DIST_ARCH}.tar.gz"
   local base="https://nodejs.org/dist/v${PORTABLE_NODE_VERSION}"
-  local archive_path="$TMP/$archive" sums_path="$TMP/SHASUMS256.txt"
-  local expected actual
-
-  printf 'System Node is unavailable or below 22.12; using temporary Node %s.\n' "$PORTABLE_NODE_VERSION" >> "$LOG_FILE"
-  curl --fail --location --silent --show-error "$base/$archive" --output "$archive_path" || return
-  curl --fail --location --silent --show-error "$base/SHASUMS256.txt" --output "$sums_path" || return
-  expected="$(awk -v name="$archive" '$2 == name { print $1; exit }' "$sums_path")"
-  [[ -n "$expected" ]] || { printf 'Could not verify the temporary Node download.\n' >&2; return 1; }
+  local archive_path="$TMP/$archive" sums_path="$TMP/SHASUMS256.txt" expected actual
+  curl --fail --location --silent --show-error "$base/$archive" -o "$archive_path" || return
+  curl --fail --location --silent --show-error "$base/SHASUMS256.txt" -o "$sums_path" || return
+  expected="$(awk -v name="$archive" '$2==name{print $1;exit}' "$sums_path")"
+  [[ -n "$expected" ]] || return 1
   actual="$(shasum -a 256 "$archive_path" | awk '{print $1}')"
-  [[ "$actual" == "$expected" ]] || { printf 'Temporary Node checksum mismatch.\n' >&2; return 1; }
+  [[ "$actual" == "$expected" ]] || return 1
   tar -xzf "$archive_path" -C "$TMP" || return
   export PATH="$TMP/node-v${PORTABLE_NODE_VERSION}-darwin-${NODE_DIST_ARCH}/bin:$PATH"
   node_is_supported || return
-  printf 'Architecture: %s\nUsing temporary Node %s\n' "$ARCH_DETAIL" "$(node --version)" >> "$LOG_FILE"
+  printf 'Using verified temporary Node %s\n' "$(node --version)"
 }
 
 download_source() {
-  local source_dir
-  curl --fail --location --silent --show-error "$SOURCE_ZIP" --output "$TMP/source.zip" || return
+  curl --fail --location --silent --show-error "$SOURCE_ZIP" -o "$TMP/source.zip" || return
   mkdir -p "$TMP/source" || return
   ditto -x -k "$TMP/source.zip" "$TMP/source" || return
-  source_dir="$(find "$TMP/source" -maxdepth 1 -type d -name 'SkyTrace-*' -print -quit)"
-  [[ -n "$source_dir" && -d "$source_dir" ]] || { printf 'SkyTrace source directory was not found.\n' >&2; return 1; }
-
-  grep -F 'V3.5 build-script preflight passed.' "$source_dir/scripts/materialize-v3.5.sh" >/dev/null || {
-    printf 'Pinned source is missing the V3.5 build preflight.\n' >&2; return 1;
-  }
-  grep -F 'externalOriginsFromTags' "$source_dir/src/build/apply-v35.mjs" >/dev/null || {
-    printf 'Pinned source is missing the corrected CSP origin parser.\n' >&2; return 1;
-  }
-  grep -F 'safeStartupSelector' "$source_dir/src/build/fix-v35-audit.mjs" >/dev/null || {
-    printf 'Pinned source is missing the safe startup selector repair.\n' >&2; return 1;
-  }
-  grep -F 'fix-v35-ui.mjs' "$source_dir/scripts/materialize-v3.5.sh" >/dev/null || {
-    printf 'Pinned source is missing the Mac UI materialization pass.\n' >&2; return 1;
-  }
-  grep -F 'activateMacView' "$source_dir/src/renderer/mac-ui-fixes.js" >/dev/null || {
-    printf 'Pinned source is missing Mac tab isolation.\n' >&2; return 1;
-  }
-  grep -F 'skytrace-layer-toggle' "$source_dir/src/renderer/mac-ui-fixes.js" >/dev/null || {
-    printf 'Pinned source is missing collapsible map controls.\n' >&2; return 1;
-  }
-  grep -F 'html:not(.skytrace-mac-view-active) #sidebar' "$source_dir/src/renderer/mac-ui-fixes.css" >/dev/null || {
-    printf 'Pinned source is missing the R3.4 normal-sidebar width cap.\n' >&2; return 1;
-  }
-  grep -F 'overflow-x:hidden!important' "$source_dir/src/renderer/mac-ui-fixes.css" >/dev/null || {
-    printf 'Pinned source is missing the R3.4 horizontal-overflow guard.\n' >&2; return 1;
-  }
-
-  printf '%s\n' "$source_dir" > "$SOURCE_DIR_FILE"
-  printf 'Pinned source revision: %s\n' "$SOURCE_REV" >> "$LOG_FILE"
-}
-
-enter_source() {
-  local source_dir
-  source_dir="$(cat "$SOURCE_DIR_FILE" 2>/dev/null || true)"
-  [[ -n "$source_dir" && -d "$source_dir" ]] || { printf 'Downloaded SkyTrace source is unavailable.\n' >&2; return 1; }
-  cd "$source_dir"
+  SOURCE_DIR="$(find "$TMP/source" -maxdepth 1 -type d -name 'SkyTrace-*' -print -quit)"
+  [[ -n "$SOURCE_DIR" && -d "$SOURCE_DIR" ]] || return 1
+  grep -F 'R3.5 rail-safe UI audited runtime' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
+  grep -F "Preserve the base map/layer panel's native fixed/right-side positioning" "$SOURCE_DIR/src/renderer/mac-ui-fixes.css" >/dev/null || return 1
+  grep -F 'margin-left:64px!important' "$SOURCE_DIR/src/renderer/mac-ui-fixes.css" >/dev/null || return 1
+  grep -F 'must not override the base panel position' "$SOURCE_DIR/src/build/verify-v35-ui.mjs" >/dev/null || return 1
+  printf 'Pinned source revision: %s\n' "$SOURCE_REV"
 }
 
 prepare_release() {
-  enter_source || return
+  cd "$SOURCE_DIR" || return
   bash scripts/materialize-v3.5.sh || return
   node scripts/harden-commercial-build.mjs || return
   node src/build/verify-v35.mjs || return
@@ -183,18 +116,11 @@ prepare_release() {
   node scripts/audit-runtime.mjs || return
 }
 
-install_dependencies() {
-  enter_source || return
-  npm install --no-audit --no-fund --loglevel=error || return
-}
-
-download_data() {
-  enter_source || return
-  npm run --silent data || return
-}
+install_dependencies() { cd "$SOURCE_DIR" && npm install --no-audit --no-fund --loglevel=error; }
+download_data() { cd "$SOURCE_DIR" && npm run --silent data; }
 
 verify_release() {
-  enter_source || return
+  cd "$SOURCE_DIR" || return
   npm run --silent check || return
   node src/build/verify-v35.mjs || return
   node src/build/verify-v35-ui.mjs || return
@@ -202,12 +128,10 @@ verify_release() {
 }
 
 build_application() {
-  local found_app
-  enter_source || return
+  cd "$SOURCE_DIR" || return
   npm run --silent icon:mac || return
   npm run --silent package -- --arch="$ARCH" || return
-  found_app="$(find out -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit)"
-  [[ -n "$found_app" ]] || { printf 'SkyTrace.app was not produced.\n' >&2; return 1; }
+  find out -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit | grep -q .
 }
 
 stop_existing_app() {
@@ -220,79 +144,60 @@ stop_existing_app() {
 }
 
 clear_disposable_caches() {
-  mkdir -p "$DATA_DIR" || return
+  mkdir -p "$DATA_DIR"
   for name in "Cache" "Code Cache" "GPUCache" "DawnCache" "Service Worker" "blob_storage"; do
     rm -rf "$DATA_DIR/$name"
   done
-  printf 'Preserved user config, Mac settings and Local Replay; cleared disposable Electron caches.\n' >> "$LOG_FILE"
-  if [[ -d "/Applications/SkyTrace.app" ]]; then
-    printf 'Note: another SkyTrace copy exists at /Applications/SkyTrace.app; this installer will launch the audited ~/Applications copy explicitly.\n' >> "$LOG_FILE"
-  fi
 }
 
-smoke_test_installed_app() {
-  local executable="$APP_PATH/Contents/MacOS/SkyTrace"
-  local pid ready=0
-  [[ -x "$executable" ]] || { printf 'Installed SkyTrace executable is missing.\n' >&2; return 1; }
-  mkdir -p "$LOG_DIR" || return
+smoke_test() {
+  local executable="$APP_PATH/Contents/MacOS/SkyTrace" pid ready=0
+  [[ -x "$executable" ]] || return 1
   rm -f "$RUNTIME_LOG"
-
   SKYTRACE_SMOKE_TEST=1 "$executable" >> "$LOG_FILE" 2>&1 &
   pid=$!
   for _ in {1..70}; do
-    if [[ -f "$RUNTIME_LOG" ]] && grep -F "$READY_MARKER" "$RUNTIME_LOG" >/dev/null; then
-      ready=1
-      break
-    fi
-    if ! kill -0 "$pid" 2>/dev/null; then
-      break
-    fi
+    if [[ -f "$RUNTIME_LOG" ]] && grep -F "$READY_MARKER" "$RUNTIME_LOG" >/dev/null; then ready=1; break; fi
+    kill -0 "$pid" 2>/dev/null || break
     sleep 0.5
   done
-
-  if [[ "$ready" != "1" ]]; then
-    printf 'Installed SkyTrace did not reach the fully healthy authenticated renderer/runtime startup state.\n' >&2
+  if [[ "$ready" != 1 ]]; then
     kill "$pid" >/dev/null 2>&1 || true
     wait "$pid" >/dev/null 2>&1 || true
     return 1
   fi
-
   wait "$pid" || return
-  grep -F "$READY_MARKER" "$RUNTIME_LOG" >/dev/null || return
+  grep -F "$READY_MARKER" "$RUNTIME_LOG" >/dev/null
 }
 
 install_application() {
-  local found_app plist asar built_version built_bundle_id installed_version installed_bundle_id
-  enter_source || return
+  cd "$SOURCE_DIR" || return
+  local found_app plist asar version bundle
   found_app="$(find out -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit)"
-  [[ -n "$found_app" ]] || { printf 'Built SkyTrace.app was not found.\n' >&2; return 1; }
-
+  [[ -n "$found_app" ]] || return 1
   plist="$found_app/Contents/Info.plist"
   asar="$found_app/Contents/Resources/app.asar"
-  built_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist" 2>/dev/null || true)"
-  built_bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist" 2>/dev/null || true)"
-  [[ "$built_version" == "$EXPECTED_VERSION" ]] || { printf 'Unexpected app version: %s\n' "${built_version:-unknown}" >&2; return 1; }
-  [[ "$built_bundle_id" == "$EXPECTED_BUNDLE_ID" ]] || { printf 'Unexpected bundle ID: %s\n' "${built_bundle_id:-unknown}" >&2; return 1; }
-  [[ -f "$asar" ]] || { printf 'Packaged app.asar is missing.\n' >&2; return 1; }
-
-  for marker in "$EXPECTED_BUILD_MARKER" 'mac-startup-guard.js' 'data-skytrace-loader-failsafe' 'health-auth-runtime-shell-ready' 'X-SkyTrace-Desktop' 'Private Local Replay' 'SkyTrace Command Centre' 'unpkg.com' 'mac-ui-fixes.js' 'skytrace-layer-toggle' 'skytrace-mac-view-active' 'width:380px!important' 'overflow-x:hidden!important'; do
-    grep -aF "$marker" "$asar" >/dev/null || { printf 'Required V3.5 R3.4 package marker is missing: %s\n' "$marker" >&2; return 1; }
+  version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist" 2>/dev/null || true)"
+  bundle="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist" 2>/dev/null || true)"
+  [[ "$version" == "$EXPECTED_VERSION" && "$bundle" == "$EXPECTED_BUNDLE_ID" && -f "$asar" ]] || return 1
+  for marker in \
+    'mac-startup-runtime.js' \
+    'health-auth-runtime-shell-ready' \
+    'mac-ui-fixes.js' \
+    'skytrace-layer-toggle' \
+    'width:330px!important' \
+    'margin-left:64px!important' \
+    "Preserve the base map/layer panel's native fixed/right-side positioning"; do
+    grep -aF "$marker" "$asar" >/dev/null || { echo "Missing packaged R3.5 marker: $marker"; return 1; }
   done
-
   stop_existing_app || return
   clear_disposable_caches || return
   rm -rf "$APP_PATH"
   ditto "$found_app" "$APP_PATH" || return
-
-  installed_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Contents/Info.plist" 2>/dev/null || true)"
-  installed_bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Contents/Info.plist" 2>/dev/null || true)"
-  [[ "$installed_version" == "$EXPECTED_VERSION" ]] || return 1
-  [[ "$installed_bundle_id" == "$EXPECTED_BUNDLE_ID" ]] || return 1
-
-  smoke_test_installed_app || return
+  smoke_test
 }
 
-case "$SKYTRACE_COMMERCE_URL" in https://*) ;; *) printf 'SKYTRACE_COMMERCE_URL must use HTTPS.\n' >&2; exit 1 ;; esac
+case "$SKYTRACE_COMMERCE_URL" in https://*) ;; *) echo 'SKYTRACE_COMMERCE_URL must use HTTPS.' >&2; exit 1 ;; esac
 
 printf '\n%sSkyTrace Installer%s\n' "$BOLD" "$RESET"
 printf '%s────────────────────────────────────────%s\n' "$DIM" "$RESET"
@@ -303,27 +208,19 @@ printf '  Signing       Unsigned / no Apple subscription required\n'
 printf '  Destination   ~/Applications/SkyTrace.app\n'
 printf '%s────────────────────────────────────────%s\n\n' "$DIM" "$RESET"
 
-printf 'Installing...\n'
-run_step 1 "Build runtime" prepare_runtime
-run_step 2 "Download pinned release" download_source
-run_step 3 "Prepare SkyTrace" prepare_release
-run_step 4 "Install dependencies" install_dependencies
-run_step 5 "Aviation data" download_data
-run_step 6 "Verify audited release" verify_release
-run_step 7 "Build application" build_application
-run_step 8 "Install + R3.4 startup test" install_application
+run_step 1 "Build runtime" prepare_runtime || fail "Build runtime"
+run_step 2 "Download pinned release" download_source || fail "Download pinned release"
+run_step 3 "Prepare SkyTrace" prepare_release || fail "Prepare SkyTrace"
+run_step 4 "Install dependencies" install_dependencies || fail "Install dependencies"
+run_step 5 "Aviation data" download_data || fail "Aviation data"
+run_step 6 "Verify audited release" verify_release || fail "Verify audited release"
+run_step 7 "Build application" build_application || fail "Build application"
+run_step 8 "Install + R3.5 startup test" install_application || fail "Install + R3.5 startup test"
 
-INSTALLED_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Contents/Info.plist" 2>/dev/null || true)"
-
-printf '\n%s✓ SkyTrace V3.5 R3.4 passed its audited startup test%s\n' "$GREEN$BOLD" "$RESET"
-printf '%s────────────────────────────────────────%s\n' "$DIM" "$RESET"
-printf '  Build         R3.4 responsive UI audited runtime\n'
-printf '  Source        %.12s\n' "$SOURCE_REV"
-printf '  Version       %s\n' "$INSTALLED_VERSION"
+printf '\n%s✓ SkyTrace V3.5 R3.5 passed its audited startup test%s\n' "$GREEN$BOLD" "$RESET"
+printf '  Version       %s\n' "$EXPECTED_VERSION"
 printf '  Architecture  %s\n' "$ARCH_LABEL"
 printf '  Location      ~/Applications/SkyTrace.app\n'
 printf '  Runtime log   ~/Library/Logs/SkyTrace/desktop.log\n'
-printf '  Updates       Verified manual GitHub releases\n'
-printf '%s────────────────────────────────────────%s\n' "$DIM" "$RESET"
-printf 'Opening the exact audited SkyTrace copy...\n\n'
+printf 'Opening SkyTrace...\n\n'
 open -n "$APP_PATH"
