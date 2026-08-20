@@ -3,10 +3,10 @@
   "version": "1.3.0",
   "private": true,
   "type": "module",
-  "description": "SkyTrace SQLite account, Stripe, codes, Cloud Replay, Operations, web and admin backend.",
+  "description": "SkyTrace SQLite account, Stripe, codes, Cloud Replay, Operations, PWA web and admin backend.",
   "scripts": {
     "start": "node --import ./redeem-hook.js server.js",
-    "check": "node --check server.js && node --check redeem-hook.js && node --check platform-hook.js && node --check platform-preserve.js && node --check v34-hook.js && node --check admin-v34-hook.js && node --check codes.js && node --check admin.js && node --check monitor.js && node --check restore.js && node --check web/web.js && node --check web/admin-v34.js && node test-v34.mjs",
+    "check": "node --check server.js && node --check redeem-hook.js && node --check platform-hook.js && node --check platform-preserve.js && node --check v34-hook.js && node --check admin-v34-hook.js && node --check pwa-hook.js && node --check codes.js && node --check admin.js && node --check monitor.js && node --check restore.js && node --check web/web.js && node --check web/sw.js && node --check web/admin-v34.js && node test-v34.mjs",
     "codes": "node codes.js",
     "admin": "node admin.js",
     "monitor": "node monitor.js",
