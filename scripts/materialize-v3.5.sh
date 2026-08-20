@@ -33,4 +33,4 @@ node "$ROOT/src/build/verify-v35.mjs" "$ROOT"
 node "$ROOT/src/build/verify-v35-ui.mjs" "$ROOT"
 node "$ROOT/src/build/verify-v36.mjs" "$ROOT"
 
-echo "Materialized SkyTrace V3.5 Product Preview R4.6 packaged-map runtime (unsigned development build)."
+echo "Materialized SkyTrace V3.5 Product Preview R4.7 packaged-map runtime with semantic MapLibre version audit (unsigned development build)."
