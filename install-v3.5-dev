@@ -6,8 +6,8 @@ REPO="SkyTrace"
 APP_NAME="SkyTrace"
 EXPECTED_VERSION="3.5.0"
 EXPECTED_BUNDLE_ID="io.skytrace.desktop"
-BUILD_LABEL="SkyTrace V3.5 Mac Native R3.5 Rail-Safe UI Audited"
-SOURCE_REV="31be7b95757acb6ef1278328df4de427a4004230"
+BUILD_LABEL="SkyTrace V3.5 Product Preview R4 Audited"
+SOURCE_REV="c10f1fa932260588d506c1a4403de49fa12edb7c"
 PORTABLE_NODE_VERSION="22.23.2"
 
 INSTALL_DIR="$HOME/Applications"
@@ -100,10 +100,14 @@ download_source() {
   ditto -x -k "$TMP/source.zip" "$TMP/source" || return
   SOURCE_DIR="$(find "$TMP/source" -maxdepth 1 -type d -name 'SkyTrace-*' -print -quit)"
   [[ -n "$SOURCE_DIR" && -d "$SOURCE_DIR" ]] || return 1
-  grep -F 'R3.5 rail-safe UI audited runtime' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
-  grep -F "Preserve the base map/layer panel's native fixed/right-side positioning" "$SOURCE_DIR/src/renderer/mac-ui-fixes.css" >/dev/null || return 1
+  grep -F 'Product Preview R4 audited runtime' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
+  grep -F 'apply-v36.mjs' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
+  grep -F 'verify-v36.mjs' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
+  grep -F 'SkyTrace Timeline' "$SOURCE_DIR/src/renderer/v36-product.js" >/dev/null || return 1
+  grep -F 'evaluateWatchlists' "$SOURCE_DIR/src/renderer/v36-product.js" >/dev/null || return 1
+  grep -F 'evaluateGeofences' "$SOURCE_DIR/src/renderer/v36-product.js" >/dev/null || return 1
+  grep -F 'node_modules/maplibre-gl' "$SOURCE_DIR/src/build/apply-v36.mjs" >/dev/null || return 1
   grep -F 'margin-left:64px!important' "$SOURCE_DIR/src/renderer/mac-ui-fixes.css" >/dev/null || return 1
-  grep -F 'must not override the base panel position' "$SOURCE_DIR/src/build/verify-v35-ui.mjs" >/dev/null || return 1
   printf 'Pinned source revision: %s\n' "$SOURCE_REV"
 }
 
@@ -113,6 +117,7 @@ prepare_release() {
   node scripts/harden-commercial-build.mjs || return
   node src/build/verify-v35.mjs || return
   node src/build/verify-v35-ui.mjs || return
+  node src/build/verify-v36.mjs || return
   node scripts/audit-runtime.mjs || return
 }
 
@@ -124,6 +129,7 @@ verify_release() {
   npm run --silent check || return
   node src/build/verify-v35.mjs || return
   node src/build/verify-v35-ui.mjs || return
+  node src/build/verify-v36.mjs || return
   node scripts/audit-runtime.mjs || return
 }
 
@@ -184,11 +190,18 @@ install_application() {
     'mac-startup-runtime.js' \
     'health-auth-runtime-shell-ready' \
     'mac-ui-fixes.js' \
-    'skytrace-layer-toggle' \
-    'width:330px!important' \
     'margin-left:64px!important' \
-    "Preserve the base map/layer panel's native fixed/right-side positioning"; do
-    grep -aF "$marker" "$asar" >/dev/null || { echo "Missing packaged R3.5 marker: $marker"; return 1; }
+    'v36-product.js' \
+    'SkyTrace Timeline' \
+    'evaluateWatchlists' \
+    'evaluateGeofences' \
+    'pointInPolygon' \
+    'showOnboarding' \
+    'showWhatsNewIfNeeded' \
+    'skytrace:file:save-text' \
+    'skytrace:system:open-external' \
+    '/node_modules/maplibre-gl/dist/maplibre-gl.js'; do
+    grep -aF "$marker" "$asar" >/dev/null || { echo "Missing packaged Product Preview marker: $marker"; return 1; }
   done
   stop_existing_app || return
   clear_disposable_caches || return
@@ -213,11 +226,11 @@ run_step 2 "Download pinned release" download_source || fail "Download pinned re
 run_step 3 "Prepare SkyTrace" prepare_release || fail "Prepare SkyTrace"
 run_step 4 "Install dependencies" install_dependencies || fail "Install dependencies"
 run_step 5 "Aviation data" download_data || fail "Aviation data"
-run_step 6 "Verify audited release" verify_release || fail "Verify audited release"
+run_step 6 "Verify Product Preview" verify_release || fail "Verify Product Preview"
 run_step 7 "Build application" build_application || fail "Build application"
-run_step 8 "Install + R3.5 startup test" install_application || fail "Install + R3.5 startup test"
+run_step 8 "Install + R4 startup test" install_application || fail "Install + R4 startup test"
 
-printf '\n%s✓ SkyTrace V3.5 R3.5 passed its audited startup test%s\n' "$GREEN$BOLD" "$RESET"
+printf '\n%s✓ SkyTrace V3.5 Product Preview R4 passed its audited startup test%s\n' "$GREEN$BOLD" "$RESET"
 printf '  Version       %s\n' "$EXPECTED_VERSION"
 printf '  Architecture  %s\n' "$ARCH_LABEL"
 printf '  Location      ~/Applications/SkyTrace.app\n'
