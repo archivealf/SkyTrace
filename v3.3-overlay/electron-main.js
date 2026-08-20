@@ -4,8 +4,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const isMac = process.platform === "darwin";
+const isWindows = process.platform === "win32";
 
 app.setName("SkyTrace");
+if (isWindows) app.setAppUserModelId("io.skytrace.desktop");
 
 let mainWindow = null;
 let skyTraceServer = null;
@@ -92,7 +95,8 @@ function ensureUserConfig() {
 }
 
 async function createWindow(url) {
-  mainWindow = new BrowserWindow({
+  const iconPath = path.join(__dirname, "assets", "SkyTrace.png");
+  const windowOptions = {
     width: 1500,
     height: 960,
     minWidth: 980,
@@ -100,17 +104,25 @@ async function createWindow(url) {
     show: false,
     title: "SkyTrace",
     backgroundColor: "#07090d",
-    vibrancy: process.platform === "darwin" ? "under-window" : undefined,
-    visualEffectState: process.platform === "darwin" ? "active" : undefined,
-    titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 18, y: 18 },
+    icon: !isMac && fs.existsSync(iconPath) ? iconPath : undefined,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
       webSecurity: true
     }
-  });
+  };
+
+  if (isMac) {
+    Object.assign(windowOptions, {
+      vibrancy: "under-window",
+      visualEffectState: "active",
+      titleBarStyle: "hiddenInset",
+      trafficLightPosition: { x: 18, y: 18 }
+    });
+  }
+
+  mainWindow = new BrowserWindow(windowOptions);
 
   // Wait for the renderer document and its startup-polish script to finish
   // loading before exposing the window. This prevents the legacy loader from
@@ -142,28 +154,34 @@ async function createWindow(url) {
 }
 
 function buildMenu(configPath) {
+  const appMenu = [
+    { role: "about" },
+    { type: "separator" },
+    {
+      label: "Open config.json",
+      accelerator: "CmdOrCtrl+,",
+      click: () => void shell.openPath(configPath)
+    },
+    {
+      label: "Show Config Folder",
+      click: () => shell.showItemInFolder(configPath)
+    }
+  ];
+
+  if (isMac) {
+    appMenu.push(
+      { type: "separator" },
+      { role: "hide" },
+      { role: "hideOthers" },
+      { role: "unhide" }
+    );
+  }
+  appMenu.push({ type: "separator" }, { role: "quit" });
+
   const template = [
     {
       label: "SkyTrace",
-      submenu: [
-        { role: "about" },
-        { type: "separator" },
-        {
-          label: "Open config.json",
-          accelerator: "CmdOrCtrl+,",
-          click: () => void shell.openPath(configPath)
-        },
-        {
-          label: "Show Config Folder",
-          click: () => shell.showItemInFolder(configPath)
-        },
-        { type: "separator" },
-        { role: "hide" },
-        { role: "hideOthers" },
-        { role: "unhide" },
-        { type: "separator" },
-        { role: "quit" }
-      ]
+      submenu: appMenu
     },
     {
       label: "Edit",
@@ -219,7 +237,7 @@ async function boot() {
   const configPath = ensureUserConfig();
   const userData = app.getPath("userData");
 
-  if (process.platform === "darwin" && app.dock) {
+  if (isMac && app.dock) {
     const iconPath = path.join(__dirname, "assets", "SkyTrace.png");
     if (fs.existsSync(iconPath)) {
       const dockIcon = nativeImage.createFromPath(iconPath);
@@ -267,5 +285,5 @@ app.on("before-quit", () => {
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  if (!isMac) app.quit();
 });
