@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: v35-mac-native-${{ github.event.pull_request.number || github.ref }}
+  group: v35-mac-native-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
