@@ -109,7 +109,7 @@ download_source() {
   grep -F 'setInterval(ensureWorkspace, 750)' "$SOURCE_DIR/src/renderer/v36-detached.js" >/dev/null || return 1
   grep -F 'node_modules/maplibre-gl' "$SOURCE_DIR/src/build/apply-v36.mjs" >/dev/null || return 1
   grep -F 'UNSIGNED_LOGIN_AGENT_LABEL' "$SOURCE_DIR/src/build/apply-v36.mjs" >/dev/null || return 1
-  grep -F 'forbidden signed-app Electron login item API' "$SOURCE_DIR/src/build/verify-v36.mjs" >/dev/null || return 1
+  grep -F 'signed-app Electron login item API' "$SOURCE_DIR/src/build/verify-v36.mjs" >/dev/null || return 1
   grep -F 'margin-left:64px!important' "$SOURCE_DIR/src/renderer/mac-ui-fixes.css" >/dev/null || return 1
   printf 'Pinned source revision: %s\n' "$SOURCE_REV"
 }
