@@ -1,12 +1,14 @@
 (() => {
   "use strict";
-  const native = window.skytraceNative;
-  if (!native?.isMac) return;
 
+  // Startup recovery must work even if Electron's preload bridge fails. Native
+  // diagnostics are optional; DOM/API recovery is deliberately browser-only.
+  const native = window.skytraceNative || null;
   let finished = false;
   let lastHealthStatus = 0;
 
   function reportError(type, error, source = "") {
+    if (typeof native?.reportStartupError !== "function") return;
     try {
       native.reportStartupError({
         type,
@@ -26,11 +28,11 @@
   function startupNodes() {
     const selectors = [
       "#loading",
-      ".loading",
       ".loading-screen",
       ".startup-screen",
       ".skytrace-startup",
-      "[data-loading]"
+      "[data-loading=\"true\"]",
+      "[data-loading=\"false\"]"
     ];
     return [...new Set(selectors.flatMap(selector => [...document.querySelectorAll(selector)]))];
   }
@@ -40,7 +42,8 @@
       document.querySelector(".flightdeck-rail") ||
       document.querySelector("#sidebar") ||
       document.querySelector("#map") ||
-      document.querySelector(".maplibregl-map")
+      document.querySelector(".maplibregl-map") ||
+      document.querySelector("main")
     );
   }
 
@@ -71,41 +74,46 @@
         node.setAttribute("data-loading", "false");
         node.style.setProperty("display", "none", "important");
         node.style.setProperty("visibility", "hidden", "important");
+        node.style.setProperty("opacity", "0", "important");
         node.style.setProperty("pointer-events", "none", "important");
-        setTimeout(() => node.remove(), 50);
+        setTimeout(() => {
+          try { node.remove(); } catch {}
+        }, 50);
       } catch {}
     }
     document.documentElement.dataset.skytraceStartup = reason;
   }
 
-  function showDegradedBanner() {
+  function showRecoveryBanner({ shell, health }) {
     if (document.getElementById("skytraceStartupRecovery")) return;
     const banner = document.createElement("div");
     banner.id = "skytraceStartupRecovery";
     banner.setAttribute("role", "status");
-    banner.style.cssText = "position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;background:#111722f2;border:1px solid #ffffff24;border-radius:12px;padding:9px 12px;color:#f2f5ff;font:12px/1.4 -apple-system,BlinkMacSystemFont,sans-serif;box-shadow:0 10px 35px #0008;max-width:min(680px,90vw)";
-    banner.textContent = lastHealthStatus
-      ? `SkyTrace opened in recovery mode because the local API returned HTTP ${lastHealthStatus}. Reload after the service reconnects.`
-      : "SkyTrace opened in recovery mode because the local API did not answer. The interface is available while it reconnects.";
-    document.body.appendChild(banner);
+    banner.style.cssText = "position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99999;background:#111722f2;border:1px solid #ffffff24;border-radius:12px;padding:10px 12px;color:#f2f5ff;font:12px/1.45 -apple-system,BlinkMacSystemFont,sans-serif;box-shadow:0 10px 35px #0008;max-width:min(720px,92vw);display:flex;gap:10px;align-items:center";
+    const detail = health
+      ? "The local service is ready but the normal interface took too long to finish."
+      : lastHealthStatus
+        ? `The local API returned HTTP ${lastHealthStatus}.`
+        : "The local API did not answer yet.";
+    banner.innerHTML = `<span>${shell ? "SkyTrace opened in recovery mode." : "SkyTrace startup did not complete."} ${detail}</span><button type="button" style="border:1px solid #ffffff2b;background:#ffffff10;color:#fff;border-radius:8px;padding:6px 9px;cursor:pointer">Reload</button>`;
+    banner.querySelector("button")?.addEventListener("click", () => location.reload());
+    (document.body || document.documentElement).appendChild(banner);
   }
 
-  async function markReady(reason, degraded = false) {
+  function reportReady(payload) {
+    if (typeof native?.reportReady !== "function") return;
+    try { native.reportReady(payload); } catch {}
+  }
+
+  async function finish(reason, { degraded = false, force = false } = {}) {
     if (finished) return;
-    finished = true;
     const shell = shellLooksReady();
     const health = degraded ? false : await healthLooksReady();
+    if (!force && !shell && !health) return;
+    finished = true;
     removeStartupOverlays(reason);
-    if (degraded) showDegradedBanner();
-    try {
-      native.reportReady({
-        health,
-        shell,
-        degraded,
-        reason,
-        url: location.href
-      });
-    } catch {}
+    if (degraded || !shell || !health) showRecoveryBanner({ shell, health });
+    reportReady({ health, shell, degraded: degraded || !health, reason, url: location.href });
   }
 
   async function run() {
@@ -113,32 +121,37 @@
     while (!finished) {
       const elapsed = Date.now() - started;
       const shell = shellLooksReady();
-      if (shell && elapsed >= 500) {
+
+      if (elapsed >= 500) {
         const healthy = await healthLooksReady();
-        if (healthy) {
-          await markReady("health-and-shell-ready", false);
+        if (healthy && shell) {
+          await finish("health-and-shell-ready");
+          return;
+        }
+        if (healthy && elapsed >= 6000) {
+          // The backend is definitely alive. Never keep it hidden behind a
+          // splash just because one expected shell selector changed.
+          await finish("health-ready-shell-late", { force: true });
           return;
         }
       }
 
-      if (shell && elapsed >= 12000) {
-        reportError("startup-recovery", new Error(`health=${lastHealthStatus || "unreachable"}`), "startup watchdog");
-        await markReady("recovery-shell-ready", true);
+      if (shell && elapsed >= 10000) {
+        reportError("startup-recovery", new Error(`health=${lastHealthStatus || "unreachable"}`), "startup guard");
+        await finish("recovery-shell-ready", { degraded: true, force: true });
         return;
       }
 
-      if (elapsed >= 25000) {
-        reportError("startup-timeout", new Error(`shell=${shell} health=${lastHealthStatus || "unreachable"}`), "startup watchdog");
-        removeStartupOverlays("timeout-recovery");
-        showDegradedBanner();
-        try {
-          native.reportReady({ health: false, shell, degraded: true, reason: "timeout-recovery", url: location.href });
-        } catch {}
-        finished = true;
+      if (elapsed >= 16000) {
+        // Absolute browser-only fail-safe. This path intentionally does not
+        // require window.skytraceNative, IPC, a healthy API, or a known shell
+        // selector. An infinite loading screen is never an acceptable state.
+        reportError("startup-hard-timeout", new Error(`shell=${shell} health=${lastHealthStatus || "unreachable"}`), "startup guard");
+        await finish("hard-timeout-recovery", { degraded: true, force: true });
         return;
       }
 
-      await new Promise(resolve => setTimeout(resolve, elapsed < 5000 ? 250 : 700));
+      await new Promise(resolve => setTimeout(resolve, elapsed < 5000 ? 250 : 600));
     }
   }
 
