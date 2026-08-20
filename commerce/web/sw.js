@@ -1,12 +1,11 @@
-const CACHE = "skytrace-web-v34-7";
+const CACHE = "skytrace-web-v34-8";
 const SHELL = [
   "/app/",
-  "/app/web.css?v=34.7",
-  "/app/web-mobile.css?v=34.7",
-  "/app/airlines.js?v=34.7",
-  "/app/web-ios-aircraft.js?v=34.7",
-  "/app/web.js?v=34.7",
-  "/app/web-mobile.js?v=34.7",
+  "/app/web.css?v=34.8",
+  "/app/web-mobile.css?v=34.8",
+  "/app/airlines.js?v=34.8",
+  "/app/web.js?v=34.8",
+  "/app/web-mobile.js?v=34.8",
   "/app/manifest.webmanifest",
   "/app/icon.svg",
   "/app/apple-touch-icon.png"
@@ -42,7 +41,7 @@ self.addEventListener("fetch", event => {
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     try {
-      const response = await fetch(request);
+      const response = await fetch(request, { cache: "no-store" });
       if (response.ok) cache.put(request, response.clone()).catch(() => {});
       return response;
     } catch {
