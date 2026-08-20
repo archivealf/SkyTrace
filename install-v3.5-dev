@@ -8,7 +8,7 @@ APP_NAME="SkyTrace"
 EXPECTED_VERSION="3.5.0"
 EXPECTED_BUNDLE_ID="io.skytrace.desktop"
 EXPECTED_BUILD_MARKER="mac-startup-runtime.js"
-BUILD_LABEL="SkyTrace V3.5 Mac Native R3 Audited"
+BUILD_LABEL="SkyTrace V3.5 Mac Native R3.1 Audited"
 PORTABLE_NODE_VERSION="22.23.2"
 
 INSTALL_DIR="$HOME/Applications"
@@ -78,23 +78,33 @@ run_step() {
   local number="$1" label="$2"
   shift 2
   local started="$SECONDS"
+  local status=0
   printf '  %s[%s/8]%s %-30s' "$DIM" "$number" "$RESET" "$label"
   printf '\n--- [%s/8] %s ---\n' "$number" "$label" >> "$LOG_FILE"
-  if "$@" >> "$LOG_FILE" 2>&1; then
+
+  # Do not call a stage function directly from an `if` condition: Bash disables
+  # errexit inside such functions. Run it in a strict subshell instead so the
+  # first failed command is always the stage result.
+  set +e
+  ( trap - ERR; set -eEuo pipefail; "$@" ) >> "$LOG_FILE" 2>&1
+  status=$?
+  set -e
+
+  if [[ "$status" -eq 0 ]]; then
     printf ' %s✓%s %ss\n' "$GREEN" "$RESET" "$((SECONDS - started))"
-  else
-    local status=$?
-    printf ' %sfailed%s\n' "$RED" "$RESET" >&2
-    printf '\n%s%s failed.%s\n' "$BOLD" "$label" "$RESET" >&2
-    printf 'Installer log:\n  %s\n\n' "$LOG_FILE" >&2
-    if [[ -f "$RUNTIME_LOG" ]]; then
-      printf '%sRuntime log:%s\n' "$DIM" "$RESET" >&2
-      tail -n 60 "$RUNTIME_LOG" | sed 's/^/  /' >&2 || true
-    fi
-    printf '%sLast installer log lines:%s\n' "$DIM" "$RESET" >&2
-    tail -n 45 "$LOG_FILE" | sed 's/^/  /' >&2 || true
-    exit "$status"
+    return 0
   fi
+
+  printf ' %sfailed%s\n' "$RED" "$RESET" >&2
+  printf '\n%s%s failed.%s\n' "$BOLD" "$label" "$RESET" >&2
+  printf 'Installer log:\n  %s\n\n' "$LOG_FILE" >&2
+  if [[ -f "$RUNTIME_LOG" ]]; then
+    printf '%sRuntime log:%s\n' "$DIM" "$RESET" >&2
+    tail -n 60 "$RUNTIME_LOG" | sed 's/^/  /' >&2 || true
+  fi
+  printf '%sLast installer log lines:%s\n' "$DIM" "$RESET" >&2
+  tail -n 45 "$LOG_FILE" | sed 's/^/  /' >&2 || true
+  exit "$status"
 }
 
 node_is_supported() {
@@ -251,11 +261,11 @@ run_step 4 "Install dependencies" install_dependencies
 run_step 5 "Aviation data" download_data
 run_step 6 "Verify audited release" verify_release
 run_step 7 "Build application" build_application
-run_step 8 "Install + R3 startup test" install_application
+run_step 8 "Install + R3.1 startup test" install_application
 
-printf '\n%s✓ SkyTrace V3.5 R3 passed its audited startup test%s\n' "$GREEN$BOLD" "$RESET"
+printf '\n%s✓ SkyTrace V3.5 R3.1 passed its audited startup test%s\n' "$GREEN$BOLD" "$RESET"
 printf '%s────────────────────────────────────────%s\n' "$DIM" "$RESET"
-printf '  Build         R3 audited runtime\n'
+printf '  Build         R3.1 audited runtime\n'
 printf '  Version       %s\n' "$INSTALLED_VERSION"
 printf '  Architecture  %s\n' "$ARCH_LABEL"
 printf '  Location      ~/Applications/SkyTrace.app\n'
