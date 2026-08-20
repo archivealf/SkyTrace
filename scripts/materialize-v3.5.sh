@@ -30,4 +30,4 @@ node "$ROOT/src/build/verify-v35.mjs" "$ROOT"
 node "$ROOT/src/build/verify-v35-ui.mjs" "$ROOT"
 node "$ROOT/src/build/verify-v36.mjs" "$ROOT"
 
-echo "Materialized SkyTrace V3.5 Product Preview R4 audited runtime (unsigned development build)."
+echo "Materialized SkyTrace V3.5 Product Preview R4.3 no-login audited runtime (unsigned development build)."
