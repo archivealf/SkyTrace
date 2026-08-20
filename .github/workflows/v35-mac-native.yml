@@ -50,7 +50,7 @@ jobs:
           fi
           [[ "$SKYTRACE_COMMERCE_URL" == https://* ]] || { echo "SKYTRACE_COMMERCE_URL must use HTTPS."; exit 1; }
 
-      - name: Materialize V3.5 Product Preview R4.5
+      - name: Materialize V3.5 Product Preview R4.6
         run: bash scripts/materialize-v3.5.sh
 
       - name: Enforce commercial provider isolation
@@ -62,8 +62,19 @@ jobs:
           node src/build/verify-v35-ui.mjs
           node src/build/verify-v36.mjs
 
-      - name: Install dependencies
+      - name: Install dependencies and vendor MapLibre
         run: npm install --no-audit --no-fund
+
+      - name: Verify vendored MapLibre assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s vendor/maplibre-gl/maplibre-gl.js
+          test -s vendor/maplibre-gl/maplibre-gl.css
+          test -s vendor/maplibre-gl/VERSION
+          grep -F '/vendor/maplibre-gl/maplibre-gl.js' index.html >/dev/null
+          grep -F '/vendor/maplibre-gl/maplibre-gl.css' index.html >/dev/null
+          ! grep -F '/node_modules/maplibre-gl/' index.html >/dev/null
 
       - name: Download aviation reference data
         run: npm run data
@@ -112,10 +123,11 @@ jobs:
             'skytrace:system:open-external' \
             'Launch at Login was removed from SkyTrace' \
             'io.skytrace.desktop.login.plist' \
-            '/node_modules/maplibre-gl/dist/maplibre-gl.js'; do
-            grep -aF "$marker" "$ASAR" >/dev/null || { echo "Missing Product Preview R4.5 marker: $marker"; exit 1; }
+            '/vendor/maplibre-gl/maplibre-gl.js' \
+            '/vendor/maplibre-gl/maplibre-gl.css'; do
+            grep -aF "$marker" "$ASAR" >/dev/null || { echo "Missing Product Preview R4.6 marker: $marker"; exit 1; }
           done
-          echo "Product Preview R4.5 uses file-scoped removed-login audits and remains unsigned."
+          echo "Product Preview R4.6 packages vendored MapLibre and uses file-scoped removed-login audits."
 
       - name: Launch packaged app startup smoke test
         shell: bash
@@ -154,7 +166,7 @@ jobs:
           fi
 
           wait "$PID"
-          echo "Packaged SkyTrace reached a healthy renderer, authorized local API and local MapLibre runtime."
+          echo "Packaged SkyTrace reached a healthy renderer, authorized local API and vendored local MapLibre runtime."
 
       - name: Create ZIP
         shell: bash
