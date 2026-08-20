@@ -7,7 +7,7 @@ APP_NAME="SkyTrace"
 EXPECTED_VERSION="3.5.0"
 EXPECTED_BUNDLE_ID="io.skytrace.desktop"
 BUILD_LABEL="SkyTrace V3.5 Product Preview R4 Audited"
-SOURCE_REV="c10f1fa932260588d506c1a4403de49fa12edb7c"
+SOURCE_REV="38887e422803c2d83927b2c35fb0528cac520d9b"
 PORTABLE_NODE_VERSION="22.23.2"
 
 INSTALL_DIR="$HOME/Applications"
@@ -106,6 +106,7 @@ download_source() {
   grep -F 'SkyTrace Timeline' "$SOURCE_DIR/src/renderer/v36-product.js" >/dev/null || return 1
   grep -F 'evaluateWatchlists' "$SOURCE_DIR/src/renderer/v36-product.js" >/dev/null || return 1
   grep -F 'evaluateGeofences' "$SOURCE_DIR/src/renderer/v36-product.js" >/dev/null || return 1
+  grep -F 'setInterval(ensureWorkspace, 750)' "$SOURCE_DIR/src/renderer/v36-detached.js" >/dev/null || return 1
   grep -F 'node_modules/maplibre-gl' "$SOURCE_DIR/src/build/apply-v36.mjs" >/dev/null || return 1
   grep -F 'margin-left:64px!important' "$SOURCE_DIR/src/renderer/mac-ui-fixes.css" >/dev/null || return 1
   printf 'Pinned source revision: %s\n' "$SOURCE_REV"
@@ -198,6 +199,7 @@ install_application() {
     'pointInPolygon' \
     'showOnboarding' \
     'showWhatsNewIfNeeded' \
+    'setInterval(ensureWorkspace, 750)' \
     'skytrace:file:save-text' \
     'skytrace:system:open-external' \
     '/node_modules/maplibre-gl/dist/maplibre-gl.js'; do
