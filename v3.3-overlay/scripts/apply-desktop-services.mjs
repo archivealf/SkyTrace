@@ -44,16 +44,16 @@ if (!main.includes("attachWindowDiagnostics(mainWindow);")) {
   main = main.replace(windowMarker, `  attachWindowDiagnostics(mainWindow);\n\n${windowMarker}`);
 }
 
-const menuMarker = '        { role: "about" },\n        { type: "separator" },';
+const menuMarker = '    { role: "about" },\n    { type: "separator" },';
 if (!main.includes('label: "Check for Updates…"')) {
   if (!main.includes(menuMarker)) throw new Error("Could not locate SkyTrace menu for updater.");
-  main = main.replace(menuMarker, `        { role: "about" },\n        {\n          label: "Check for Updates…",\n          click: () => void checkForUpdates(mainWindow)\n        },\n        { type: "separator" },`);
+  main = main.replace(menuMarker, `    { role: "about" },\n    {\n      label: "Check for Updates…",\n      click: () => void checkForUpdates(mainWindow)\n    },\n    { type: "separator" },`);
 }
 
-const configFolderMarker = `        {\n          label: "Show Config Folder",\n          click: () => shell.showItemInFolder(configPath)\n        },`;
+const configFolderMarker = `    {\n      label: "Show Config Folder",\n      click: () => shell.showItemInFolder(configPath)\n    }`;
 if (!main.includes('label: "Show Diagnostic Log"')) {
   if (!main.includes(configFolderMarker)) throw new Error("Could not locate diagnostic menu insertion point.");
-  main = main.replace(configFolderMarker, `${configFolderMarker}\n        {\n          label: "Show Diagnostic Log",\n          click: () => shell.showItemInFolder(desktopLogPath())\n        },`);
+  main = main.replace(configFolderMarker, `${configFolderMarker},\n    {\n      label: "Show Diagnostic Log",\n      click: () => shell.showItemInFolder(desktopLogPath())\n    }`);
 }
 
 const bootMarker = '  const configPath = ensureUserConfig();\n  const userData = app.getPath("userData");';
