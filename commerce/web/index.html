@@ -6,22 +6,23 @@
   <meta name="theme-color" content="#080b11">
   <meta name="color-scheme" content="dark">
   <meta name="format-detection" content="telephone=no">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SkyTrace">
+  <meta name="skytrace-web-build" content="34.7">
   <title>SkyTrace Web</title>
   <link rel="manifest" href="/app/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
   <link rel="icon" href="/app/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
   <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
-  <link rel="stylesheet" href="/app/web.css?v=34.6">
-  <link rel="stylesheet" href="/app/web-mobile.css?v=34.6">
-  <link rel="stylesheet" href="/app/web-mobile-interactions.css?v=34.6">
+  <link rel="stylesheet" href="/app/web.css?v=34.7">
+  <link rel="stylesheet" href="/app/web-mobile.css?v=34.7">
 </head>
-<body>
+<body data-skytrace-web-build="34.7">
   <div id="map" aria-label="Live aviation map"></div>
-  <aside class="panel" aria-label="SkyTrace controls">
+  <aside class="panel" aria-label="SkyTrace controls" aria-expanded="true">
     <button id="sheetHandle" class="sheet-handle" type="button" aria-label="Minimise controls" aria-expanded="true">
       <span aria-hidden="true"></span>
     </button>
@@ -35,7 +36,7 @@
     </header>
 
     <section id="login" class="login-card" aria-label="Sign in">
-      <p class="section-copy">Sign in to view observed aircraft, Operations and Replay+.</p>
+      <p class="section-copy">Sign in to view live aircraft, Operations and Replay+.</p>
       <label><span>Username</span><input id="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" aria-describedby="loginMsg" placeholder="SkyTrace username"></label>
       <label><span>Password</span><input id="password" type="password" autocomplete="current-password" enterkeyhint="go" aria-describedby="loginMsg" placeholder="Password"></label>
       <button id="loginBtn" class="primary" type="button">Sign in</button>
@@ -69,7 +70,9 @@
     <div id="installHint" class="install-hint hidden" role="note">Install on iPhone or iPad: use Share → Add to Home Screen.</div>
     <footer>OpenFreeMap © OpenMapTiles · Data from OpenStreetMap · Live aircraft: ADSB.lol · Aviation weather: AviationWeather.gov</footer>
   </aside>
-  <script src="/app/web.js?v=34.6"></script>
-  <script src="/app/web-mobile.js?v=34.6"></script>
+  <script src="/app/airlines.js?v=34.7"></script>
+  <script src="/app/web-ios-aircraft.js?v=34.7"></script>
+  <script src="/app/web.js?v=34.7"></script>
+  <script src="/app/web-mobile.js?v=34.7"></script>
 </body>
 </html>
