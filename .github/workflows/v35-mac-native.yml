@@ -83,10 +83,48 @@ jobs:
           [[ "$VERSION" == "3.5.0" ]] || { echo "Unexpected version: $VERSION"; exit 1; }
           ASAR="$APP/Contents/Resources/app.asar"
           [[ -f "$ASAR" ]] || { echo "app.asar missing"; exit 1; }
-          for marker in 'mac-native-main.js' 'Private Local Replay' 'SkyTrace Command Centre' 'Airport Desk' 'skytrace_desktop' 'Content-Security-Policy'; do
+          for marker in 'mac-native-main.js' 'mac-startup-runtime.js' 'mac-startup-guard.js' 'Private Local Replay' 'SkyTrace Command Centre' 'Airport Desk' 'skytrace_desktop' 'X-SkyTrace-Desktop' 'Content-Security-Policy'; do
             grep -aF "$marker" "$ASAR" >/dev/null || { echo "Missing V3.5 marker: $marker"; exit 1; }
           done
           echo "V3.5 intentionally does not require Developer ID signing or Apple notarization."
+
+      - name: Launch packaged app startup smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$(find out -maxdepth 3 -name 'SkyTrace.app' -type d -print -quit)"
+          LOG="$HOME/Library/Logs/SkyTrace/desktop.log"
+          STDOUT_LOG="$RUNNER_TEMP/skytrace-packaged-startup.log"
+          mkdir -p "$(dirname "$LOG")"
+          rm -f "$LOG" "$STDOUT_LOG"
+
+          SKYTRACE_SMOKE_TEST=1 "$APP/Contents/MacOS/SkyTrace" >"$STDOUT_LOG" 2>&1 &
+          PID=$!
+          READY=0
+          for _ in {1..70}; do
+            if [[ -f "$LOG" ]] && grep -F 'renderer-ready: health=true shell=true degraded=false' "$LOG" >/dev/null; then
+              READY=1
+              break
+            fi
+            if ! kill -0 "$PID" 2>/dev/null; then
+              break
+            fi
+            sleep 0.5
+          done
+
+          if [[ "$READY" != "1" ]]; then
+            echo "Packaged SkyTrace never reported a healthy renderer startup."
+            echo "--- desktop.log ---"
+            cat "$LOG" 2>/dev/null || true
+            echo "--- process output ---"
+            cat "$STDOUT_LOG" 2>/dev/null || true
+            kill "$PID" 2>/dev/null || true
+            wait "$PID" 2>/dev/null || true
+            exit 1
+          fi
+
+          wait "$PID"
+          echo "Packaged SkyTrace reached a healthy renderer and local API."
 
       - name: Create ZIP
         shell: bash
