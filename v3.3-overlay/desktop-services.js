@@ -5,6 +5,8 @@ import path from "node:path";
 const CURRENT_RELEASE_TAG = "v3.4.0-rc1";
 const CURRENT_RELEASE_LABEL = "SkyTrace V3.4.0 RC1";
 const RELEASES_API = "https://api.github.com/repos/archivealf/SkyTrace/releases?per_page=12";
+const MAX_LOG_BYTES = 1024 * 1024;
+const KEEP_LOG_BYTES = 512 * 1024;
 let reliabilityInstalled = false;
 
 function releaseParts(tag) {
@@ -45,10 +47,30 @@ export function desktopLogPath() {
   return path.join(logDirectory(), "desktop.log");
 }
 
+function trimLogIfNeeded(file) {
+  try {
+    const stat = fs.statSync(file);
+    if (stat.size <= MAX_LOG_BYTES) return;
+    const fd = fs.openSync(file, "r");
+    try {
+      const keep = Math.min(KEEP_LOG_BYTES, stat.size);
+      const buffer = Buffer.allocUnsafe(keep);
+      fs.readSync(fd, buffer, 0, keep, stat.size - keep);
+      fs.writeFileSync(file, buffer, { mode: 0o600 });
+    } finally {
+      fs.closeSync(fd);
+    }
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+}
+
 export function logDesktopEvent(type, value = "") {
   try {
+    const file = desktopLogPath();
+    trimLogIfNeeded(file);
     const line = `[${new Date().toISOString()}] ${type}: ${value instanceof Error ? (value.stack || value.message) : String(value)}\n`;
-    fs.appendFileSync(desktopLogPath(), line, { encoding: "utf8", mode: 0o600 });
+    fs.appendFileSync(file, line, { encoding: "utf8", mode: 0o600 });
   } catch {
     // Diagnostics must never become a startup failure.
   }
