@@ -21,6 +21,20 @@ function replaceRequired(text, before, after, label) {
   return text.replace(before, after);
 }
 
+function externalOriginsFromTags(html, tagName, attributeName, predicate = null) {
+  const origins = new Set();
+  const tagPattern = new RegExp(`<${tagName}\\b[^>]*>`, "gi");
+  const attributePattern = new RegExp(`\\b${attributeName}=["'](https?:\\/\\/[^"']+)["']`, "i");
+  for (const match of html.matchAll(tagPattern)) {
+    const tag = match[0];
+    if (predicate && !predicate(tag)) continue;
+    const attribute = tag.match(attributePattern)?.[1] || "";
+    if (!attribute) continue;
+    try { origins.add(new URL(attribute).origin); } catch {}
+  }
+  return [...origins];
+}
+
 for (const [from, to] of [
   ["desktop/mac-native-main.js", "mac-native-main.js"],
   ["desktop/mac-native-preload.cjs", "mac-native-preload.cjs"],
@@ -76,13 +90,19 @@ write("electron-main.js", electron);
 let server = read("server.js");
 const headerMarker = '  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)");';
 if (!server.includes("Content-Security-Policy")) {
-  const html = read("index.html");
-  const scriptOrigins = [...new Set([...html.matchAll(/<script\\b[^>]*\\bsrc=["'](https?:\\/\\/[^"']+)["']/gi)].map(match => new URL(match[1]).origin))];
-  const styleOrigins = [...new Set([...html.matchAll(/<link\\b[^>]*\\bhref=["'](https?:\\/\\/[^"']+)["'][^>]*>/gi)].filter(match => /rel=["'][^"']*stylesheet/i.test(match[0])).map(match => new URL(match[1]).origin))];
+  const htmlForCsp = read("index.html");
+  const scriptOrigins = externalOriginsFromTags(htmlForCsp, "script", "src");
+  const styleOrigins = externalOriginsFromTags(
+    htmlForCsp,
+    "link",
+    "href",
+    tag => /\brel=["'][^"']*stylesheet/i.test(tag)
+  );
   const scriptSrc = ["'self'", "'unsafe-inline'", ...scriptOrigins].join(" ");
   const styleSrc = ["'self'", "'unsafe-inline'", ...styleOrigins].join(" ");
   const csp = `default-src 'self'; script-src ${scriptSrc}; style-src ${styleSrc}; img-src 'self' data: blob: https:; connect-src 'self' https:; font-src 'self' data: https:; worker-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'self'`;
   server = replaceRequired(server, headerMarker, `${headerMarker}\n  res.setHeader("Content-Security-Policy", ${JSON.stringify(csp)});`, "Content Security Policy");
+  console.log(`V3.5 CSP allows ${scriptOrigins.length} external script origin(s) and ${styleOrigins.length} external style origin(s).`);
 }
 
 const apiMarker = "async function api(req, res, url) {\n  const p = url.searchParams;";
