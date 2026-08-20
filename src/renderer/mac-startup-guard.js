@@ -6,6 +6,7 @@
   const native = window.skytraceNative || null;
   let finished = false;
   let lastHealthStatus = 0;
+  let lastAuthStatus = 0;
 
   function reportError(type, error, source = "") {
     if (typeof native?.reportStartupError !== "function") return;
@@ -42,25 +43,37 @@
       document.querySelector(".flightdeck-rail") ||
       document.querySelector("#sidebar") ||
       document.querySelector("#map") ||
-      document.querySelector(".maplibregl-map") ||
       document.querySelector("main")
     );
   }
 
-  async function healthLooksReady() {
+  function runtimeLooksReady() {
+    // #map exists in the static document; .maplibregl-map/canvas is created by
+    // the actual application runtime. Requiring it catches CSP/script failures
+    // that would otherwise make a static shell look healthy in CI.
+    return Boolean(
+      document.querySelector(".maplibregl-map") ||
+      document.querySelector("#map canvas") ||
+      window.__SKYTRACE_MAP__
+    );
+  }
+
+  async function probeJson(url, kind) {
     try {
-      const response = await fetch("/api/health", {
+      const response = await fetch(url, {
         cache: "no-store",
         credentials: "same-origin",
         headers: { "X-SkyTrace-Startup-Probe": "1" }
       });
-      lastHealthStatus = response.status;
+      if (kind === "health") lastHealthStatus = response.status;
+      else lastAuthStatus = response.status;
       if (!response.ok) return false;
       const body = await response.json().catch(() => null);
       return body?.ok !== false;
     } catch (error) {
-      lastHealthStatus = 0;
-      reportError("health-probe", error, "/api/health");
+      if (kind === "health") lastHealthStatus = 0;
+      else lastAuthStatus = 0;
+      reportError(`${kind}-probe`, error, url);
       return false;
     }
   }
@@ -84,17 +97,17 @@
     document.documentElement.dataset.skytraceStartup = reason;
   }
 
-  function showRecoveryBanner({ shell, health }) {
+  function showRecoveryBanner({ shell, health, auth, runtime }) {
     if (document.getElementById("skytraceStartupRecovery")) return;
     const banner = document.createElement("div");
     banner.id = "skytraceStartupRecovery";
     banner.setAttribute("role", "status");
-    banner.style.cssText = "position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99999;background:#111722f2;border:1px solid #ffffff24;border-radius:12px;padding:10px 12px;color:#f2f5ff;font:12px/1.45 -apple-system,BlinkMacSystemFont,sans-serif;box-shadow:0 10px 35px #0008;max-width:min(720px,92vw);display:flex;gap:10px;align-items:center";
-    const detail = health
-      ? "The local service is ready but the normal interface took too long to finish."
-      : lastHealthStatus
-        ? `The local API returned HTTP ${lastHealthStatus}.`
-        : "The local API did not answer yet.";
+    banner.style.cssText = "position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99999;background:#111722f2;border:1px solid #ffffff24;border-radius:12px;padding:10px 12px;color:#f2f5ff;font:12px/1.45 -apple-system,BlinkMacSystemFont,sans-serif;box-shadow:0 10px 35px #0008;max-width:min(760px,92vw);display:flex;gap:10px;align-items:center";
+    let detail = "The application runtime did not finish starting.";
+    if (!health) detail = lastHealthStatus ? `The local service returned HTTP ${lastHealthStatus}.` : "The local service did not answer yet.";
+    else if (!auth) detail = lastAuthStatus ? `Desktop API authorization returned HTTP ${lastAuthStatus}.` : "Desktop API authorization did not complete.";
+    else if (!runtime) detail = "The local service is ready, but the map/application runtime did not initialize.";
+    else if (!shell) detail = "The application runtime is ready, but the normal interface shell was not detected.";
     banner.innerHTML = `<span>${shell ? "SkyTrace opened in recovery mode." : "SkyTrace startup did not complete."} ${detail}</span><button type="button" style="border:1px solid #ffffff2b;background:#ffffff10;color:#fff;border-radius:8px;padding:6px 9px;cursor:pointer">Reload</button>`;
     banner.querySelector("button")?.addEventListener("click", () => location.reload());
     (document.body || document.documentElement).appendChild(banner);
@@ -105,60 +118,79 @@
     try { native.reportReady(payload); } catch {}
   }
 
-  async function finish(reason, { degraded = false, force = false } = {}) {
+  async function readiness() {
+    const [health, auth] = await Promise.all([
+      probeJson("/api/health", "health"),
+      probeJson("/api/config", "auth")
+    ]);
+    return { health, auth, shell: shellLooksReady(), runtime: runtimeLooksReady() };
+  }
+
+  async function finish(reason, { degraded = false, force = false, known = null } = {}) {
     if (finished) return;
-    const shell = shellLooksReady();
-    const health = degraded ? false : await healthLooksReady();
-    if (!force && !shell && !health) return;
+    const result = known || await readiness();
+    if (!force && !(result.health && result.auth && result.runtime && result.shell)) return;
     finished = true;
     removeStartupOverlays(reason);
-    if (degraded || !shell || !health) showRecoveryBanner({ shell, health });
-    reportReady({ health, shell, degraded: degraded || !health, reason, url: location.href });
+    const unhealthy = degraded || !result.health || !result.auth || !result.runtime || !result.shell;
+    if (unhealthy) showRecoveryBanner(result);
+    reportReady({
+      health: result.health,
+      auth: result.auth,
+      runtime: result.runtime,
+      shell: result.shell,
+      degraded: unhealthy,
+      reason,
+      url: location.href
+    });
+    // One bounded late cleanup catches a legacy loader transition without a
+    // permanent document-wide MutationObserver.
+    setTimeout(() => removeStartupOverlays(`${reason}-late-cleanup`), 1200);
   }
 
   async function run() {
     const started = Date.now();
     while (!finished) {
       const elapsed = Date.now() - started;
-      const shell = shellLooksReady();
+      const result = await readiness();
 
-      if (elapsed >= 500) {
-        const healthy = await healthLooksReady();
-        if (healthy && shell) {
-          await finish("health-and-shell-ready");
-          return;
-        }
-        if (healthy && elapsed >= 6000) {
-          // The backend is definitely alive. Never keep it hidden behind a
-          // splash just because one expected shell selector changed.
-          await finish("health-ready-shell-late", { force: true });
-          return;
-        }
+      if (result.health && result.auth && result.runtime && result.shell) {
+        await finish("health-auth-runtime-shell-ready", { known: result });
+        return;
       }
 
-      if (shell && elapsed >= 10000) {
-        reportError("startup-recovery", new Error(`health=${lastHealthStatus || "unreachable"}`), "startup guard");
-        await finish("recovery-shell-ready", { degraded: true, force: true });
+      if (result.health && result.auth && result.runtime && elapsed >= 6000) {
+        // The real runtime is alive; do not keep it hidden because a shell
+        // selector changed in a future UI revision.
+        await finish("runtime-ready-shell-late", { force: true, known: result });
+        return;
+      }
+
+      if (result.shell && elapsed >= 10000) {
+        reportError(
+          "startup-recovery",
+          new Error(`health=${lastHealthStatus || "unreachable"} auth=${lastAuthStatus || "unreachable"} runtime=${result.runtime}`),
+          "startup guard"
+        );
+        await finish("recovery-shell-ready", { degraded: true, force: true, known: result });
         return;
       }
 
       if (elapsed >= 16000) {
         // Absolute browser-only fail-safe. This path intentionally does not
-        // require window.skytraceNative, IPC, a healthy API, or a known shell
-        // selector. An infinite loading screen is never an acceptable state.
-        reportError("startup-hard-timeout", new Error(`shell=${shell} health=${lastHealthStatus || "unreachable"}`), "startup guard");
-        await finish("hard-timeout-recovery", { degraded: true, force: true });
+        // require window.skytraceNative, IPC, a healthy API, or a known shell.
+        reportError(
+          "startup-hard-timeout",
+          new Error(`shell=${result.shell} runtime=${result.runtime} health=${lastHealthStatus || "unreachable"} auth=${lastAuthStatus || "unreachable"}`),
+          "startup guard"
+        );
+        await finish("hard-timeout-recovery", { degraded: true, force: true, known: result });
         return;
       }
 
-      await new Promise(resolve => setTimeout(resolve, elapsed < 5000 ? 250 : 600));
+      await new Promise(resolve => setTimeout(resolve, elapsed < 5000 ? 300 : 650));
     }
   }
-
-  const observer = new MutationObserver(() => {
-    if (finished) removeStartupOverlays("post-ready-cleanup");
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => void run(), { once: true });
