@@ -5,21 +5,24 @@
   const params = new URLSearchParams(location.search);
   const type = params.get("type") || "aircraft";
   const id = String(params.get("id") || "").trim();
+  const refreshMs = type === "aircraft" ? 15000 : 30000;
   let timer = null;
+  let loading = false;
+  let closed = false;
 
   const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" })[ch]);
   const num = (value, digits = 0) => Number.isFinite(Number(value)) ? Number(value).toLocaleString(undefined, { maximumFractionDigits: digits }) : "—";
 
   async function api(url) {
-    const response = await fetch(url);
+    const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(12000) });
     let payload = {};
     try { payload = await response.json(); } catch {}
     if (!response.ok || payload?.ok === false) throw new Error(payload?.error || `Request failed (${response.status})`);
     return payload;
   }
 
-  function setStatus(text) { $("status").textContent = text; }
-  function error(message) { $("content").innerHTML = `<div class="error">${esc(message)}</div>`; setStatus("Error"); }
+  function setStatus(text) { if ($("status")) $("status").textContent = text; }
+  function error(message) { if ($("content")) $("content").innerHTML = `<div class="error">${esc(message)}</div>`; setStatus("Error"); }
 
   function bars(points, key) {
     const values = points.map(p => Number(p[key])).filter(Number.isFinite);
@@ -69,7 +72,7 @@
     const flight = flightResult.status === "fulfilled" ? (flightResult.value.flights?.[0] || null) : null;
     const metadata = metadataResult.status === "fulfilled" ? (metadataResult.value.aircraft || metadataResult.value) : {};
     const profile = profileResult.status === "fulfilled" ? profileResult.value : {};
-    const points = localResult.status === "fulfilled" ? (localResult.value.points || []) : [];
+    const points = localResult.status === "fulfilled" ? (localResult.value?.points || []) : [];
     const current = profile.current || flight || {};
     const name = current.callsign || current.registration || metadata.registration || hex.toUpperCase();
     $("title").textContent = name;
@@ -167,14 +170,37 @@
   }
 
   async function load() {
+    if (loading || closed) return;
+    loading = true;
     try {
       if (type === "aircraft") await loadAircraft();
       else await loadAirport();
-    } catch (e) { error(e.message || String(e)); }
+    } catch (e) {
+      if (e?.name !== "AbortError" && e?.name !== "TimeoutError") error(e.message || String(e));
+      else error("The local service took too long to answer. SkyTrace will retry automatically.");
+    } finally {
+      loading = false;
+    }
   }
 
-  $("refresh").onclick = load;
-  load();
-  timer = setInterval(load, type === "aircraft" ? 15000 : 30000);
-  window.addEventListener("beforeunload", () => clearInterval(timer));
+  function scheduleNext() {
+    clearTimeout(timer);
+    if (closed) return;
+    timer = setTimeout(async () => {
+      await load();
+      scheduleNext();
+    }, refreshMs);
+  }
+
+  $("refresh").onclick = async () => {
+    clearTimeout(timer);
+    await load();
+    scheduleNext();
+  };
+
+  load().finally(scheduleNext);
+  window.addEventListener("beforeunload", () => {
+    closed = true;
+    clearTimeout(timer);
+  });
 })();
