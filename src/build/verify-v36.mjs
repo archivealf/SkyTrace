@@ -37,9 +37,13 @@ need("v36-product.js", "showWhatsNewIfNeeded", "What's New");
 need("v36-product.css", "data-skytrace-zoom-band", "adaptive label decluttering");
 need("mac-settings.html", "/v36-settings.js", "updates/keyboard settings addon");
 need("mac-detached.html", "/v36-detached.js", "aircraft/Airport Desk workspace addon");
+need("v36-detached.js", "function ensureWorkspace()", "detached workspace refresh reattachment");
+need("v36-detached.js", "setInterval(ensureWorkspace, 750)", "detached workspace periodic refresh resilience");
+need("v36-detached.js", 'content.querySelector(".hero-grid")', "aircraft rendered-state guard");
+need("v36-detached.js", 'content.querySelector(".stat-grid")', "Airport Desk rendered-state guard");
 
 if (failures.length) {
   console.error("SkyTrace Product Preview verification failed:\n- " + failures.join("\n- "));
   process.exit(1);
 }
-console.log("Verified Product Preview R4: onboarding, updates, local MapLibre, Timeline, Watchlists 2.0, geofences, Notification Center, enhanced workspaces, Command Centre 2.0, What's New and keyboard shortcuts.");
+console.log("Verified Product Preview R4: onboarding, updates, local MapLibre, Timeline, Watchlists 2.0, geofences, Notification Center, refresh-resilient enhanced workspaces, Command Centre 2.0, What's New and keyboard shortcuts.");
