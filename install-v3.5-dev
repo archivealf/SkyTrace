@@ -6,7 +6,7 @@ REPO="SkyTrace"
 APP_NAME="SkyTrace"
 EXPECTED_VERSION="3.5.0"
 EXPECTED_BUNDLE_ID="io.skytrace.desktop"
-BUILD_LABEL="SkyTrace V3.5 Product Preview R4.3 No-Login Audited"
+BUILD_LABEL="SkyTrace V3.5 Product Preview R4.4 No-Login Audit-Fixed"
 SOURCE_REV="9c7274dd1c9e6d4170fc31f3cac764e3161a852e"
 PORTABLE_NODE_VERSION="22.23.2"
 
@@ -216,14 +216,15 @@ install_application() {
     '/node_modules/maplibre-gl/dist/maplibre-gl.js'; do
     grep -aF "$marker" "$asar" >/dev/null || { echo "Missing packaged Product Preview R4.3 marker: $marker"; return 1; }
   done
+  # The getter/setter names are checked against the actual materialized preload by
+  # verify-v36.mjs. Searching those names across every ASAR byte can false-positive
+  # on unrelated dependency/internal text, which is what R4.3 did.
   for forbidden in \
     'skytrace:login-item' \
-    'getLaunchAtLogin' \
-    'setLaunchAtLogin' \
     'v36OnboardLogin' \
     'Launch SkyTrace at login'; do
     if grep -aF "$forbidden" "$asar" >/dev/null; then
-      echo "Removed Launch at Login content is still packaged: $forbidden"
+      echo "Removed Launch at Login runtime content is still packaged: $forbidden"
       return 1
     fi
   done
@@ -254,9 +255,9 @@ run_step 4 "Install dependencies" install_dependencies || fail "Install dependen
 run_step 5 "Aviation data" download_data || fail "Aviation data"
 run_step 6 "Verify Product Preview" verify_release || fail "Verify Product Preview"
 run_step 7 "Build application" build_application || fail "Build application"
-run_step 8 "Install + R4.3 startup test" install_application || fail "Install + R4.3 startup test"
+run_step 8 "Install + R4.4 startup test" install_application || fail "Install + R4.4 startup test"
 
-printf '\n%s✓ SkyTrace V3.5 Product Preview R4.3 passed its audited startup test%s\n' "$GREEN$BOLD" "$RESET"
+printf '\n%s✓ SkyTrace V3.5 Product Preview R4.4 passed its audited startup test%s\n' "$GREEN$BOLD" "$RESET"
 printf '  Version       %s\n' "$EXPECTED_VERSION"
 printf '  Architecture  %s\n' "$ARCH_LABEL"
 printf '  Login item    Removed\n'
