@@ -13,7 +13,7 @@ cat "$ROOT"/v3.2-bundle/chunk*.b64 > "$B64"
 
 node -e 'const fs=require("fs"); const input=fs.readFileSync(process.argv[1],"utf8").replace(/\s+/g,""); fs.writeFileSync(process.argv[2],Buffer.from(input,"base64"));' "$B64" "$ZIP"
 
-ACTUAL="$(shasum -a 256 "$ZIP" | awk '{print $1}')"
+ACTUAL="$(node -e 'const fs=require("fs"),crypto=require("crypto"); process.stdout.write(crypto.createHash("sha256").update(fs.readFileSync(process.argv[1])).digest("hex"));' "$ZIP")"
 if [[ "$ACTUAL" != "$EXPECTED" ]]; then
   echo "SkyTrace base source bundle checksum mismatch."
   echo "Expected: $EXPECTED"
@@ -25,8 +25,10 @@ if command -v ditto >/dev/null 2>&1; then
   ditto -x -k "$ZIP" "$ROOT"
 elif command -v unzip >/dev/null 2>&1; then
   unzip -oq "$ZIP" -d "$ROOT"
+elif command -v tar >/dev/null 2>&1; then
+  tar -xf "$ZIP" -C "$ROOT"
 else
-  echo "Neither ditto nor unzip is available to extract SkyTrace."
+  echo "No supported ZIP extraction tool is available (ditto, unzip or tar)."
   exit 1
 fi
 
