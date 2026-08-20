@@ -4,7 +4,12 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const skipDirs = new Set([".git", "node_modules", "out", "v3.2-bundle", "source-payload", "source-payload-fixed", "data", "backups"]);
+// Third-party/generated dependency trees are validated by their dedicated build
+// verifiers, not SkyTrace's source-style rules (for example bounded-loop checks).
+// In particular, vendor/maplibre-gl is pinned/vendored and verified by
+// verify-v36.mjs after npm install, so scanning its minified upstream runtime here
+// would create false positives without auditing SkyTrace-authored code.
+const skipDirs = new Set([".git", "node_modules", "vendor", "out", "v3.2-bundle", "source-payload", "source-payload-fixed", "data", "backups"]);
 const textExtensions = new Set([".js", ".mjs", ".cjs", ".sh", ".html", ".css", ".json", ".yml", ".yaml"]);
 const jsExtensions = new Set([".js", ".mjs", ".cjs"]);
 const files = [];
