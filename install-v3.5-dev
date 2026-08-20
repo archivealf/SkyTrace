@@ -7,7 +7,7 @@ REF="v3.5-mac-native"
 APP_NAME="SkyTrace"
 EXPECTED_VERSION="3.5.0"
 EXPECTED_BUNDLE_ID="io.skytrace.desktop"
-EXPECTED_BUILD_MARKER="mac-native-main.js"
+EXPECTED_BUILD_MARKER="mac-startup-runtime.js"
 BUILD_LABEL="SkyTrace V3.5 Mac Native"
 PORTABLE_NODE_VERSION="22.23.2"
 
@@ -16,6 +16,8 @@ APP_PATH="$INSTALL_DIR/$APP_NAME.app"
 SOURCE_ZIP="https://github.com/${OWNER}/${REPO}/archive/refs/heads/${REF}.zip"
 LOG_DIR="$HOME/Library/Logs/SkyTrace"
 LOG_FILE="$LOG_DIR/installer.log"
+RUNTIME_LOG="$LOG_DIR/desktop.log"
+DATA_DIR="$HOME/Library/Application Support/SkyTrace"
 
 : "${SKYTRACE_COMMERCE_URL:=https://skytrace.duckdns.org}"
 export SKYTRACE_COMMERCE_URL
@@ -84,8 +86,12 @@ run_step() {
     printf ' %sfailed%s\n' "$RED" "$RESET" >&2
     printf '\n%s%s failed.%s\n' "$BOLD" "$label" "$RESET" >&2
     printf 'Installer log:\n  %s\n\n' "$LOG_FILE" >&2
-    printf '%sLast log lines:%s\n' "$DIM" "$RESET" >&2
-    tail -n 28 "$LOG_FILE" | sed 's/^/  /' >&2 || true
+    if [[ -f "$RUNTIME_LOG" ]]; then
+      printf '%sRuntime log:%s\n' "$DIM" "$RESET" >&2
+      tail -n 40 "$RUNTIME_LOG" | sed 's/^/  /' >&2 || true
+    fi
+    printf '%sLast installer log lines:%s\n' "$DIM" "$RESET" >&2
+    tail -n 35 "$LOG_FILE" | sed 's/^/  /' >&2 || true
     exit "$status"
   fi
 }
@@ -149,6 +155,54 @@ build_application() {
   [[ -n "$FOUND_APP" ]] || { printf 'SkyTrace.app was not produced.\n' >&2; return 1; }
 }
 
+stop_existing_app() {
+  osascript -e 'tell application "SkyTrace" to quit' >/dev/null 2>&1 || true
+  for _ in {1..10}; do
+    pgrep -x SkyTrace >/dev/null 2>&1 || return 0
+    sleep 0.2
+  done
+  pkill -x SkyTrace >/dev/null 2>&1 || true
+}
+
+clear_disposable_caches() {
+  mkdir -p "$DATA_DIR"
+  for name in "Cache" "Code Cache" "GPUCache" "DawnCache" "Service Worker" "blob_storage"; do
+    rm -rf "$DATA_DIR/$name"
+  done
+  printf 'Preserved user config, Mac settings and Local Replay; cleared disposable Electron caches.\n' >> "$LOG_FILE"
+}
+
+smoke_test_installed_app() {
+  local executable="$APP_PATH/Contents/MacOS/SkyTrace"
+  [[ -x "$executable" ]] || { printf 'Installed SkyTrace executable is missing.\n' >&2; return 1; }
+  mkdir -p "$LOG_DIR"
+  rm -f "$RUNTIME_LOG"
+
+  SKYTRACE_SMOKE_TEST=1 "$executable" >> "$LOG_FILE" 2>&1 &
+  local pid=$!
+  local ready=0
+  for _ in {1..70}; do
+    if [[ -f "$RUNTIME_LOG" ]] && grep -F 'renderer-ready: health=true shell=true degraded=false' "$RUNTIME_LOG" >/dev/null; then
+      ready=1
+      break
+    fi
+    if ! kill -0 "$pid" 2>/dev/null; then
+      break
+    fi
+    sleep 0.5
+  done
+
+  if [[ "$ready" != "1" ]]; then
+    printf 'Installed SkyTrace did not reach a healthy renderer/API startup.\n' >&2
+    kill "$pid" >/dev/null 2>&1 || true
+    wait "$pid" >/dev/null 2>&1 || true
+    return 1
+  fi
+
+  wait "$pid"
+  grep -F 'renderer-ready: health=true shell=true degraded=false' "$RUNTIME_LOG" >/dev/null
+}
+
 install_application() {
   local plist="$FOUND_APP/Contents/Info.plist"
   local asar="$FOUND_APP/Contents/Resources/app.asar"
@@ -158,15 +212,21 @@ install_application() {
   [[ "$built_version" == "$EXPECTED_VERSION" ]] || { printf 'Unexpected app version: %s\n' "${built_version:-unknown}" >&2; return 1; }
   [[ "$built_bundle_id" == "$EXPECTED_BUNDLE_ID" ]] || { printf 'Unexpected bundle ID: %s\n' "${built_bundle_id:-unknown}" >&2; return 1; }
   [[ -f "$asar" ]] || { printf 'Packaged app.asar is missing.\n' >&2; return 1; }
-  grep -aF "$EXPECTED_BUILD_MARKER" "$asar" >/dev/null || { printf 'V3.5 native runtime marker is missing.\n' >&2; return 1; }
-  grep -aF 'Private Local Replay' "$asar" >/dev/null || { printf 'Private Local Replay is missing from the package.\n' >&2; return 1; }
-  grep -aF 'SkyTrace Command Centre' "$asar" >/dev/null || { printf 'Command Centre is missing from the package.\n' >&2; return 1; }
+  for marker in "$EXPECTED_BUILD_MARKER" 'mac-startup-guard.js' 'X-SkyTrace-Desktop' 'Private Local Replay' 'SkyTrace Command Centre'; do
+    grep -aF "$marker" "$asar" >/dev/null || { printf 'Required V3.5 package marker is missing: %s\n' "$marker" >&2; return 1; }
+  done
+
+  stop_existing_app
+  clear_disposable_caches
   if [[ -d "$APP_PATH" ]]; then rm -rf "$APP_PATH"; fi
   ditto "$FOUND_APP" "$APP_PATH"
+
   INSTALLED_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Contents/Info.plist" 2>/dev/null || true)"
   INSTALLED_BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Contents/Info.plist" 2>/dev/null || true)"
   [[ "$INSTALLED_VERSION" == "$EXPECTED_VERSION" ]]
   [[ "$INSTALLED_BUNDLE_ID" == "$EXPECTED_BUNDLE_ID" ]]
+
+  smoke_test_installed_app
 }
 
 case "$SKYTRACE_COMMERCE_URL" in https://*) ;; *) printf 'SKYTRACE_COMMERCE_URL must use HTTPS.\n' >&2; exit 1 ;; esac
@@ -187,13 +247,14 @@ run_step 4 "Install dependencies" install_dependencies
 run_step 5 "Aviation data" download_data
 run_step 6 "Verify release" verify_release
 run_step 7 "Build application" build_application
-run_step 8 "Install application" install_application
+run_step 8 "Install + startup test" install_application
 
-printf '\n%s✓ SkyTrace V3.5 is ready%s\n' "$GREEN$BOLD" "$RESET"
+printf '\n%s✓ SkyTrace V3.5 passed its startup test%s\n' "$GREEN$BOLD" "$RESET"
 printf '%s────────────────────────────────────────%s\n' "$DIM" "$RESET"
 printf '  Version       %s\n' "$INSTALLED_VERSION"
 printf '  Architecture  %s\n' "$ARCH_LABEL"
 printf '  Location      ~/Applications/SkyTrace.app\n'
+printf '  Runtime log   ~/Library/Logs/SkyTrace/desktop.log\n'
 printf '  Updates       Verified manual GitHub releases\n'
 printf '%s────────────────────────────────────────%s\n' "$DIM" "$RESET"
 printf 'Opening SkyTrace...\n\n'
