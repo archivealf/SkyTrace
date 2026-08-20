@@ -25,6 +25,10 @@ SkyTrace V3.4.0 RC1 is the first release candidate that combines the current des
 - Moved first aircraft-database loading off the synchronous interaction path.
 - Added bounded provider request timeouts for live aircraft, enrichment, general weather and precipitation.
 - Bounded Replay+ redraw work and playback stepping.
+- Reworked SkyTrace Web proportions across iPhone portrait, short/narrow iPhones, iPhone landscape and iPad instead of relying on one fixed mobile sheet size.
+- Added VisualViewport and measured-panel sizing so the iOS keyboard, rotation, Safari chrome and MapLibre controls remain aligned with the visible app area.
+- Corrected the Apple Home Screen icon to a full-bleed 180×180 asset and hardened CI against transparent/inset icon regressions.
+- Cached the dedicated iPhone/iPad proportion stylesheet in the PWA app shell so installed/offline launches retain the mobile layout.
 
 ### Release safeguards
 
