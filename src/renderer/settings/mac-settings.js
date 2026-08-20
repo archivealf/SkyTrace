@@ -31,7 +31,6 @@
       ...(settings || {}),
       menuBar: Boolean($("menuBar")?.checked),
       notifications: Boolean($("notifications")?.checked),
-      launchAtLogin: Boolean($("launchAtLogin")?.checked),
       performanceProfile: profile,
       offlineFallback: $("offlineFallback")?.checked !== false,
       trafficLabelDensity: $("trafficLabelDensity")?.value || "normal",
@@ -49,7 +48,6 @@
     settings = next || {};
     if ($("menuBar")) $("menuBar").checked = settings.menuBar !== false;
     if ($("notifications")) $("notifications").checked = settings.notifications !== false;
-    if ($("launchAtLogin")) $("launchAtLogin").checked = Boolean(settings.launchAtLogin);
     if ($("offlineFallback")) $("offlineFallback").checked = settings.offlineFallback !== false;
     if ($("trafficLabelDensity")) $("trafficLabelDensity").value = settings.trafficLabelDensity || "normal";
     if ($("reducedMotion")) $("reducedMotion").checked = Boolean(settings.reducedMotion);
@@ -124,7 +122,6 @@
       render({
         menuBar: true,
         notifications: true,
-        launchAtLogin: false,
         performanceProfile: "balanced",
         offlineFallback: true,
         trafficLabelDensity: "normal",
