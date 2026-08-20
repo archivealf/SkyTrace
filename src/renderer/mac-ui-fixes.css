@@ -1,4 +1,40 @@
 /* V3.5 Mac UI compatibility and density pass */
+
+/* Keep ordinary desktop workspaces compact. The base responsive rules can let
+   the sheet grow to roughly half the window around 1200px wide, which causes
+   the map to be squeezed and list content to develop a horizontal scrollbar. */
+@media(min-width:901px){
+  html:not(.skytrace-mac-view-active) #sidebar,
+  body:not(.skytrace-mac-view-active) #sidebar{
+    width:min(400px,calc(100vw - 190px))!important;
+    max-width:min(400px,calc(100vw - 190px))!important;
+  }
+  #sidebar .side-view{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+  }
+  #sidebar .side-view>.scroll-list,
+  #sidebar .side-view .scroll-list,
+  #sidebar .store-scroll{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow-x:hidden!important;
+  }
+  #sidebar .aircraft-row,
+  #sidebar .airport-row,
+  #sidebar .watch-row,
+  #sidebar .store-card{
+    box-sizing:border-box!important;
+    max-width:calc(100% - 10px)!important;
+  }
+  #sidebar input,
+  #sidebar select,
+  #sidebar button{
+    max-width:100%;
+  }
+}
+
 html.skytrace-mac-view-active #sidebar,
 body.skytrace-mac-view-active #sidebar{
   width:min(330px,calc(100vw - 118px))!important;
@@ -21,10 +57,13 @@ body.skytrace-mac-view-active #sidebar{
   flex:1 1 auto!important;
   min-height:0!important;
   overflow:auto!important;
+  overflow-x:hidden!important;
   padding:4px 8px 20px!important;
   gap:8px!important;
 }
 #macNativeView .mac-native-card{
+  box-sizing:border-box!important;
+  max-width:100%!important;
   border-radius:13px!important;
   padding:11px!important;
 }
@@ -101,7 +140,9 @@ html[data-skytrace-label-density="low"][data-skytrace-traffic-load="dense"] .air
   opacity:.42!important;
 }
 
-@media(max-width:1200px){
+@media(max-width:1200px) and (min-width:901px){
+  html:not(.skytrace-mac-view-active) #sidebar,
+  body:not(.skytrace-mac-view-active) #sidebar{width:380px!important;max-width:380px!important}
   html.skytrace-mac-view-active #sidebar,
   body.skytrace-mac-view-active #sidebar{width:300px!important;max-width:300px!important}
   .bottom-status.skytrace-compact-status{max-width:calc(100vw - 190px)!important}
