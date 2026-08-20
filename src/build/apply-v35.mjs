@@ -87,9 +87,16 @@ if (!server.includes("desktopApiAuthorized")) {
 write("server.js", server);
 
 let html = read("index.html");
-if (!html.includes('/mac-native.css')) html = replaceRequired(html, "</head>", '  <link rel="stylesheet" href="/mac-native.css">\n</head>', "Mac native stylesheet");
-if (!html.includes('/mac-native-renderer.js')) html = replaceRequired(html, "</body>", '  <script src="/mac-native-renderer.js"></script>\n</body>', "Mac native renderer");
-if (!html.includes('/mac-startup-guard.js')) html = replaceRequired(html, "</body>", '  <script src="/mac-startup-guard.js"></script>\n</body>', "Mac startup guard");
+if (!html.includes('/mac-native.css')) {
+  html = replaceRequired(html, "</head>", '  <link rel="stylesheet" href="/mac-native.css">\n</head>', "Mac native stylesheet");
+}
+if (!html.includes('/mac-startup-guard.js')) {
+  const earlyStartupGuard = `  <script defer src="/mac-startup-guard.js"></script>\n  <script>\n    window.setTimeout(function () {\n      var nodes = document.querySelectorAll('#loading,.loading-screen,.startup-screen,.skytrace-startup,[data-loading="true"]');\n      for (var i = 0; i < nodes.length; i++) {\n        try {\n          nodes[i].hidden = true;\n          nodes[i].setAttribute('aria-hidden', 'true');\n          nodes[i].setAttribute('data-loading', 'false');\n          nodes[i].style.setProperty('display', 'none', 'important');\n          nodes[i].style.setProperty('visibility', 'hidden', 'important');\n          nodes[i].style.setProperty('pointer-events', 'none', 'important');\n          nodes[i].remove();\n        } catch (_) {}\n      }\n      document.documentElement.setAttribute('data-skytrace-loader-failsafe', 'complete');\n    }, 18000);\n  </script>\n`;
+  html = replaceRequired(html, "</head>", `${earlyStartupGuard}</head>`, "early browser-only startup guard");
+}
+if (!html.includes('/mac-native-renderer.js')) {
+  html = replaceRequired(html, "</body>", '  <script src="/mac-native-renderer.js"></script>\n</body>', "Mac native renderer");
+}
 html = html.split("3.4.0-rc1").join("3.5.0").split("V3.4.0 RC1").join("V3.5.0 DEV");
 write("index.html", html);
 
@@ -118,8 +125,8 @@ const changelog = path.join(root, "CHANGELOG.md");
 if (fs.existsSync(changelog)) {
   const old = fs.readFileSync(changelog, "utf8");
   if (!old.includes("## 3.5.0 Dev")) {
-    fs.writeFileSync(changelog, `# SkyTrace Changelog\n\n## 3.5.0 Dev — Mac Native\n\n- Added native macOS menu-bar status and quick actions.\n- Added Notification Center aircraft alerts with click-through search.\n- Added proper SkyTrace Settings window and Launch at Login.\n- Added Command Centre (Cmd+K) and Cmd+1/2/3/4 workspace shortcuts.\n- Added private on-device Local Replay with retention and disk limits.\n- Added detachable aircraft analysis and full Airport Desk windows.\n- Added High Accuracy, Balanced and Battery Saver performance profiles.\n- Added cached/degraded traffic fallback and bundled-reference offline resilience.\n- Added redundant per-launch desktop API authorization using an HttpOnly cookie plus Electron network-layer header.\n- Added a packaged-renderer startup handshake, recovery guard and startup diagnostics.\n- V3.5 remains unsigned/not notarized and uses verified manual GitHub release installs instead of paid Apple signing.\n\n${old.replace(/^# SkyTrace Changelog\s*/, "")}`);
+    fs.writeFileSync(changelog, `# SkyTrace Changelog\n\n## 3.5.0 Dev — Mac Native\n\n- Added native macOS menu-bar status and quick actions.\n- Added Notification Center aircraft alerts with click-through search.\n- Added proper SkyTrace Settings window and Launch at Login.\n- Added Command Centre (Cmd+K) and Cmd+1/2/3/4 workspace shortcuts.\n- Added private on-device Local Replay with retention and disk limits.\n- Added detachable aircraft analysis and full Airport Desk windows.\n- Added High Accuracy, Balanced and Battery Saver performance profiles.\n- Added cached/degraded traffic fallback and bundled-reference offline resilience.\n- Added redundant per-launch desktop API authorization using an HttpOnly cookie plus Electron network-layer header.\n- Added a packaged-renderer startup handshake, browser-only recovery guard and hard splash fail-safe.\n- V3.5 remains unsigned/not notarized and uses verified manual GitHub release installs instead of paid Apple signing.\n\n${old.replace(/^# SkyTrace Changelog\s*/, "")}`);
   }
 }
 
-console.log("Applied SkyTrace V3.5 Mac Native runtime, redundant desktop auth, startup recovery, local replay and desktop integration.");
+console.log("Applied SkyTrace V3.5 Mac Native runtime, redundant desktop auth, browser-only startup recovery, local replay and desktop integration.");
