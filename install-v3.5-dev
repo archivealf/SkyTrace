@@ -7,8 +7,8 @@ APP_NAME="SkyTrace"
 EXPECTED_VERSION="3.5.0"
 EXPECTED_BUNDLE_ID="io.skytrace.desktop"
 EXPECTED_BUILD_MARKER="mac-startup-runtime.js"
-BUILD_LABEL="SkyTrace V3.5 Mac Native R3.2 Audited"
-SOURCE_REV="019a8ad7d502f8ad78b12a603ae1ab09cc42624e"
+BUILD_LABEL="SkyTrace V3.5 Mac Native R3.3 UI Audited"
+SOURCE_REV="ef84523a687e6d0ca23e9054e9a938274b74e7e8"
 PORTABLE_NODE_VERSION="22.23.2"
 
 INSTALL_DIR="$HOME/Applications"
@@ -139,13 +139,22 @@ download_source() {
   [[ -n "$source_dir" && -d "$source_dir" ]] || { printf 'SkyTrace source directory was not found.\n' >&2; return 1; }
 
   grep -F 'V3.5 build-script preflight passed.' "$source_dir/scripts/materialize-v3.5.sh" >/dev/null || {
-    printf 'Pinned source is missing the R3.2 build preflight.\n' >&2; return 1;
+    printf 'Pinned source is missing the V3.5 build preflight.\n' >&2; return 1;
   }
   grep -F 'externalOriginsFromTags' "$source_dir/src/build/apply-v35.mjs" >/dev/null || {
     printf 'Pinned source is missing the corrected CSP origin parser.\n' >&2; return 1;
   }
   grep -F 'safeStartupSelector' "$source_dir/src/build/fix-v35-audit.mjs" >/dev/null || {
     printf 'Pinned source is missing the safe startup selector repair.\n' >&2; return 1;
+  }
+  grep -F 'fix-v35-ui.mjs' "$source_dir/scripts/materialize-v3.5.sh" >/dev/null || {
+    printf 'Pinned source is missing the R3.3 Mac UI materialization pass.\n' >&2; return 1;
+  }
+  grep -F 'activateMacView' "$source_dir/src/renderer/mac-ui-fixes.js" >/dev/null || {
+    printf 'Pinned source is missing Mac tab isolation.\n' >&2; return 1;
+  }
+  grep -F 'skytrace-layer-toggle' "$source_dir/src/renderer/mac-ui-fixes.js" >/dev/null || {
+    printf 'Pinned source is missing collapsible map controls.\n' >&2; return 1;
   }
 
   printf '%s\n' "$source_dir" > "$SOURCE_DIR_FILE"
@@ -164,6 +173,7 @@ prepare_release() {
   bash scripts/materialize-v3.5.sh || return
   node scripts/harden-commercial-build.mjs || return
   node src/build/verify-v35.mjs || return
+  node src/build/verify-v35-ui.mjs || return
   node scripts/audit-runtime.mjs || return
 }
 
@@ -181,6 +191,7 @@ verify_release() {
   enter_source || return
   npm run --silent check || return
   node src/build/verify-v35.mjs || return
+  node src/build/verify-v35-ui.mjs || return
   node scripts/audit-runtime.mjs || return
 }
 
@@ -258,8 +269,8 @@ install_application() {
   [[ "$built_bundle_id" == "$EXPECTED_BUNDLE_ID" ]] || { printf 'Unexpected bundle ID: %s\n' "${built_bundle_id:-unknown}" >&2; return 1; }
   [[ -f "$asar" ]] || { printf 'Packaged app.asar is missing.\n' >&2; return 1; }
 
-  for marker in "$EXPECTED_BUILD_MARKER" 'mac-startup-guard.js' 'data-skytrace-loader-failsafe' 'health-auth-runtime-shell-ready' 'X-SkyTrace-Desktop' 'Private Local Replay' 'SkyTrace Command Centre' 'unpkg.com'; do
-    grep -aF "$marker" "$asar" >/dev/null || { printf 'Required V3.5 R3.2 package marker is missing: %s\n' "$marker" >&2; return 1; }
+  for marker in "$EXPECTED_BUILD_MARKER" 'mac-startup-guard.js' 'data-skytrace-loader-failsafe' 'health-auth-runtime-shell-ready' 'X-SkyTrace-Desktop' 'Private Local Replay' 'SkyTrace Command Centre' 'unpkg.com' 'mac-ui-fixes.js' 'skytrace-layer-toggle' 'skytrace-mac-view-active'; do
+    grep -aF "$marker" "$asar" >/dev/null || { printf 'Required V3.5 R3.3 package marker is missing: %s\n' "$marker" >&2; return 1; }
   done
 
   stop_existing_app || return
@@ -294,13 +305,13 @@ run_step 4 "Install dependencies" install_dependencies
 run_step 5 "Aviation data" download_data
 run_step 6 "Verify audited release" verify_release
 run_step 7 "Build application" build_application
-run_step 8 "Install + R3.2 startup test" install_application
+run_step 8 "Install + R3.3 startup test" install_application
 
 INSTALLED_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Contents/Info.plist" 2>/dev/null || true)"
 
-printf '\n%s✓ SkyTrace V3.5 R3.2 passed its audited startup test%s\n' "$GREEN$BOLD" "$RESET"
+printf '\n%s✓ SkyTrace V3.5 R3.3 passed its audited startup test%s\n' "$GREEN$BOLD" "$RESET"
 printf '%s────────────────────────────────────────%s\n' "$DIM" "$RESET"
-printf '  Build         R3.2 audited runtime\n'
+printf '  Build         R3.3 Mac UI audited runtime\n'
 printf '  Source        %.12s\n' "$SOURCE_REV"
 printf '  Version       %s\n' "$INSTALLED_VERSION"
 printf '  Architecture  %s\n' "$ARCH_LABEL"
