@@ -25,6 +25,7 @@ requireContains("index.html", `window.SKYTRACE_BUILD=\"${BUILD}\"`, "V3.4.0 RC1 
 requireContains("index.html", 'id="performanceMode"', "Performance Mode control");
 requireContains("index.html", 'id="perfStatus"', "performance HUD");
 requireContains("index.html", '/v3.4-polish.css', "V3.4 UI polish stylesheet");
+requireContains("index.html", '/v3.4-polish-refine.css', "V3.4 detail refinement stylesheet");
 requireContains("index.html", '/v3.4-polish.js', "V3.4 startup polish script");
 requireContains("index.html", '/v3.3-platform.js', "Cloud feature layer script");
 requireContains("index.html", '/v3.3-export-fix.js', "safe history export script");
@@ -33,7 +34,13 @@ requireContains("index.html", '/v3.3-entitlement-sync.js', "live entitlement syn
 requireContains("index.html", '/v3.4-features.js', "V3.4 Operations feature script");
 requireContains("v3.4-polish.css", ".startup-shell", "polished startup layout");
 requireContains("v3.4-polish.css", ".flight-card,.airport-panel", "detail-panel polish");
+requireContains("v3.4-polish-refine.css", ".skytrace-aircraft-detail", "aircraft detail refinement");
+requireContains("v3.4-polish-refine.css", ".skytrace-airport-detail", "airport detail refinement");
+requireContains("v3.4-polish-refine.css", ".skytrace-empty-state", "detail empty-state styling");
 requireContains("v3.4-polish.js", "Preparing live aviation data", "startup status copy");
+requireContains("v3.4-polish.js", "connecting to aviation data", "selector-independent legacy startup discovery");
+requireContains("v3.4-polish.js", "skytrace-startup", "startup takeover class");
+requireContains("v3.4-polish.js", "polishDetailPanels", "event-driven detail polish");
 requireContains("v3.4-polish.js", "V3.4.0 RC1", "startup release label");
 requireAbsent("v3.4-polish.js", "MutationObserver", "UI-polish MutationObserver");
 requireContains("app.v3.js", "function flightsForMap()", "adaptive aircraft renderer");
@@ -69,6 +76,14 @@ requireContains("lib/account.js", 'remote(`/v1/history', "commerce history proxy
 requireContains("lib/account.js", 'remote("/v1/v34/operations"', "V3.4 Operations account proxy");
 requireContains("lib/account.js", 'remote(`/v1/v34/replay', "V3.4 replay account proxy");
 requireContains("scripts/apply-v34.mjs", "entitlement sync", "V3.4 entitlement-sync materialization patch");
+requireContains("desktop-services.js", "CURRENT_RELEASE_TAG", "native update-channel identity");
+requireContains("desktop-services.js", "api.github.com/repos/archivealf/SkyTrace/releases", "GitHub release update source");
+requireContains("desktop-services.js", "desktop.log", "desktop diagnostic log");
+requireContains("desktop-services.js", "AbortController", "bounded update request");
+requireContains("electron-main.js", 'label: "Check for Updates…"', "native Check for Updates menu item");
+requireContains("electron-main.js", 'label: "Show Diagnostic Log"', "diagnostic log menu item");
+requireContains("electron-main.js", "attachWindowDiagnostics(mainWindow)", "window diagnostics hook");
+requireContains("electron-main.js", "installDesktopReliability()", "desktop reliability hook");
 requireContains("api/config.js", BUILD, "API config build marker");
 requireContains("api/health.js", BUILD, "API health build marker");
 requireContains("electron-main.js", "SkyTrace data licences and attribution", "ASAR-safe attribution dialog");
@@ -112,11 +127,11 @@ if (process.env.SKYTRACE_COMMERCE_URL) {
   requireContains("ATTRIBUTION.md", "Mictronics", "Mictronics attribution");
   requireContains("ATTRIBUTION.md", "MET Norway", "MET Norway attribution");
   requireContains("ATTRIBUTION.md", "NASA GPM IMERG", "NASA precipitation attribution");
-  const runtimeFiles = ["app.v3.js","v3.3-codes.js","v3.3-entitlement-sync.js","v3.3-platform.js","v3.3-export-fix.js","v3.4-features.js","v3.4-polish.js","server.js","electron-main.js","lib/config.js","lib/account.js","lib/live.js","lib/aircraft.js","lib/weather.js","lib/precipitation.js","api/config.js","api/health.js"];
+  const runtimeFiles = ["app.v3.js","v3.3-codes.js","v3.3-entitlement-sync.js","v3.3-platform.js","v3.3-export-fix.js","v3.4-features.js","v3.4-polish.js","server.js","electron-main.js","desktop-services.js","lib/config.js","lib/account.js","lib/live.js","lib/aircraft.js","lib/weather.js","lib/precipitation.js","api/config.js","api/health.js"];
   for (const rel of runtimeFiles) {
     const value = text(rel);
     for (const host of BLOCKED_HOSTS) if (value.includes(host)) throw new Error(`${rel} contains restricted provider host ${host}.`);
   }
 }
 
-console.log(`Verified SkyTrace ${DISPLAY} (${BUILD}): identity, packaging, polished startup/UI, runtime stability, commerce, Cloud tools, V3.4 Operations/Replay/Profile and free commercial provider stack are consistent.`);
+console.log(`Verified SkyTrace ${DISPLAY} (${BUILD}): identity, packaging, polished startup/detail UI, native update checks, diagnostics, runtime stability, commerce, Cloud tools, V3.4 Operations/Replay/Profile and free commercial provider stack are consistent.`);
