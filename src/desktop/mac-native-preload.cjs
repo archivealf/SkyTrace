@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld("skytraceNative", {
   updateMenuBar: status => ipcRenderer.send("skytrace:menubar:status", status),
   openDetached: (type, id) => ipcRenderer.invoke("skytrace:window:detached", { type, id }),
   focusMain: action => ipcRenderer.invoke("skytrace:window:focus-main", action),
+  reportReady: payload => ipcRenderer.send("skytrace:startup:ready", payload || {}),
+  reportStartupError: payload => ipcRenderer.send("skytrace:startup:error", payload || {}),
   localReplay: {
     ingest: snapshot => ipcRenderer.send("skytrace:local-replay:ingest", snapshot),
     query: options => ipcRenderer.invoke("skytrace:local-replay:query", options || {}),
