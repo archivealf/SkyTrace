@@ -10,6 +10,7 @@ const DEFAULTS = Object.freeze({
   menuBar: true,
   notifications: true,
   launchAtLogin: false,
+  alertsPaused: false,
   performanceProfile: "balanced",
   offlineFallback: true,
   trafficLabelDensity: "normal",
@@ -34,7 +35,9 @@ const state = {
   detachedWindows: new Set(),
   alertsPaused: false,
   menuStatus: { flights: 0, watchHits: 0, connection: "Starting" },
-  lastPruneAt: 0
+  lastPruneAt: 0,
+  lastReplayIngestAt: 0,
+  replayQueue: Promise.resolve()
 };
 
 function cloneDefaults() {
@@ -48,6 +51,7 @@ function normalizeSettings(input = {}) {
     menuBar: input.menuBar !== false,
     notifications: input.notifications !== false,
     launchAtLogin: Boolean(input.launchAtLogin),
+    alertsPaused: Boolean(input.alertsPaused),
     performanceProfile: ["accuracy", "balanced", "battery"].includes(input.performanceProfile) ? input.performanceProfile : base.performanceProfile,
     offlineFallback: input.offlineFallback !== false,
     trafficLabelDensity: ["low", "normal", "high"].includes(input.trafficLabelDensity) ? input.trafficLabelDensity : base.trafficLabelDensity,
@@ -64,14 +68,23 @@ function readSettings() {
   try {
     const parsed = JSON.parse(fs.readFileSync(state.settingsPath, "utf8"));
     return normalizeSettings(parsed);
-  } catch {
+  } catch (error) {
     const initial = cloneDefaults();
     try {
       fs.mkdirSync(path.dirname(state.settingsPath), { recursive: true });
+      if (error?.code !== "ENOENT" && fs.existsSync(state.settingsPath)) {
+        const backup = `${state.settingsPath}.invalid-${Date.now()}`;
+        try { fs.copyFileSync(state.settingsPath, backup); } catch {}
+      }
       fs.writeFileSync(state.settingsPath, `${JSON.stringify(initial, null, 2)}\n`, { mode: 0o600 });
     } catch {}
     return initial;
   }
+}
+
+function setLoginAtStartup(enabled) {
+  try { app.setLoginItemSettings({ openAtLogin: Boolean(enabled), openAsHidden: false }); }
+  catch {}
 }
 
 function writeSettings(next) {
@@ -79,12 +92,19 @@ function writeSettings(next) {
   fs.mkdirSync(path.dirname(state.settingsPath), { recursive: true });
   fs.writeFileSync(state.settingsPath, `${JSON.stringify(normalized, null, 2)}\n`, { mode: 0o600 });
   try { fs.chmodSync(state.settingsPath, 0o600); } catch {}
-  app.setLoginItemSettings({ openAtLogin: normalized.launchAtLogin, openAsHidden: false });
+  state.alertsPaused = normalized.alertsPaused;
+  setLoginAtStartup(normalized.launchAtLogin);
   syncTray(normalized);
   for (const window of BrowserWindow.getAllWindows()) {
     if (!window.isDestroyed()) window.webContents.send("skytrace:settings:changed", normalized);
   }
   return normalized;
+}
+
+function setAlertsPaused(paused) {
+  const next = readSettings();
+  next.alertsPaused = Boolean(paused);
+  return writeSettings(next).alertsPaused;
 }
 
 function replaySettings() {
@@ -125,7 +145,6 @@ async function pruneReplay(force = false) {
     const stat = await fs.promises.stat(state.replayPath).catch(() => null);
     if (!stat) return;
     const cutoff = now - settings.retentionHours * 3600_000;
-    if (!force && stat.size < replayLimitBytes() * 0.75 && stat.mtimeMs > cutoff) return;
     const text = await fs.promises.readFile(state.replayPath, "utf8");
     const kept = [];
     for (const line of text.split("\n")) {
@@ -152,15 +171,24 @@ async function pruneReplay(force = false) {
 async function ingestReplay(snapshot) {
   const settings = replaySettings();
   if (!settings.enabled || !Array.isArray(snapshot?.flights)) return;
-  const recordedAt = Number(snapshot.recordedAt) || Date.now();
+  const now = Date.now();
+  if (now - state.lastReplayIngestAt < 10_000) return;
+  state.lastReplayIngestAt = now;
+  const requestedAt = Number(snapshot.recordedAt);
+  const recordedAt = Number.isFinite(requestedAt) ? Math.max(now - 300_000, Math.min(now + 60_000, requestedAt)) : now;
   const lines = snapshot.flights.slice(0, 4000).map(f => compactFlight(f, recordedAt)).filter(Boolean).map(p => JSON.stringify(p));
   if (!lines.length) return;
-  fs.mkdirSync(path.dirname(state.replayPath), { recursive: true });
-  await fs.promises.appendFile(state.replayPath, `${lines.join("\n")}\n`, { encoding: "utf8", mode: 0o600 }).catch(() => {});
-  void pruneReplay(false);
+  const writeReplay = async () => {
+    fs.mkdirSync(path.dirname(state.replayPath), { recursive: true });
+    await fs.promises.appendFile(state.replayPath, `${lines.join("\n")}\n`, { encoding: "utf8", mode: 0o600 });
+    await pruneReplay(false);
+  };
+  state.replayQueue = state.replayQueue.then(writeReplay, writeReplay);
+  await state.replayQueue.catch(() => {});
 }
 
 async function queryReplay(options = {}) {
+  await state.replayQueue.catch(() => {});
   const settings = replaySettings();
   const now = Date.now();
   const from = Math.max(now - settings.retentionHours * 3600_000, Number(options.from) || now - 6 * 3600_000);
@@ -192,6 +220,7 @@ async function queryReplay(options = {}) {
 }
 
 async function replayStats() {
+  await state.replayQueue.catch(() => {});
   try {
     const stat = await fs.promises.stat(state.replayPath);
     const settings = replaySettings();
@@ -204,7 +233,7 @@ async function replayStats() {
 
 function trayIcon() {
   const candidates = [
-    path.join(path.dirname(__dirname), "assets", "SkyTrace.png"),
+    path.join(__dirname, "assets", "SkyTrace.png"),
     path.join(process.resourcesPath || "", "app.asar", "assets", "SkyTrace.png")
   ];
   const found = candidates.find(file => file && fs.existsSync(file));
@@ -233,7 +262,7 @@ function buildTrayMenu(settings = readSettings()) {
     { label: "Search…", accelerator: "CommandOrControl+K", click: () => showMain("command") },
     { label: "Airport Desk…", click: () => showMain("airportDesk") },
     { type: "separator" },
-    { label: "Pause Alerts", type: "checkbox", checked: state.alertsPaused, click: item => { state.alertsPaused = item.checked; syncTray(settings); } },
+    { label: "Pause Alerts", type: "checkbox", checked: state.alertsPaused, click: item => { setAlertsPaused(item.checked); } },
     { label: "Settings…", click: () => openMacSettings() },
     { type: "separator" },
     { label: "Quit SkyTrace", role: "quit" }
@@ -253,6 +282,23 @@ function syncTray(settings = readSettings()) {
     state.tray.on("click", () => showMain());
   }
   state.tray.setContextMenu(buildTrayMenu(settings));
+}
+
+function hardenChildWindowNavigation(window, localUrl) {
+  const allowedOrigin = new URL(localUrl).origin;
+  window.webContents.setWindowOpenHandler(({ url: target }) => {
+    if (/^https:\/\//i.test(target)) void shell.openExternal(target);
+    return { action: "deny" };
+  });
+  window.webContents.on("will-navigate", (event, target) => {
+    try {
+      if (new URL(target).origin === allowedOrigin) return;
+      event.preventDefault();
+      if (/^https:\/\//i.test(target)) void shell.openExternal(target);
+    } catch {
+      event.preventDefault();
+    }
+  });
 }
 
 function sharedWindowOptions() {
@@ -287,6 +333,7 @@ export async function openMacSettings() {
     title: "SkyTrace Settings",
     titleBarStyle: "hiddenInset"
   });
+  hardenChildWindowNavigation(state.settingsWindow, url);
   state.settingsWindow.once("ready-to-show", () => state.settingsWindow?.show());
   state.settingsWindow.on("closed", () => { state.settingsWindow = null; });
   await state.settingsWindow.loadURL(`${url}/mac-settings.html`);
@@ -306,6 +353,7 @@ async function openDetached({ type = "aircraft", id = "" } = {}) {
     title: safeType === "aircraft" ? "SkyTrace Aircraft" : "SkyTrace Airport Desk",
     titleBarStyle: "hiddenInset"
   });
+  hardenChildWindowNavigation(window, url);
   state.detachedWindows.add(window);
   window.once("ready-to-show", () => window.show());
   window.on("closed", () => state.detachedWindows.delete(window));
@@ -343,7 +391,7 @@ function registerIpc() {
   });
   ipcMain.handle("skytrace:notification:show", (_event, payload) => showNativeNotification(payload));
   ipcMain.handle("skytrace:alerts:get-paused", () => state.alertsPaused);
-  ipcMain.handle("skytrace:alerts:set-paused", (_event, paused) => { state.alertsPaused = Boolean(paused); syncTray(); return state.alertsPaused; });
+  ipcMain.handle("skytrace:alerts:set-paused", (_event, paused) => setAlertsPaused(paused));
   ipcMain.on("skytrace:menubar:status", (_event, status) => {
     state.menuStatus = {
       flights: Math.max(0, Number(status?.flights) || 0),
@@ -357,6 +405,7 @@ function registerIpc() {
   ipcMain.on("skytrace:local-replay:ingest", (_event, snapshot) => { void ingestReplay(snapshot); });
   ipcMain.handle("skytrace:local-replay:query", (_event, options) => queryReplay(options));
   ipcMain.handle("skytrace:local-replay:clear", async () => {
+    await state.replayQueue.catch(() => {});
     await fs.promises.rm(state.replayPath, { force: true }).catch(() => {});
     return { ok: true };
   });
@@ -374,11 +423,12 @@ export function installMacNativeMain({ getMainWindow, getServerUrl, configPath, 
   state.settingsPath = path.join(userData, "mac-native.json");
   state.replayPath = path.join(userData, "local-replay.ndjson");
   const settings = readSettings();
-  app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, openAsHidden: false });
+  state.alertsPaused = settings.alertsPaused;
+  setLoginAtStartup(settings.launchAtLogin);
   registerIpc();
   syncTray(settings);
-  powerMonitor.on("on-battery", () => BrowserWindow.getAllWindows().forEach(w => w.webContents.send("skytrace:power-state", { onBattery: true })));
-  powerMonitor.on("on-ac", () => BrowserWindow.getAllWindows().forEach(w => w.webContents.send("skytrace:power-state", { onBattery: false })));
+  powerMonitor.on("on-battery", () => BrowserWindow.getAllWindows().forEach(w => { if (!w.isDestroyed()) w.webContents.send("skytrace:power-state", { onBattery: true }); }));
+  powerMonitor.on("on-ac", () => BrowserWindow.getAllWindows().forEach(w => { if (!w.isDestroyed()) w.webContents.send("skytrace:power-state", { onBattery: false }); }));
   void pruneReplay(true);
   return true;
 }
