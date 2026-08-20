@@ -6,6 +6,9 @@ let token = sessionStorage.getItem("skytrace.webToken") || "";
 let flights = [];
 let ops = null;
 let refreshTimer = null;
+let refreshDelayTimer = null;
+let refreshPromise = null;
+let refreshQueued = false;
 let viewportFrame = 0;
 let panelResizeObserver = null;
 let viewportOrientation = window.matchMedia("(orientation: landscape)").matches ? "landscape" : "portrait";
@@ -100,24 +103,34 @@ if ("ResizeObserver" in window && panel) {
 }
 
 async function api(path, options = {}) {
-  const r = await fetch(path, {
-    ...options,
-    cache: "no-store",
-    headers: {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {})
+  const controller = options.signal ? null : new AbortController();
+  const timeout = controller ? setTimeout(() => controller.abort(), 12000) : null;
+  try {
+    const r = await fetch(path, {
+      ...options,
+      signal: options.signal || controller?.signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers || {})
+      }
+    });
+    let p = {};
+    try { p = await r.json(); } catch {}
+    if (!r.ok || p.ok === false) {
+      const e = new Error(p.error || `Request failed (${r.status})`);
+      e.status = r.status;
+      throw e;
     }
-  });
-  let p = {};
-  try { p = await r.json(); } catch {}
-  if (!r.ok || p.ok === false) {
-    const e = new Error(p.error || `Request failed (${r.status})`);
-    e.status = r.status;
+    return p;
+  } catch (e) {
+    if (e?.name === "AbortError") throw new Error("Live data request timed out");
     throw e;
+  } finally {
+    if (timeout) clearTimeout(timeout);
   }
-  return p;
 }
 
 function setSigned(inward) {
@@ -127,11 +140,16 @@ function setSigned(inward) {
   setStatus(inward ? "Connected" : "Offline");
   if (!inward) {
     clearInterval(refreshTimer);
+    clearTimeout(refreshDelayTimer);
     refreshTimer = null;
+    refreshDelayTimer = null;
+    refreshQueued = false;
     flights = [];
     $("visible").textContent = "0";
     $("alerts").textContent = "0";
     $("drawer").classList.add("hidden");
+    render();
+    drawFlights();
   } else {
     startAutoRefresh();
   }
@@ -175,28 +193,54 @@ function trafficMetaText(g) {
   return `${Math.round(g.radius)} nm around map centre`;
 }
 
+function scheduleRefresh(delay = 180) {
+  if (!token || document.hidden || !navigator.onLine) return;
+  clearTimeout(refreshDelayTimer);
+  refreshDelayTimer = setTimeout(() => {
+    refreshDelayTimer = null;
+    refresh();
+  }, delay);
+}
+
 async function refresh() {
   if (!token || !navigator.onLine) {
     if (!navigator.onLine) setStatus("Offline");
     return;
   }
+  if (refreshPromise) {
+    refreshQueued = true;
+    return refreshPromise;
+  }
+
   const g = geo();
   setTrafficMeta("Refreshing…");
+  refreshPromise = (async () => {
+    try {
+      const p = await api(`/v1/v34/live?lat=${g.lat}&lon=${g.lon}&radius=${g.radius}`);
+      flights = Array.isArray(p.flights) ? p.flights : [];
+      $("visible").textContent = flights.length;
+      setTrafficMeta(trafficMetaText(g));
+      render();
+      drawFlights();
+      setStatus(`${p.source || "Live"} · ${p.cache || "fresh"}`);
+    } catch (e) {
+      setTrafficMeta("Refresh failed");
+      setStatus(e.message);
+      if (e.status === 401 || /sign in|session/i.test(e.message)) {
+        token = "";
+        sessionStorage.removeItem("skytrace.webToken");
+        setSigned(false);
+      }
+    }
+  })();
+
   try {
-    const p = await api(`/v1/v34/live?lat=${g.lat}&lon=${g.lon}&radius=${g.radius}`);
-    flights = p.flights || [];
-    $("visible").textContent = flights.length;
-    setTrafficMeta(trafficMetaText(g));
-    render();
-    drawFlights();
-    setStatus(`${p.source} · ${p.cache}`);
-  } catch (e) {
-    setTrafficMeta("Refresh failed");
-    setStatus(e.message);
-    if (e.status === 401 || /sign in|session/i.test(e.message)) {
-      token = "";
-      sessionStorage.removeItem("skytrace.webToken");
-      setSigned(false);
+    await refreshPromise;
+  } finally {
+    refreshPromise = null;
+    if (refreshQueued) {
+      refreshQueued = false;
+      scheduleRefresh(240);
     }
   }
 }
@@ -217,6 +261,7 @@ function render() {
 }
 
 function drawFlights() {
+  if (!map.isStyleLoaded()) return;
   const fc = {
     type: "FeatureCollection",
     features: flights
@@ -227,16 +272,18 @@ function drawFlights() {
         properties: { icao: f.icao24, callsign: f.callsign, heading: f.heading || 0 }
       }))
   };
-  if (map.getSource("aircraft")) map.getSource("aircraft").setData(fc);
-  else {
-    map.addSource("aircraft", { type: "geojson", data: fc });
-    map.addLayer({
-      id: "aircraft",
-      type: "circle",
-      source: "aircraft",
-      paint: { "circle-radius": 5, "circle-stroke-width": 1.5, "circle-color": "#ffffff", "circle-stroke-color": "#111827" }
-    });
+  const source = map.getSource("aircraft");
+  if (source) {
+    source.setData(fc);
+    return;
   }
+  map.addSource("aircraft", { type: "geojson", data: fc });
+  map.addLayer({
+    id: "aircraft",
+    type: "circle",
+    source: "aircraft",
+    paint: { "circle-radius": 5.5, "circle-stroke-width": 1.5, "circle-color": "#ffffff", "circle-stroke-color": "#111827" }
+  });
 }
 
 function showDrawer(content, label) {
@@ -260,7 +307,7 @@ async function profile(icao) {
 }
 
 function addGeoLayer(id, data, paint) {
-  if (!data?.features) return;
+  if (!data?.features || !map.isStyleLoaded()) return;
   if (map.getSource(id)) map.getSource(id).setData(data);
   else {
     map.addSource(id, { type: "geojson", data });
@@ -305,10 +352,12 @@ async function replay() {
         .filter(([, c]) => c.length > 1)
         .map(([icao, c]) => ({ type: "Feature", properties: { icao }, geometry: { type: "LineString", coordinates: c } }))
     };
-    if (map.getSource("replay")) map.getSource("replay").setData(fc);
-    else {
-      map.addSource("replay", { type: "geojson", data: fc });
-      map.addLayer({ id: "replay", type: "line", source: "replay", paint: { "line-color": "#60a5fa", "line-width": 2, "line-opacity": .65 } });
+    if (map.isStyleLoaded()) {
+      if (map.getSource("replay")) map.getSource("replay").setData(fc);
+      else {
+        map.addSource("replay", { type: "geojson", data: fc });
+        map.addLayer({ id: "replay", type: "line", source: "replay", paint: { "line-color": "#60a5fa", "line-width": 2, "line-opacity": .65 } });
+      }
     }
     d.innerHTML = `Loaded <b>${Number(p.count || 0).toLocaleString()}</b> globally aggregated observations from the last six hours.`;
   } catch (e) {
@@ -342,7 +391,7 @@ $("username").onkeydown = e => {
   }
 };
 $("password").onkeydown = e => { if (e.key === "Enter") login(); };
-$("refreshBtn").onclick = refresh;
+$("refreshBtn").onclick = () => refresh();
 $("opsBtn").onclick = loadOps;
 $("replayBtn").onclick = replay;
 $("logoutBtn").onclick = () => {
@@ -353,20 +402,25 @@ $("logoutBtn").onclick = () => {
 
 document.addEventListener("focusin", () => { if (iOSDevice) setTimeout(updateViewportMetrics, 60); });
 document.addEventListener("focusout", () => { if (iOSDevice) setTimeout(updateViewportMetrics, 160); });
-map.on("moveend", () => token && refresh());
-map.on("load", () => token && refresh());
-window.addEventListener("focus", () => token && refresh());
-window.addEventListener("online", () => token && refresh());
+map.on("dragend", () => scheduleRefresh(120));
+map.on("zoomend", () => scheduleRefresh(120));
+map.on("load", () => {
+  drawFlights();
+  if (token) refresh();
+});
+map.on("styledata", () => { if (flights.length && map.isStyleLoaded()) drawFlights(); });
+window.addEventListener("focus", () => token && scheduleRefresh(80));
+window.addEventListener("online", () => token && scheduleRefresh(80));
 window.addEventListener("offline", () => setStatus("Offline"));
 window.addEventListener("pageshow", () => {
   updateViewportMetrics();
-  if (token && !document.hidden) refresh();
+  if (token && !document.hidden) scheduleRefresh(80);
 });
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) updateViewportMetrics();
-  if (!document.hidden && token) refresh();
+  if (!document.hidden && token) scheduleRefresh(80);
 });
 
 setupInstallMode();
 setSigned(Boolean(token));
-if (token) refresh();
+if (token && map.loaded()) refresh();
