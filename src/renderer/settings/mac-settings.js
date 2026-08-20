@@ -15,99 +15,130 @@
     advanced: "Advanced"
   };
 
+  function setStatus(text) {
+    if ($("saveStatus")) $("saveStatus").textContent = text;
+  }
+
   function showSection(name) {
     document.querySelectorAll(".nav").forEach(node => node.classList.toggle("active", node.dataset.section === name));
     document.querySelectorAll(".pane").forEach(node => node.classList.toggle("active", node.dataset.pane === name));
-    $("sectionTitle").textContent = sectionTitles[name] || "Settings";
+    if ($("sectionTitle")) $("sectionTitle").textContent = sectionTitles[name] || "Settings";
   }
 
   function collect() {
     const profile = document.querySelector('input[name="performanceProfile"]:checked')?.value || "balanced";
     return {
       ...(settings || {}),
-      menuBar: $("menuBar").checked,
-      notifications: $("notifications").checked,
-      launchAtLogin: $("launchAtLogin").checked,
+      menuBar: Boolean($("menuBar")?.checked),
+      notifications: Boolean($("notifications")?.checked),
+      launchAtLogin: Boolean($("launchAtLogin")?.checked),
       performanceProfile: profile,
-      offlineFallback: $("offlineFallback").checked,
-      trafficLabelDensity: $("trafficLabelDensity").value,
-      reducedMotion: $("reducedMotion").checked,
+      offlineFallback: $("offlineFallback")?.checked !== false,
+      trafficLabelDensity: $("trafficLabelDensity")?.value || "normal",
+      reducedMotion: Boolean($("reducedMotion")?.checked),
       localReplay: {
         ...((settings || {}).localReplay || {}),
-        enabled: $("replayEnabled").checked,
-        retentionHours: Number($("retentionHours").value),
-        maxMb: Number($("maxMb").value)
+        enabled: $("replayEnabled")?.checked !== false,
+        retentionHours: Number($("retentionHours")?.value || 168),
+        maxMb: Number($("maxMb")?.value || 100)
       }
     };
   }
 
   function render(next) {
-    settings = next;
-    $("menuBar").checked = next.menuBar !== false;
-    $("notifications").checked = next.notifications !== false;
-    $("launchAtLogin").checked = Boolean(next.launchAtLogin);
-    $("offlineFallback").checked = next.offlineFallback !== false;
-    $("trafficLabelDensity").value = next.trafficLabelDensity || "normal";
-    $("reducedMotion").checked = Boolean(next.reducedMotion);
-    $("replayEnabled").checked = next.localReplay?.enabled !== false;
-    $("retentionHours").value = String(next.localReplay?.retentionHours || 168);
-    $("maxMb").value = String(next.localReplay?.maxMb || 100);
-    const profile = document.querySelector(`input[name="performanceProfile"][value="${CSS.escape(next.performanceProfile || "balanced")}"]`);
+    settings = next || {};
+    if ($("menuBar")) $("menuBar").checked = settings.menuBar !== false;
+    if ($("notifications")) $("notifications").checked = settings.notifications !== false;
+    if ($("launchAtLogin")) $("launchAtLogin").checked = Boolean(settings.launchAtLogin);
+    if ($("offlineFallback")) $("offlineFallback").checked = settings.offlineFallback !== false;
+    if ($("trafficLabelDensity")) $("trafficLabelDensity").value = settings.trafficLabelDensity || "normal";
+    if ($("reducedMotion")) $("reducedMotion").checked = Boolean(settings.reducedMotion);
+    if ($("replayEnabled")) $("replayEnabled").checked = settings.localReplay?.enabled !== false;
+    if ($("retentionHours")) $("retentionHours").value = String(settings.localReplay?.retentionHours || 168);
+    if ($("maxMb")) $("maxMb").value = String(settings.localReplay?.maxMb || 100);
+    const profile = document.querySelector(`input[name="performanceProfile"][value="${CSS.escape(settings.performanceProfile || "balanced")}"]`);
     if (profile) profile.checked = true;
   }
 
   async function save() {
     clearTimeout(saveTimer);
-    $("saveStatus").textContent = "Saving…";
+    setStatus("Saving…");
     try {
       settings = await native.saveSettings(collect());
       render(settings);
-      $("saveStatus").textContent = "Saved automatically";
-      updateReplayStats();
+      setStatus("Saved automatically");
+      void updateReplayStats();
     } catch (error) {
-      $("saveStatus").textContent = error.message || "Could not save";
+      setStatus(error?.message || "Could not save settings");
     }
   }
 
   function scheduleSave() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(save, 120);
+    saveTimer = setTimeout(() => void save(), 120);
   }
 
   async function updateReplayStats() {
     try {
       const stats = await native.localReplay.stats();
-      $("replayStats").textContent = `${(Number(stats.bytes || 0) / 1024 / 1024).toFixed(1)} MB used of ${(Number(stats.maxBytes || 0) / 1024 / 1024).toFixed(0)} MB · ${Number(stats.retentionHours || 0)} hour retention`;
+      if ($("replayStats")) $("replayStats").textContent = `${(Number(stats.bytes || 0) / 1024 / 1024).toFixed(1)} MB used of ${(Number(stats.maxBytes || 0) / 1024 / 1024).toFixed(0)} MB · ${Number(stats.retentionHours || 0)} hour retention`;
     } catch {
-      $("replayStats").textContent = "Local replay status unavailable.";
+      if ($("replayStats")) $("replayStats").textContent = "Local replay status unavailable.";
     }
   }
 
-  async function boot() {
-    settings = await native.getSettings();
-    render(settings);
-    updateReplayStats();
-
+  function bind() {
     document.querySelectorAll(".nav").forEach(button => button.onclick = () => showSection(button.dataset.section));
     document.querySelectorAll("input,select").forEach(control => control.addEventListener("change", scheduleSave));
 
-    $("testNotification").onclick = () => native.notify({ title: "SkyTrace Test Alert", body: "Native macOS notifications are working.", navigate: { action: "command" } });
-    $("pauseAlerts").onclick = async () => {
-      const current = await native.getAlertsPaused();
-      const next = await native.setAlertsPaused(!current);
-      $("pauseAlerts").textContent = next ? "Resume alerts" : "Pause alerts";
+    if ($("testNotification")) $("testNotification").onclick = async () => {
+      try { await native.notify({ title: "SkyTrace Test Alert", body: "Native macOS notifications are working.", navigate: { action: "command" } }); }
+      catch (error) { setStatus(error?.message || "Could not send test notification"); }
     };
-    native.getAlertsPaused().then(paused => { $("pauseAlerts").textContent = paused ? "Resume alerts" : "Pause alerts"; }).catch(() => {});
-    $("showData").onclick = () => native.showDataFolder();
-    $("clearReplay").onclick = async () => {
+    if ($("pauseAlerts")) $("pauseAlerts").onclick = async () => {
+      try {
+        const current = await native.getAlertsPaused();
+        const next = await native.setAlertsPaused(!current);
+        $("pauseAlerts").textContent = next ? "Resume alerts" : "Pause alerts";
+      } catch (error) { setStatus(error?.message || "Could not change alert state"); }
+    };
+    native.getAlertsPaused().then(paused => { if ($("pauseAlerts")) $("pauseAlerts").textContent = paused ? "Resume alerts" : "Pause alerts"; }).catch(() => {});
+    if ($("showData")) $("showData").onclick = () => native.showDataFolder().catch?.(() => {});
+    if ($("clearReplay")) $("clearReplay").onclick = async () => {
       if (!confirm("Delete all Private Local Replay observations stored on this Mac?")) return;
-      await native.localReplay.clear();
-      updateReplayStats();
+      try { await native.localReplay.clear(); await updateReplayStats(); setStatus("Private Local Replay cleared"); }
+      catch (error) { setStatus(error?.message || "Could not clear Local Replay"); }
     };
-    $("openConfig").onclick = () => native.openConfig();
-    $("showLog").onclick = () => native.showDiagnosticLog();
+    if ($("openConfig")) $("openConfig").onclick = () => native.openConfig().catch?.(() => {});
+    if ($("showLog")) $("showLog").onclick = () => native.showDiagnosticLog().catch?.(() => {});
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
-  else boot();
+  async function boot() {
+    bind();
+    try {
+      const loaded = await native.getSettings();
+      render(loaded);
+      setStatus("Saved automatically");
+      await updateReplayStats();
+    } catch (error) {
+      render({
+        menuBar: true,
+        notifications: true,
+        launchAtLogin: false,
+        performanceProfile: "balanced",
+        offlineFallback: true,
+        trafficLabelDensity: "normal",
+        reducedMotion: false,
+        localReplay: { enabled: true, retentionHours: 168, maxMb: 100 }
+      });
+      setStatus(`Settings service unavailable: ${error?.message || "unknown error"}`);
+    }
+  }
+
+  window.addEventListener("unhandledrejection", event => {
+    setStatus(`Settings error: ${event.reason?.message || String(event.reason || "unknown")}`);
+  });
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => void boot(), { once: true });
+  else void boot();
 })();
