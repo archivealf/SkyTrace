@@ -38,16 +38,19 @@ requireText("mac-startup-runtime.js", "SKYTRACE_SMOKE_TEST", "packaged startup s
 requireText("mac-native-renderer.js", "macCommandPalette", "Cmd+K command centre");
 requireText("mac-native-renderer.js", "skytrace-local-replay", "local replay map layer");
 requireText("mac-native-renderer.js", "SkyTrace local fallback", "degraded traffic fallback");
-requireText("mac-startup-guard.js", "health-and-shell-ready", "independent startup health guard");
-requireText("mac-startup-guard.js", "recovery-shell-ready", "startup recovery mode");
+requireText("mac-startup-guard.js", "health-and-shell-ready", "startup health guard");
+requireText("mac-startup-guard.js", "hard-timeout-recovery", "absolute browser-only startup recovery");
+requireText("mac-startup-guard.js", "window.skytraceNative || null", "optional native bridge");
 requireText("mac-startup-guard.js", "reportStartupError", "renderer startup error reporting");
+if (read("mac-startup-guard.js").includes("if (!native?.isMac) return")) failures.push("mac-startup-guard.js must not depend on the Electron preload bridge to recover startup");
 requireText("mac-detached.js", "Orbit / hold estimate", "advanced aircraft analysis");
 requireText("mac-detached.js", "Airport Desk", "Airport Desk");
 requireText("server.js", "Content-Security-Policy", "CSP");
 requireText("server.js", "desktopApiAuthorized", "desktop API authorization");
 requireText("server.js", 'req.headers["x-skytrace-desktop"]', "desktop auth header acceptance");
 requireText("index.html", "/mac-native-renderer.js", "Mac native renderer load");
-requireText("index.html", "/mac-startup-guard.js", "Mac startup guard load");
+requireText("index.html", '<script defer src="/mac-startup-guard.js"></script>', "early deferred Mac startup guard");
+requireText("index.html", "data-skytrace-loader-failsafe", "inline hard splash fail-safe");
 requireText("index.html", "/mac-native.css", "Mac native stylesheet load");
 requireText("desktop-services.js", 'CURRENT_RELEASE_TAG = "v3.5.0"', "V3.5 update channel identity");
 requireText("v3.4-polish.js", "health-and-shell-ready", "startup health watchdog");
@@ -63,4 +66,4 @@ if (failures.length) {
   console.error("SkyTrace V3.5 verification failed:\n- " + failures.join("\n- "));
   process.exit(1);
 }
-console.log("Verified SkyTrace V3.5 Mac Native: unsigned build, native shell, redundant desktop auth, packaged startup handshake/recovery, private replay and offline fallback are present.");
+console.log("Verified SkyTrace V3.5 Mac Native: unsigned build, native shell, redundant desktop auth, preload-independent startup recovery, private replay and offline fallback are present.");
