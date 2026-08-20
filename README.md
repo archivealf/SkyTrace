@@ -1,8 +1,10 @@
 # SkyTrace V3.4.0 RC1
 
-SkyTrace is a macOS aviation intelligence app built with Electron. V3.4.0 RC1 unifies the current account/commerce system, SkyTrace Cloud, Operations, Replay+, Airport Intelligence, aircraft profiles, web access and the recent runtime-stability work under one release identity.
+SkyTrace is an aviation intelligence app with native Electron desktop builds for **macOS and Windows**, plus an installable **iPhone/iPad web app**. V3.4.0 RC1 unifies the current account/commerce system, SkyTrace Cloud, Operations, Replay+, Airport Intelligence, aircraft profiles, web access and runtime-stability work under one release identity.
 
-## Install RC1
+## macOS
+
+Install the current RC1 branch:
 
 ```bash
 bash <(curl -fsSL "https://raw.githubusercontent.com/archivealf/SkyTrace/v3.3-commerce/install")
@@ -11,6 +13,28 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/archivealf/SkyTrace/v3.3-co
 The installer detects Intel versus Apple Silicon, uses a temporary verified Node 22 runtime when the Mac's system Node is older, materializes the V3.4 release source, runs commercial-provider and runtime audits, verifies bundle identity and build marker, builds the correct architecture, and preserves user configuration under `~/Library/Application Support/SkyTrace/`.
 
 Normal installer output is intentionally compact. Detailed build output is written to `~/Library/Logs/SkyTrace/installer.log` and is surfaced only when a step fails.
+
+## Windows
+
+SkyTrace now has a native Windows x64 Electron build with Windows-specific window chrome, taskbar identity, a generated multi-size `.ico`, ZIP packaging and a Squirrel `Setup.exe` installer.
+
+The Windows GitHub Actions workflow produces:
+
+- `SkyTrace-3.4.0-RC1-Windows-x64-Setup.exe`
+- `SkyTrace-3.4.0-RC1-Windows-x64.zip`
+- SHA-256 files for both artifacts
+
+RC1 Windows builds are currently unsigned, so Windows may display its normal warning for an unknown publisher until code signing is added.
+
+## iPhone and iPad
+
+SkyTrace Web at `https://skytrace.duckdns.org/app` is now an installable Home Screen web app. In Safari, open SkyTrace Web, use **Share → Add to Home Screen**, then launch SkyTrace from its Home Screen icon.
+
+The iPhone/iPad version uses the same SkyTrace account and entitlements. It includes the live map, observed aircraft, aircraft profiles, Operations and Replay+. The PWA includes safe-area handling for the notch/home indicator, 44px touch targets, portrait and landscape layouts, an Apple touch icon and a standalone manifest.
+
+The service worker caches only the `/app` shell. Account, authentication and live `/v1` API responses are deliberately not cached.
+
+This is a web app rather than a native App Store binary. A separate native iOS project can be considered later without coupling it to Electron.
 
 The release-candidate branch is still named `v3.3-commerce` for continuity; the application version and packaged release identity are V3.4.0 RC1.
 
@@ -42,7 +66,7 @@ Stripe permanent purchases remain attached to the SkyTrace username. Redeem code
 
 ## SkyTrace Web
 
-The Commerce backend serves a browser-accessible SkyTrace Web app at `/app` using the same accounts and entitlements. It includes live traffic, map interaction, aircraft profiles, Operations and Replay+.
+The Commerce backend serves SkyTrace Web at `/app` using the same accounts and entitlements. It includes live traffic, map interaction, aircraft profiles, Operations and Replay+ and is the iPhone/iPad PWA surface.
 
 ## Free commercial-use data stack
 
@@ -56,15 +80,16 @@ Performance Mode is enabled by default and includes adaptive aircraft rendering,
 
 RC1 additionally removes the document-wide observer loop that could freeze airport/aircraft interactions, makes aircraft-card close constant-time, renders observed airport traffic directly in the existing sidebar, asynchronously initializes the large aircraft reference database, bounds provider request timeouts and limits Replay+ redraw work.
 
-## Build locally
+## Build locally on macOS
 
-Requires macOS and Node.js 22.12+:
+Requires Node.js 22.12+:
 
 ```bash
 export SKYTRACE_COMMERCE_URL="https://skytrace.duckdns.org"
 bash scripts/materialize-v3.4.sh
 node scripts/harden-commercial-build.mjs
 node scripts/verify-v3.4-release.mjs
+node scripts/verify-platform-support.mjs
 node scripts/audit-runtime.mjs
 npm install
 npm run data
@@ -73,6 +98,22 @@ npm run check
 npm run package
 ```
 
-GitHub Actions builds Intel x64 and Apple Silicon arm64 ZIP/DMG artifacts. Pull-request builds do not publish a public release. Public release publication requires an explicit version tag.
+## Build locally on Windows x64
+
+Use Node.js 22.12+ and Git Bash for the materializer:
+
+```bash
+export SKYTRACE_COMMERCE_URL="https://skytrace.duckdns.org"
+bash scripts/materialize-v3.4.sh
+node scripts/harden-commercial-build.mjs
+node scripts/verify-v3.4-release.mjs
+node scripts/verify-platform-support.mjs
+npm install --no-audit --no-fund
+npm run data
+npm run check
+npm run make:win
+```
+
+GitHub Actions builds macOS Intel x64, macOS Apple Silicon arm64 and Windows x64 artifacts. Pull-request and development-branch builds do not publish a public release. Public release publication requires an explicit version tag.
 
 See `CHANGELOG.md` for RC1 release notes and known limitations.
