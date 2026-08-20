@@ -51,15 +51,18 @@
     $("v36AirportMain").onclick = () => native.focusMain?.("command");
   }
 
+  function ensureWorkspace() {
+    const content = $("content");
+    if (!content || document.getElementById("v36DetachedWorkspace")) return;
+    const rendered = type === "aircraft" ? content.querySelector(".hero-grid") : content.querySelector(".stat-grid");
+    if (!rendered) return;
+    if (type === "aircraft") addAircraftWorkspace(content); else addAirportWorkspace(content);
+  }
+
   function boot() {
-    let attempts = 0;
-    const timer = setInterval(() => {
-      attempts++;
-      const content = $("content");
-      if (!content || !content.children.length) { if (attempts > 80) clearInterval(timer); return; }
-      clearInterval(timer);
-      if (type === "aircraft") addAircraftWorkspace(content); else addAirportWorkspace(content);
-    }, 250);
+    ensureWorkspace();
+    const timer = setInterval(ensureWorkspace, 750);
+    window.addEventListener("beforeunload", () => clearInterval(timer), { once: true });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true }); else boot();
 })();
