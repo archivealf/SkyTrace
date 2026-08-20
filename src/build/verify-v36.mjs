@@ -7,6 +7,13 @@ const failures = [];
 const read = rel => { try { return fs.readFileSync(path.join(root, rel), "utf8"); } catch { failures.push(`missing ${rel}`); return ""; } };
 const need = (rel, token, label) => { if (!read(rel).includes(token)) failures.push(`${rel}: missing ${label}`); };
 const forbid = (rel, token, label) => { if (read(rel).includes(token)) failures.push(`${rel}: forbidden ${label}`); };
+const needFile = (rel, label) => {
+  const file = path.join(root, rel);
+  try {
+    const stat = fs.statSync(file);
+    if (!stat.isFile() || stat.size < 32) failures.push(`${rel}: invalid ${label}`);
+  } catch { failures.push(`${rel}: missing ${label}`); }
+};
 
 for (const rel of ["v36-native-main.js", "v36-product.js", "v36-settings.js", "v36-detached.js", "mac-native-main.js"]) {
   const file = path.join(root, rel);
@@ -17,14 +24,25 @@ for (const rel of ["v36-native-main.js", "v36-product.js", "v36-settings.js", "v
 
 need("index.html", "/v36-product.js", "Product Preview runtime");
 need("index.html", "/v36-product.css", "Product Preview stylesheet");
-need("index.html", "/node_modules/maplibre-gl/dist/maplibre-gl.js", "local MapLibre JS");
-need("index.html", "/node_modules/maplibre-gl/dist/maplibre-gl.css", "local MapLibre CSS");
+need("index.html", "/vendor/maplibre-gl/maplibre-gl.js", "packaged MapLibre JS");
+need("index.html", "/vendor/maplibre-gl/maplibre-gl.css", "packaged MapLibre CSS");
+forbid("index.html", "/node_modules/maplibre-gl/", "MapLibre path into Forge-excluded node_modules");
 forbid("index.html", "unpkg.com/maplibre-gl", "external MapLibre CDN dependency");
-need("package.json", '"maplibre-gl"', "packaged MapLibre dependency");
+forbid("index.html", "Connecting to OpenSky", "stale OpenSky provider status label");
+need("package.json", '"maplibre-gl"', "MapLibre dependency");
+need("package.json", "node scripts/vendor-maplibre.mjs", "MapLibre postinstall vendor step");
 need("electron-main.js", "installV36ProductNative();", "Product Preview native IPC installer");
 need("mac-native-preload.cjs", "skytrace:app:version", "version bridge");
 need("mac-native-preload.cjs", "skytrace:file:save-text", "native export bridge");
 need("mac-native-preload.cjs", "skytrace:system:open-external", "safe external release bridge");
+
+// Before npm install there is no node_modules tree yet. Once dependencies exist,
+// the postinstall vendoring step must also have produced real packaged assets.
+if (fs.existsSync(path.join(root, "node_modules", "maplibre-gl", "package.json"))) {
+  needFile("vendor/maplibre-gl/maplibre-gl.js", "vendored MapLibre JS");
+  needFile("vendor/maplibre-gl/maplibre-gl.css", "vendored MapLibre CSS");
+  needFile("vendor/maplibre-gl/VERSION", "vendored MapLibre version marker");
+}
 
 need("mac-native-main.js", "Launch at Login was removed from SkyTrace", "removed login feature migration marker");
 need("mac-native-main.js", "io.skytrace.desktop.login.plist", "legacy login plist cleanup");
@@ -59,4 +77,4 @@ if (failures.length) {
   console.error("SkyTrace Product Preview verification failed:\n- " + failures.join("\n- "));
   process.exit(1);
 }
-console.log("Verified Product Preview R4.3: onboarding, updates, local MapLibre, Timeline, Watchlists 2.0, geofences, Notification Center, refresh-resilient enhanced workspaces, Command Centre 2.0, What's New and keyboard shortcuts; Launch at Login is removed and legacy login state is cleaned up.");
+console.log("Verified Product Preview R4.6: packaged vendored MapLibre, onboarding, updates, Timeline, Watchlists 2.0, geofences, Notification Center, refresh-resilient enhanced workspaces, Command Centre 2.0, What's New and keyboard shortcuts; Launch at Login is removed and legacy login state is cleaned up.");
