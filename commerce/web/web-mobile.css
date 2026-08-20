@@ -3,6 +3,7 @@ html,body,#map{height:100dvh;min-height:100%}
 body{overscroll-behavior:none;-webkit-text-size-adjust:100%;touch-action:manipulation}
 button,input{min-height:44px}
 button{-webkit-tap-highlight-color:transparent}
+.flight{width:100%;text-align:left}
 .traffic-list,.drawer{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .install-hint{flex:0 0 auto;border:1px solid rgba(158,177,255,.16);border-radius:12px;background:rgba(126,149,255,.07);color:#aeb9cf;font-size:10px;line-height:1.45;padding:9px 10px}
 
