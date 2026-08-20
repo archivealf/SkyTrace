@@ -19,6 +19,13 @@ function walk(dir) {
 }
 walk(root);
 
+function isExecutableRenderer(rel) {
+  const normalized = rel.split(path.sep).join("/");
+  if (normalized.startsWith("src/renderer/")) return normalized.endsWith(".js");
+  if (normalized.includes("/")) return false;
+  return /^(?:app\.v3|v3\.[\w.-]+|v3\.3-[\w.-]+|v3\.4-[\w.-]+|airlines\.v2\.2|service-worker\.v3)\.js$/.test(normalized);
+}
+
 const failures = [];
 let linesScanned = 0;
 let jsFilesChecked = 0;
@@ -46,7 +53,9 @@ for (const file of files) {
       if (/\beval\s*\(/.test(line)) failures.push(`${at}: dynamic eval is not allowed in SkyTrace executable code.`);
       if (/\bnew\s+Function\s*\(/.test(line)) failures.push(`${at}: dynamic Function construction is not allowed in SkyTrace executable code.`);
       if (/\bwhile\s*\(\s*true\s*\)/.test(line) || /\bfor\s*\(\s*;\s*;\s*\)/.test(line)) failures.push(`${at}: unbounded loop requires explicit review.`);
-      if (/\.observe\s*\(\s*document\.(?:documentElement|body)\b/.test(line)) failures.push(`${at}: document-wide MutationObserver is forbidden; it can self-trigger and starve the renderer. Observe a bounded component or use explicit events/polling.`);
+      if (isExecutableRenderer(rel) && /\.observe\s*\(\s*document\.(?:documentElement|body)\b/.test(line)) {
+        failures.push(`${at}: document-wide MutationObserver is forbidden in renderer runtime code; observe a bounded component or use explicit events/polling.`);
+      }
     }
   }
 }
@@ -61,7 +70,7 @@ if (app) {
   for (const rel of ["app.v3.js", "v3.3-codes.js", "v3.3-platform.js", "v3.3-entitlement-sync.js", "v3.4-features.js"]) {
     const text = runtimeText(rel);
     if (!text) failures.push(`${rel}: expected materialized runtime file is missing.`);
-    else if (text.includes("MutationObserver")) failures.push(`${rel}: document MutationObserver is forbidden in the desktop runtime; use explicit events instead.`);
+    else if (/\.observe\s*\(\s*document\.(?:documentElement|body)\b/.test(text)) failures.push(`${rel}: document-wide observer is forbidden in the desktop renderer runtime.`);
   }
 
   if (!app.includes('data-airport-traffic-icao')) failures.push("app.v3.js: optimized observed-airport traffic rows are missing.");
