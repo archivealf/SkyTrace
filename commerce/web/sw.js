@@ -1,15 +1,20 @@
-const CACHE = "skytrace-web-v34-2";
+const CACHE = "skytrace-web-v34-3";
 const SHELL = [
   "/app/",
-  "/app/web.css?v=34.2",
-  "/app/web.js?v=34.2",
+  "/app/web.css?v=34.3",
+  "/app/web-mobile.css?v=34.3",
+  "/app/web.js?v=34.3",
   "/app/manifest.webmanifest",
   "/app/icon.svg",
   "/app/apple-touch-icon.png"
 ];
 
 self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches.open(CACHE)
+      .then(cache => cache.addAll(SHELL))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", event => {
