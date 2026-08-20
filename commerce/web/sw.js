@@ -1,9 +1,11 @@
-const CACHE = "skytrace-web-v34-3";
+const CACHE = "skytrace-web-v34-4";
 const SHELL = [
   "/app/",
-  "/app/web.css?v=34.3",
-  "/app/web-mobile.css?v=34.3",
-  "/app/web.js?v=34.3",
+  "/app/web.css?v=34.4",
+  "/app/web-mobile.css?v=34.4",
+  "/app/web-mobile-interactions.css?v=34.4",
+  "/app/web.js?v=34.4",
+  "/app/web-mobile.js?v=34.4",
   "/app/manifest.webmanifest",
   "/app/icon.svg",
   "/app/apple-touch-icon.png"
