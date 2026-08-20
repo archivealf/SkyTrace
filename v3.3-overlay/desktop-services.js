@@ -75,9 +75,13 @@ export function attachWindowDiagnostics(window) {
   contents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
     if (isMainFrame) logDesktopEvent("did-fail-load", `${errorCode} ${errorDescription} ${validatedURL}`);
   });
-  contents.on("console-message", (_event, level, message, line, sourceId) => {
-    if (Number(level) >= 2) logDesktopEvent("renderer-console", `${message} (${sourceId}:${line})`);
+  contents.on("console-message", details => {
+    if (details?.level === "warning" || details?.level === "error") {
+      logDesktopEvent("renderer-console", `${details.message || ""} (${details.sourceId || "renderer"}:${details.lineNumber ?? "?"})`);
+    }
   });
+  contents.on("unresponsive", () => logDesktopEvent("renderer", "unresponsive"));
+  contents.on("responsive", () => logDesktopEvent("renderer", "responsive"));
 }
 
 async function fetchReleases() {
