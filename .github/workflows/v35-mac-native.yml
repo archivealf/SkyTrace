@@ -50,7 +50,7 @@ jobs:
           fi
           [[ "$SKYTRACE_COMMERCE_URL" == https://* ]] || { echo "SKYTRACE_COMMERCE_URL must use HTTPS."; exit 1; }
 
-      - name: Materialize V3.5 Product Preview R4.6
+      - name: Materialize V3.5 Product Preview R4.8
         run: bash scripts/materialize-v3.5.sh
 
       - name: Enforce commercial provider isolation
@@ -61,6 +61,7 @@ jobs:
           node src/build/verify-v35.mjs
           node src/build/verify-v35-ui.mjs
           node src/build/verify-v36.mjs
+          node scripts/audit-runtime.mjs
 
       - name: Install dependencies and vendor MapLibre
         run: npm install --no-audit --no-fund
@@ -72,6 +73,7 @@ jobs:
           test -s vendor/maplibre-gl/maplibre-gl.js
           test -s vendor/maplibre-gl/maplibre-gl.css
           test -s vendor/maplibre-gl/VERSION
+          grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$' vendor/maplibre-gl/VERSION
           grep -F '/vendor/maplibre-gl/maplibre-gl.js' index.html >/dev/null
           grep -F '/vendor/maplibre-gl/maplibre-gl.css' index.html >/dev/null
           ! grep -F '/node_modules/maplibre-gl/' index.html >/dev/null
@@ -90,6 +92,7 @@ jobs:
           node src/build/verify-v35.mjs
           node src/build/verify-v35-ui.mjs
           node src/build/verify-v36.mjs
+          node scripts/audit-runtime.mjs
 
       - name: Package SkyTrace.app
         run: npx electron-forge package --platform=darwin --arch=${{ matrix.arch }}
@@ -125,9 +128,9 @@ jobs:
             'io.skytrace.desktop.login.plist' \
             '/vendor/maplibre-gl/maplibre-gl.js' \
             '/vendor/maplibre-gl/maplibre-gl.css'; do
-            grep -aF "$marker" "$ASAR" >/dev/null || { echo "Missing Product Preview R4.6 marker: $marker"; exit 1; }
+            grep -aF "$marker" "$ASAR" >/dev/null || { echo "Missing Product Preview R4.8 marker: $marker"; exit 1; }
           done
-          echo "Product Preview R4.6 packages vendored MapLibre and uses file-scoped removed-login audits."
+          echo "Product Preview R4.8 packages vendored MapLibre; third-party vendor code is checked by dedicated dependency verifiers rather than SkyTrace source-style loop rules."
 
       - name: Launch packaged app startup smoke test
         shell: bash
