@@ -1,13 +1,21 @@
-import { app, dialog, shell } from "electron";
+import { app, autoUpdater, dialog, shell } from "electron";
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 
 const CURRENT_RELEASE_TAG = "v3.4.0-rc1";
 const CURRENT_RELEASE_LABEL = "SkyTrace V3.4.0 RC1";
 const RELEASES_API = "https://api.github.com/repos/archivealf/SkyTrace/releases?per_page=12";
+const MAC_UPDATE_BASE = "https://update.electronjs.org/archivealf/SkyTrace/darwin";
+const AUTO_UPDATE_FIRST_CHECK_MS = 15_000;
+const AUTO_UPDATE_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const MAX_LOG_BYTES = 1024 * 1024;
 const KEEP_LOG_BYTES = 512 * 1024;
 let reliabilityInstalled = false;
+let automaticUpdatesStarted = false;
+let nativeUpdaterReady = false;
+let updateDownloadedPromptShown = false;
+let autoUpdateTimer = null;
 
 function releaseParts(tag) {
   const match = String(tag || "").trim().match(/^v?(\d+)\.(\d+)\.(\d+)(?:-rc(\d+))?$/i);
@@ -130,6 +138,90 @@ async function fetchReleases() {
   }
 }
 
+function macBundlePath() {
+  return path.resolve(path.dirname(process.execPath), "..", "..");
+}
+
+function hasDeveloperMacSignature() {
+  if (process.platform !== "darwin" || !app.isPackaged) return false;
+  try {
+    const result = spawnSync("/usr/bin/codesign", ["-dv", "--verbose=4", macBundlePath()], {
+      encoding: "utf8",
+      timeout: 5000
+    });
+    const detail = `${result.stdout || ""}\n${result.stderr || ""}`;
+    if (result.status !== 0) return false;
+    const match = detail.match(/TeamIdentifier=([^\s]+)/);
+    return Boolean(match && match[1] && match[1].toLowerCase() !== "not" && match[1].toLowerCase() !== "unset");
+  } catch {
+    return false;
+  }
+}
+
+function nativeMacFeedUrl() {
+  return `${MAC_UPDATE_BASE}/${encodeURIComponent(app.getVersion())}`;
+}
+
+function checkNativeUpdates() {
+  if (!nativeUpdaterReady) return;
+  try {
+    autoUpdater.checkForUpdates();
+  } catch (error) {
+    logDesktopEvent("auto-update-check-failed", error);
+  }
+}
+
+export function startAutomaticUpdates(parentWindow = null) {
+  if (automaticUpdatesStarted) return nativeUpdaterReady;
+  automaticUpdatesStarted = true;
+
+  if (process.platform !== "darwin" || !app.isPackaged) {
+    logDesktopEvent("auto-update", "native updater skipped: not a packaged macOS app");
+    return false;
+  }
+
+  if (!hasDeveloperMacSignature()) {
+    logDesktopEvent("auto-update", "native updater disabled: macOS build is not Developer ID signed; manual release checks remain available");
+    return false;
+  }
+
+  try {
+    autoUpdater.setFeedURL({ url: nativeMacFeedUrl() });
+    nativeUpdaterReady = true;
+  } catch (error) {
+    logDesktopEvent("auto-update-feed-failed", error);
+    return false;
+  }
+
+  autoUpdater.on("checking-for-update", () => logDesktopEvent("auto-update", "checking"));
+  autoUpdater.on("update-available", () => logDesktopEvent("auto-update", "new release available; download started"));
+  autoUpdater.on("update-not-available", () => logDesktopEvent("auto-update", "up to date"));
+  autoUpdater.on("error", error => logDesktopEvent("auto-update-error", error));
+  autoUpdater.on("update-downloaded", async (_event, releaseNotes, releaseName) => {
+    logDesktopEvent("auto-update", `downloaded ${releaseName || "new release"}`);
+    if (updateDownloadedPromptShown) return;
+    updateDownloadedPromptShown = true;
+
+    const result = await dialog.showMessageBox(parentWindow || undefined, {
+      type: "info",
+      title: "SkyTrace Update Ready",
+      message: `${releaseName || "A SkyTrace update"} has been downloaded`,
+      detail: "Restart SkyTrace now to install it, or choose Later. A downloaded update will also be applied on a future restart.",
+      buttons: ["Restart and Install", "Later"],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true
+    });
+    if (result.response === 0) autoUpdater.quitAndInstall();
+  });
+
+  setTimeout(checkNativeUpdates, AUTO_UPDATE_FIRST_CHECK_MS);
+  autoUpdateTimer = setInterval(checkNativeUpdates, AUTO_UPDATE_INTERVAL_MS);
+  autoUpdateTimer.unref?.();
+  logDesktopEvent("auto-update", `enabled via ${MAC_UPDATE_BASE}`);
+  return true;
+}
+
 export async function checkForUpdates(parentWindow = null) {
   try {
     const releases = await fetchReleases();
@@ -146,11 +238,23 @@ export async function checkForUpdates(parentWindow = null) {
       return;
     }
 
+    if (nativeUpdaterReady) {
+      checkNativeUpdates();
+      await dialog.showMessageBox(parentWindow || undefined, {
+        type: "info",
+        title: "SkyTrace Update Available",
+        message: `${displayTag(newer.tag_name)} is available`,
+        detail: "SkyTrace has started the automatic macOS updater. The update will download in the background and SkyTrace will tell you when it is ready to install.",
+        buttons: ["OK"]
+      });
+      return;
+    }
+
     const result = await dialog.showMessageBox(parentWindow || undefined, {
       type: "info",
       title: "SkyTrace Update Available",
       message: `${displayTag(newer.tag_name)} is available`,
-      detail: "Open the verified SkyTrace GitHub release to review the notes and download the correct macOS build.",
+      detail: "This SkyTrace build cannot self-update automatically. Open the verified GitHub release to review the notes and install the correct macOS build.",
       buttons: ["View Release", "Later"],
       defaultId: 0,
       cancelId: 1
