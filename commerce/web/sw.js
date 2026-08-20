@@ -1,11 +1,12 @@
-const CACHE = "skytrace-web-v34-6";
+const CACHE = "skytrace-web-v34-7";
 const SHELL = [
   "/app/",
-  "/app/web.css?v=34.6",
-  "/app/web-mobile.css?v=34.6",
-  "/app/web-mobile-interactions.css?v=34.6",
-  "/app/web.js?v=34.6",
-  "/app/web-mobile.js?v=34.6",
+  "/app/web.css?v=34.7",
+  "/app/web-mobile.css?v=34.7",
+  "/app/airlines.js?v=34.7",
+  "/app/web-ios-aircraft.js?v=34.7",
+  "/app/web.js?v=34.7",
+  "/app/web-mobile.js?v=34.7",
   "/app/manifest.webmanifest",
   "/app/icon.svg",
   "/app/apple-touch-icon.png"
@@ -22,7 +23,11 @@ self.addEventListener("install", event => {
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key.startsWith("skytrace-web-") && key !== CACHE).map(key => caches.delete(key))))
+      .then(keys => Promise.all(
+        keys
+          .filter(key => key.startsWith("skytrace-web-") && key !== CACHE)
+          .map(key => caches.delete(key))
+      ))
       .then(() => self.clients.claim())
   );
 });
@@ -41,7 +46,10 @@ self.addEventListener("fetch", event => {
       if (response.ok) cache.put(request, response.clone()).catch(() => {});
       return response;
     } catch {
-      return (await cache.match(request)) || (await cache.match("/app/")) || Response.error();
+      const cached = await cache.match(request);
+      if (cached) return cached;
+      if (request.mode === "navigate") return (await cache.match("/app/")) || Response.error();
+      return Response.error();
     }
   })());
 });
