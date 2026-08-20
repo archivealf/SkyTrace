@@ -46,6 +46,7 @@ for (const file of files) {
       if (/\beval\s*\(/.test(line)) failures.push(`${at}: dynamic eval is not allowed in SkyTrace executable code.`);
       if (/\bnew\s+Function\s*\(/.test(line)) failures.push(`${at}: dynamic Function construction is not allowed in SkyTrace executable code.`);
       if (/\bwhile\s*\(\s*true\s*\)/.test(line) || /\bfor\s*\(\s*;\s*;\s*\)/.test(line)) failures.push(`${at}: unbounded loop requires explicit review.`);
+      if (/\.observe\s*\(\s*document\.(?:documentElement|body)\b/.test(line)) failures.push(`${at}: document-wide MutationObserver is forbidden; it can self-trigger and starve the renderer. Observe a bounded component or use explicit events/polling.`);
     }
   }
 }
@@ -80,5 +81,5 @@ if (failures.length) {
 }
 
 console.log(`SkyTrace source audit passed: ${files.length} text/code files, ${jsFilesChecked} JavaScript/module syntax checks, ${linesScanned.toLocaleString()} source lines scanned.`);
-if (app) console.log("Materialized renderer stability checks passed: no document MutationObservers, no dynamic eval, constant-time aircraft close, optimized airport traffic and bounded Replay+ rendering.");
+if (app) console.log("Materialized renderer stability checks passed: no document-wide observers, no dynamic eval, constant-time aircraft close, optimized airport traffic and bounded Replay+ rendering.");
 else console.log("Source-tree audit passed before materialization; generated runtime checks will run after materialization.");
