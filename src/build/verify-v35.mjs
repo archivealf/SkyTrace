@@ -84,6 +84,11 @@ if (read("mac-startup-guard.js").includes("MutationObserver")) {
 requireText("app.v3.js", "window.__SKYTRACE_MAP__=state.map=new maplibregl.Map(", "base MapLibre instance exposure");
 requireText("mac-detached.js", "Orbit / hold estimate", "advanced aircraft analysis");
 requireText("mac-detached.js", "Airport Desk", "Airport Desk");
+requireText("mac-detached.js", "AbortSignal.timeout(12000)", "detached API timeout");
+requireText("mac-detached.js", "if (loading || closed) return", "detached refresh overlap guard");
+requireText("mac-detached.js", "scheduleNext", "serialized detached refresh scheduler");
+requireText("mac-settings.js", "Settings service unavailable", "Settings IPC recovery state");
+requireText("mac-settings.js", 'window.addEventListener("unhandledrejection"', "Settings rejection reporting");
 
 const server = read("server.js");
 requireText("server.js", "Content-Security-Policy", "CSP");
@@ -91,6 +96,10 @@ requireText("server.js", "desktopApiAuthorized", "desktop API authorization");
 requireText("server.js", 'req.headers["x-skytrace-desktop"]', "desktop auth header acceptance");
 requireText("server.js", "desktopTokenMatches(headerToken, expected) || desktopTokenMatches(cookieToken, expected)", "independent header/cookie auth fallback");
 requireText("server.js", "!globalThis.__SKYTRACE_DESKTOP__ && rateLimited(req)", "desktop refresh rate-limit isolation");
+requireText("server.js", 'path.resolve(__dirname, `.${rel}`)', "canonical static-path containment");
+requireText("server.js", 'return json(res, 404, { ok: false, error: "Unknown SkyTrace API route." })', "JSON 404 for unknown API routes");
+requireText("server.js", 'catch { res.statusCode = 400; return res.end("Bad request"); }', "malformed URL-path handling");
+requireText("server.js", 'stream.on("error"', "static stream error handling");
 
 const html = read("index.html");
 requireText("index.html", "/mac-native-renderer.js", "Mac native renderer load");
@@ -130,4 +139,4 @@ if (failures.length) {
   console.error("SkyTrace V3.5 verification failed:\n- " + failures.join("\n- "));
   process.exit(1);
 }
-console.log("Verified SkyTrace V3.5 Mac Native R3: no startup mutation storm, authenticated runtime boot, CSP dependency compatibility, guarded child windows, serialized replay, map exposure and unsigned packaging invariants are present.");
+console.log("Verified SkyTrace V3.5 Mac Native R3: no startup mutation storm, authenticated runtime boot, CSP dependency compatibility, guarded child windows, serialized replay, safe server routing, resilient detached/settings windows, map exposure and unsigned packaging invariants are present.");
