@@ -10,10 +10,24 @@ struct SkyTraceWebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = true
         configuration.userContentController.add(context.coordinator, name: "skytraceLiveActivity")
+        configuration.userContentController.addUserScript(
+            WKUserScript(
+                source: "window.__SKYTRACE_NATIVE_IOS__ = true;",
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true
+            )
+        )
+
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
+        webView.allowsLinkPreview = false
+        webView.isUserInteractionEnabled = true
+        webView.scrollView.isUserInteractionEnabled = true
+        webView.scrollView.delaysContentTouches = false
+        webView.scrollView.keyboardDismissMode = .interactive
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.isOpaque = false
         webView.backgroundColor = .clear
@@ -24,6 +38,8 @@ struct SkyTraceWebView: UIViewRepresentable {
     func updateUIView(_ webView: WKWebView, context: Context) {}
 
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+        webView.stopLoading()
+        webView.navigationDelegate = nil
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "skytraceLiveActivity")
     }
 
@@ -39,12 +55,20 @@ struct SkyTraceWebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             if navigationAction.navigationType == .linkActivated,
                let target = navigationAction.request.url,
-               target.host != webView.url?.host {
+               let targetHost = target.host,
+               let currentHost = webView.url?.host,
+               targetHost.caseInsensitiveCompare(currentHost) != .orderedSame {
                 UIApplication.shared.open(target)
                 decisionHandler(.cancel)
                 return
             }
             decisionHandler(.allow)
+        }
+
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            // If WebKit kills the content process under memory pressure, reload
+            // instead of leaving a visually intact but permanently untouchable UI.
+            webView.reloadFromOrigin()
         }
     }
 }
