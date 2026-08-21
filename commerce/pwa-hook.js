@@ -54,6 +54,17 @@ function serveBase64(res, name, type, cache) {
   res.end(data);
 }
 
+const APP_ASSETS = new Map([
+  ["/app/web-mobile.css", ["web-mobile.css", "text/css; charset=utf-8"]],
+  ["/app/web-mobile.js", ["web-mobile.js", "text/javascript; charset=utf-8"]],
+  ["/app/web-session-35.js", ["web-session-35.js", "text/javascript; charset=utf-8"]],
+  ["/app/web-mobile-35.css", ["web-mobile-35.css", "text/css; charset=utf-8"]],
+  ["/app/web-mobile-35.js", ["web-mobile-35.js", "text/javascript; charset=utf-8"]],
+  ["/app/vendor/maplibre-gl/maplibre-gl.js", ["vendor/maplibre-gl/maplibre-gl.js", "text/javascript; charset=utf-8"]],
+  ["/app/vendor/maplibre-gl/maplibre-gl.css", ["vendor/maplibre-gl/maplibre-gl.css", "text/css; charset=utf-8"]],
+  ["/app/vendor/maplibre-gl/version.txt", ["vendor/maplibre-gl/version.txt", "text/plain; charset=utf-8"]]
+]);
+
 http.createServer = function pwaCreateServer(...args) {
   const options = typeof args[0] === "function" ? null : args[0];
   const listener = typeof args[0] === "function" ? args[0] : args[1];
@@ -61,8 +72,8 @@ http.createServer = function pwaCreateServer(...args) {
     const url = new URL(req.url || "/", "http://localhost");
     if (req.method === "GET") {
       if (url.pathname === "/app/manifest.webmanifest") return serveFile(res, "manifest.webmanifest", "application/manifest+json; charset=utf-8", "no-cache");
-      if (url.pathname === "/app/web-mobile.css") return serveFile(res, "web-mobile.css", "text/css; charset=utf-8", "no-cache");
-      if (url.pathname === "/app/web-mobile.js") return serveFile(res, "web-mobile.js", "text/javascript; charset=utf-8", "no-cache");
+      const asset = APP_ASSETS.get(url.pathname);
+      if (asset) return serveFile(res, asset[0], asset[1], "no-cache");
       if (url.pathname === "/app/airlines.js") return servePath(res, AIRLINES_FILE, "text/javascript; charset=utf-8", "no-cache");
       if (url.pathname === "/app/icon.svg") return serveFile(res, "icon.svg", "image/svg+xml; charset=utf-8", "public, max-age=86400");
       if (url.pathname === "/app/apple-touch-icon.png") return serveBase64(res, "apple-touch-icon.png.b64", "image/png", "public, max-age=86400");
