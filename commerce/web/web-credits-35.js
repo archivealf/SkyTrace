@@ -4,7 +4,7 @@
   const drawer = document.getElementById('drawer');
   if (!drawer) return;
 
-  const BUILD = '35.0.6';
+  const BUILD = '35.0.7';
 
   function creditsMarkup() {
     return `<div class="mobile35-page">
@@ -32,8 +32,9 @@
     if (!menu) return;
 
     const versionLabel = drawer.querySelector('.mobile35-page-head small');
-    if (versionLabel && /SKYTRACE iPHONE/i.test(versionLabel.textContent || '')) {
-      versionLabel.textContent = `SKYTRACE iPHONE · ${BUILD}`;
+    const expectedLabel = `SKYTRACE iPHONE · ${BUILD}`;
+    if (versionLabel && /SKYTRACE iPHONE/i.test(versionLabel.textContent || '') && versionLabel.textContent !== expectedLabel) {
+      versionLabel.textContent = expectedLabel;
     }
 
     if (menu.querySelector('[data-more-credits]')) return;
@@ -58,6 +59,9 @@
     }
   });
 
+  // Keep the button available when More is re-rendered, but never rewrite an
+  // already-correct node. Rewriting textContent from inside this observer used
+  // to trigger the observer again forever and freeze WKWebView after tapping More.
   new MutationObserver(injectCreditsButton).observe(drawer, { childList: true, subtree: true });
   injectCreditsButton();
 })();
