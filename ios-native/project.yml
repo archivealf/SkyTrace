@@ -15,6 +15,7 @@ targets:
       - path: Shared
     dependencies:
       - target: SkyTraceActivityWidget
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.skytrace.ios
