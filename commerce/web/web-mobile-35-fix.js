@@ -82,6 +82,11 @@
     } catch {}
   }
 
+  function filtersEqual(a, b) {
+    try { return JSON.stringify(a ?? null) === JSON.stringify(b ?? null); }
+    catch { return false; }
+  }
+
   function applySafeAircraftFilter() {
     if (!map.isStyleLoaded()) return;
     const filters = readFilters();
@@ -92,7 +97,10 @@
     }
     for (const layer of [...AIRCRAFT_LAYERS, 'aircraft-visible-fallback-35']) {
       if (!map.getLayer(layer)) continue;
-      try { map.setFilter(layer, filter); } catch {}
+      try {
+        const current = typeof map.getFilter === 'function' ? map.getFilter(layer) : undefined;
+        if (!filtersEqual(current, filter)) map.setFilter(layer, filter);
+      } catch {}
     }
   }
 
@@ -135,8 +143,6 @@
     if (!id) return false;
     if (typeof selectedIcao !== 'undefined' && selectedIcao === id && document.documentElement.classList.contains('detail-open')) return true;
 
-    // If a tab page is open, switch back to Map first so its drawer/layout rules
-    // cannot hide or clip the aircraft detail sheet.
     if (document.documentElement.dataset.mobile35Tab && document.documentElement.dataset.mobile35Tab !== 'map') {
       document.querySelector('#mobile35Tabs [data-tab="map"]')?.click();
     }
@@ -149,8 +155,6 @@
     if (!canvas || canvas.dataset.skytraceAircraftTap35 === '1') return;
     canvas.dataset.skytraceAircraftTap35 = '1';
 
-    // A larger coarse-pointer hit radius makes the custom aircraft silhouettes
-    // practical to tap on an iPhone without changing their visual size.
     map.on('click', event => {
       const flight = nearestAircraft(event.point, 64);
       if (flight) openAircraft(flight);
@@ -186,13 +190,13 @@
   };
 
   map.on('load', () => { queueRepair(); installReliableAircraftTap(); });
-  map.on('idle', queueRepair);
+  // styledata is useful after a map-theme change, but the filter update above is
+  // idempotent so it cannot trigger a styledata -> setFilter -> styledata loop.
   map.on('styledata', queueRepair);
   window.addEventListener('pageshow', () => { queueRepair(); installReliableAircraftTap(); });
   window.addEventListener('online', queueRepair);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { queueRepair(); installReliableAircraftTap(); } });
 
-  // Repair any filter left at "__none__" during the first empty pre-refresh render.
   setTimeout(() => { queueRepair(); installReliableAircraftTap(); }, 80);
   setTimeout(queueRepair, 600);
   setTimeout(queueRepair, 1800);
