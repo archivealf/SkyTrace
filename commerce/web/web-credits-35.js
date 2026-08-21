@@ -20,7 +20,7 @@
       <div class="mobile35-airport-card">
         <small>MOTIVATION</small>
         <h3>Mia icantspellyournamesoz</h3>
-        <p class="mobile35-copy">Thank you for giving me the motivation to keep doing this day by day i think of you whilst making this I genuinely love the way you treat me thanks mia i know you will read this and to the other users this is for someone very special to me</p>
+        <p class="mobile35-copy">Thank you for giving me the motivation to keep doing this day by day i think of you whilst making this I genuinely love the way you treat me thanks mia i know you will read this and to the other users this is for someone very special to me she is the reason everyone gets to use this app not me but her.</p>
       </div>
       <p class="mobile35-footnote">SkyTrace Mobile ${BUILD}</p>
     </div>`;
