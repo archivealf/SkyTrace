@@ -4,7 +4,7 @@
   const drawer = document.getElementById('drawer');
   if (!drawer) return;
 
-  const BUILD = '35.0.5';
+  const BUILD = '35.0.6';
 
   function creditsMarkup() {
     return `<div class="mobile35-page">
