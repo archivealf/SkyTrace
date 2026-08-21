@@ -6,6 +6,13 @@ final class LiveActivityController {
     static let shared = LiveActivityController()
     private var activity: Activity<SkyTraceActivityAttributes>?
 
+    private init() {
+        // Recover an activity that survived a normal app relaunch so a later
+        // update/end message controls the existing Dynamic Island instead of
+        // accidentally creating a duplicate.
+        activity = Activity<SkyTraceActivityAttributes>.activities.first
+    }
+
     func handle(_ message: FlightActivityMessage) async {
         switch message.action.lowercased() {
         case "start": await start(message)
@@ -15,14 +22,28 @@ final class LiveActivityController {
         }
     }
 
+    private func matchingActivity(for icao: String) -> Activity<SkyTraceActivityAttributes>? {
+        if let activity, activity.attributes.icao.caseInsensitiveCompare(icao) == .orderedSame {
+            return activity
+        }
+        if let recovered = Activity<SkyTraceActivityAttributes>.activities.first(where: {
+            $0.attributes.icao.caseInsensitiveCompare(icao) == .orderedSame
+        }) {
+            activity = recovered
+            return recovered
+        }
+        return nil
+    }
+
     private func start(_ message: FlightActivityMessage) async {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-        if let current = activity, current.attributes.icao == message.icao {
+        if let current = matchingActivity(for: message.icao) {
             await current.update(ActivityContent(state: message.state, staleDate: Date().addingTimeInterval(45)))
             return
         }
         if let current = activity {
             await current.end(nil, dismissalPolicy: .immediate)
+            activity = nil
         }
         do {
             activity = try Activity.request(
@@ -36,7 +57,7 @@ final class LiveActivityController {
     }
 
     private func update(_ message: FlightActivityMessage) async {
-        guard let current = activity, current.attributes.icao == message.icao else {
+        guard let current = matchingActivity(for: message.icao) else {
             await start(message)
             return
         }
@@ -44,8 +65,8 @@ final class LiveActivityController {
     }
 
     private func end(_ message: FlightActivityMessage) async {
-        guard let current = activity else { return }
+        guard let current = matchingActivity(for: message.icao) else { return }
         await current.end(ActivityContent(state: message.state, staleDate: nil), dismissalPolicy: .immediate)
-        activity = nil
+        if activity?.id == current.id { activity = nil }
     }
 }
