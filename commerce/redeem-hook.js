@@ -1,3 +1,10 @@
+// Prefer working IPv4 egress and retry transient public aviation upstream
+// failures before any API hook performs network work.
+import "./network35-hook.js";
+// Mobile 35 remembered sessions must wrap every downstream API hook so the
+// HttpOnly cookie is converted into the existing bearer-session contract
+// before account, Cloud, V3.4 or Airport Desk authentication runs.
+import "./remember-session-hook.js";
 // Compatibility preload. The platform hook provides redeem codes,
 // SQLite-backed account storage, cloud sync/history and the admin dashboard.
 import "./platform-hook.js";
@@ -9,8 +16,10 @@ import "./platform-preserve.js";
 // authentication/Stripe compatibility layer above.
 import "./v34-hook.js";
 // Searchable account administration, disable/restore and expiring grants are
-// isolated in their own final preload so they can guard login/account reads.
+// isolated in their own preload so they can guard login/account reads.
 import "./admin-v34-hook.js";
-// PWA/iOS assets are served by a small final wrapper so account/API responses
-// remain untouched and are never cached by the web-app service worker.
+// PWA/iOS assets are served without caching account/API responses.
 import "./pwa-hook.js";
+// SkyTrace Mobile 35 Airport Desk uses the same authenticated account and
+// entitlement model as the rest of the commerce backend.
+import "./mobile35-hook.js";

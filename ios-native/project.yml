@@ -1,0 +1,37 @@
+name: SkyTraceIOS
+options:
+  minimumXcodeGenVersion: 2.40.0
+settings:
+  base:
+    IPHONEOS_DEPLOYMENT_TARGET: 17.0
+    SWIFT_VERSION: 5.10
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  SkyTrace:
+    type: application
+    platform: iOS
+    sources:
+      - path: SkyTraceApp
+      - path: Shared
+    dependencies:
+      - target: SkyTraceActivityWidget
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.skytrace.ios
+        INFOPLIST_FILE: Config/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/SkyTrace.entitlements
+        PRODUCT_NAME: SkyTrace
+    scheme:
+      testTargets: []
+  SkyTraceActivityWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: SkyTraceActivityWidget
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.skytrace.ios.activity
+        INFOPLIST_FILE: SkyTraceActivityWidget/Info.plist
+        PRODUCT_NAME: SkyTraceActivityWidget

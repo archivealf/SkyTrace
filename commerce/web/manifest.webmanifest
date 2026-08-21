@@ -1,7 +1,7 @@
 {
   "name": "SkyTrace",
   "short_name": "SkyTrace",
-  "description": "Live aviation intelligence, Operations and Replay+.",
+  "description": "Live aviation map, Nearby aircraft, Watchlists, Airport Desk and Replay+.",
   "id": "/app/",
   "start_url": "/app/",
   "scope": "/app/",
@@ -11,6 +11,11 @@
   "theme_color": "#080b11",
   "orientation": "any",
   "categories": ["travel", "navigation", "utilities"],
+  "shortcuts": [
+    { "name": "Nearby aircraft", "short_name": "Nearby", "url": "/app/?tab=nearby" },
+    { "name": "Replay timeline", "short_name": "Replay", "url": "/app/?tab=replay" },
+    { "name": "Airport Desk", "short_name": "Airports", "url": "/app/?tab=more" }
+  ],
   "icons": [
     {
       "src": "/app/icon.svg",

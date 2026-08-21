@@ -12,15 +12,20 @@
   const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || isiPad;
   const isiPhone = isiOS && !isiPad;
   const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const mobile35Build = /^35\./.test(String(document.body?.dataset?.skytraceWebBuild || ''));
 
   root.classList.toggle('ios-device', isiOS);
   root.classList.toggle('ios-ipad', isiPad);
   root.classList.toggle('ios-iphone', isiPhone);
   root.classList.toggle('standalone-webapp', standalone);
-  root.classList.add('skytrace-mobile-34-8');
 
-  if (productLabel && isiPhone) productLabel.textContent = 'SKYTRACE iPHONE · V3.4';
-  else if (productLabel && isiPad) productLabel.textContent = 'SKYTRACE iPAD · V3.4';
+  // Mobile 35 owns its own three-position sheet and visual identity. Keeping the
+  // old 34.8 class/gesture system active at the same time caused competing
+  // pointer handlers and overlapping sheet states inside the native WKWebView.
+  if (!mobile35Build) root.classList.add('skytrace-mobile-34-8');
+
+  if (!mobile35Build && productLabel && isiPhone) productLabel.textContent = 'SKYTRACE iPHONE · V3.4';
+  else if (!mobile35Build && productLabel && isiPad) productLabel.textContent = 'SKYTRACE iPAD · V3.4';
 
   const installHint = document.getElementById('installHint');
   if (installHint) installHint.classList.toggle('hidden', !isiOS || standalone);
@@ -81,7 +86,7 @@
     root.style.setProperty('--skytrace-vv-top', `${top}px`);
     root.classList.toggle('ios-keyboard-open', keyboardOpen);
 
-    if (keyboardOpen && collapsed) setCollapsed(false);
+    if (!mobile35Build && keyboardOpen && collapsed) setCollapsed(false);
 
     cancelAnimationFrame(viewportFrame);
     viewportFrame = requestAnimationFrame(() => {
@@ -91,6 +96,16 @@
   }
 
   function setCollapsed(next, announce = false) {
+    // Mobile 35 must never receive the legacy sheet-collapsed class. Its own
+    // sheet35-peek/half/full state is managed in web-mobile-35.js.
+    if (mobile35Build) {
+      collapsed = false;
+      panel.classList.remove('sheet-collapsed', 'sheet-dragging');
+      root.classList.remove('sheet-collapsed');
+      panel.style.removeProperty('--skytrace-sheet-drag');
+      return;
+    }
+
     const allowed = phonePortrait() && !root.classList.contains('ios-keyboard-open');
     collapsed = allowed ? Boolean(next) : false;
     panel.classList.toggle('sheet-collapsed', collapsed);
@@ -117,7 +132,7 @@
   }
 
   function beginDrag(event) {
-    if (!phonePortrait() || root.classList.contains('ios-keyboard-open')) return;
+    if (mobile35Build || !phonePortrait() || root.classList.contains('ios-keyboard-open')) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     dragging = true;
     dragStartY = event.clientY;
@@ -154,41 +169,43 @@
     else setCollapsed(startedCollapsed);
   }
 
-  for (const target of [handle, header].filter(Boolean)) {
-    target.addEventListener('pointerdown', beginDrag);
-    target.addEventListener('pointermove', moveDrag, { passive: false });
-    target.addEventListener('pointerup', endDrag);
-    target.addEventListener('pointercancel', endDrag);
+  if (!mobile35Build) {
+    for (const target of [handle, header].filter(Boolean)) {
+      target.addEventListener('pointerdown', beginDrag);
+      target.addEventListener('pointermove', moveDrag, { passive: false });
+      target.addEventListener('pointerup', endDrag);
+      target.addEventListener('pointercancel', endDrag);
+    }
+
+    handle.addEventListener('click', event => {
+      if (!phonePortrait()) return;
+      if (Date.now() < ignoreClickUntil) {
+        event.preventDefault();
+        return;
+      }
+      setCollapsed(!collapsed, true);
+    });
+
+    panel.addEventListener('click', event => {
+      if (!collapsed || !phonePortrait() || Date.now() < ignoreClickUntil) return;
+      if (event.target.closest?.('#sheetHandle')) return;
+      setCollapsed(false, true);
+    });
+
+    handle.addEventListener('keydown', event => {
+      if (!phonePortrait()) return;
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setCollapsed(true, true);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setCollapsed(false, true);
+      }
+    });
   }
 
-  handle.addEventListener('click', event => {
-    if (!phonePortrait()) return;
-    if (Date.now() < ignoreClickUntil) {
-      event.preventDefault();
-      return;
-    }
-    setCollapsed(!collapsed, true);
-  });
-
-  panel.addEventListener('click', event => {
-    if (!collapsed || !phonePortrait() || Date.now() < ignoreClickUntil) return;
-    if (event.target.closest?.('#sheetHandle')) return;
-    setCollapsed(false, true);
-  });
-
-  handle.addEventListener('keydown', event => {
-    if (!phonePortrait()) return;
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      setCollapsed(true, true);
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      setCollapsed(false, true);
-    }
-  });
-
   function reconcile() {
-    if (!phonePortrait() || root.classList.contains('ios-keyboard-open')) setCollapsed(false);
+    if (!mobile35Build && (!phonePortrait() || root.classList.contains('ios-keyboard-open'))) setCollapsed(false);
     updateViewport();
     setTimeout(() => window.skytraceResizeMap?.(), 160);
   }
@@ -212,12 +229,14 @@
       .catch(() => {});
   }
 
+  // This temporary API is replaced by Mobile 35 a few milliseconds later. In a
+  // 35.x build it only supplies viewport refresh until that replacement occurs.
   window.skytraceMobileSheet = {
-    expand: () => setCollapsed(false),
-    collapse: () => setCollapsed(true),
-    isCollapsed: () => collapsed,
+    expand: () => { if (!mobile35Build) setCollapsed(false); },
+    collapse: () => { if (!mobile35Build) setCollapsed(true); },
+    isCollapsed: () => mobile35Build ? false : collapsed,
     refresh: () => {
-      if (!phonePortrait()) setCollapsed(false);
+      if (!mobile35Build && !phonePortrait()) setCollapsed(false);
       updateViewport();
     }
   };

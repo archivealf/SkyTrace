@@ -1,0 +1,83 @@
+name: SkyTrace Mobile 35 + iOS Native
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ios-35-mobile-native
+  pull_request:
+    branches:
+      - v3.5-mac-native
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Mobile 35 dependencies
+        run: npm --prefix commerce install --no-audit --no-fund
+
+      - name: Verify Mobile 35 JavaScript and backend
+        run: npm --prefix commerce run check
+
+      - name: Verify vendored MapLibre and PWA identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s commerce/web/vendor/maplibre-gl/maplibre-gl.js
+          test -s commerce/web/vendor/maplibre-gl/maplibre-gl.css
+          grep -F 'skytrace-web-build" content="35.0' commerce/web/index.html >/dev/null
+          grep -F '/app/vendor/maplibre-gl/maplibre-gl.js?v=35.0' commerce/web/index.html >/dev/null
+          grep -F '/app/web-mobile-35.js?v=35.0' commerce/web/index.html >/dev/null
+          grep -F 'skytrace_session' commerce/remember-session-hook.js >/dev/null
+          grep -F 'HttpOnly' commerce/remember-session-hook.js >/dev/null
+          grep -F 'skytraceLiveActivity' commerce/web/web-mobile-35.js >/dev/null
+          if grep -F 'unpkg.com/maplibre-gl' commerce/web/index.html; then
+            echo 'Mobile 35 still depends on the MapLibre CDN.'
+            exit 1
+          fi
+
+  ios-native:
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ios-native
+        run: xcodegen generate
+
+      - name: Build iOS simulator app and Live Activity extension
+        working-directory: ios-native
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project SkyTraceIOS.xcodeproj \
+            -scheme SkyTrace \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Verify Dynamic Island source markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'ActivityConfiguration' ios-native/SkyTraceActivityWidget/SkyTraceLiveActivityWidget.swift >/dev/null
+          grep -F 'DynamicIslandExpandedRegion' ios-native/SkyTraceActivityWidget/SkyTraceLiveActivityWidget.swift >/dev/null
+          grep -F 'skytraceLiveActivity' ios-native/SkyTraceApp/SkyTraceWebView.swift >/dev/null
+          grep -F 'NSSupportsLiveActivities' ios-native/Config/Info.plist >/dev/null

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleDisplayName</key><string>SkyTrace</string>
+  <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+  <key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>35.0.7</string>
+  <key>CFBundleVersion</key><string>2</string>
+  <key>UILaunchScreen</key><dict/>
+  <key>UIRequiresFullScreen</key><false/>
+  <key>NSSupportsLiveActivities</key><true/>
+  <key>NSSupportsLiveActivitiesFrequentUpdates</key><true/>
+  <key>NSLocationWhenInUseUsageDescription</key><string>SkyTrace uses your location to show nearby aircraft and distance from you.</string>
+  <key>SKYTRACE_WEB_URL</key><string>https://YOUR-SKYTRACE-HOST.example/app/</string>
+</dict></plist>

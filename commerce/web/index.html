@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#080b11">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="dark light">
   <meta name="format-detection" content="telephone=no">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SkyTrace">
-  <meta name="skytrace-web-build" content="34.8">
+  <meta name="skytrace-web-build" content="35.0.7">
   <script>
     (() => {
       const ipad = /iPad/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -19,38 +19,41 @@
       document.documentElement.classList.toggle('ios-ipad', ipad);
       document.documentElement.classList.toggle('ios-iphone', ios && !ipad);
       document.documentElement.classList.toggle('standalone-webapp', window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true);
+      document.documentElement.classList.toggle('native-ios-app', window.__SKYTRACE_NATIVE_IOS__ === true);
     })();
   </script>
-  <title>SkyTrace Web</title>
+  <title>SkyTrace</title>
   <link rel="manifest" href="/app/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
   <link rel="icon" href="/app/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
-  <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
-  <link rel="stylesheet" href="/app/web.css?v=34.8">
-  <link rel="stylesheet" href="/app/web-mobile.css?v=34.8">
+  <link rel="stylesheet" href="/app/vendor/maplibre-gl/maplibre-gl.css?v=35.0.7">
+  <script src="/app/vendor/maplibre-gl/maplibre-gl.js?v=35.0.7"></script>
+  <link rel="stylesheet" href="/app/web.css?v=35.0.7">
+  <link rel="stylesheet" href="/app/web-mobile.css?v=35.0.7">
+  <link rel="stylesheet" href="/app/web-mobile-35.css?v=35.0.7">
+  <link rel="stylesheet" href="/app/web-mobile-35-fix.css?v=35.0.7">
 </head>
-<body data-skytrace-web-build="34.8">
+<body data-skytrace-web-build="35.0.7">
   <div id="map" aria-label="Live aviation map"></div>
   <aside class="panel" aria-label="SkyTrace controls" aria-expanded="true">
-    <button id="sheetHandle" class="sheet-handle" type="button" aria-label="Minimise controls" aria-expanded="true">
+    <button id="sheetHandle" class="sheet-handle" type="button" aria-label="Move controls" aria-expanded="true">
       <span aria-hidden="true"></span>
     </button>
 
     <header class="panel-head">
       <div class="panel-title">
-        <small>SKYTRACE WEB · V3.4</small>
+        <small>SKYTRACE MOBILE · 35.0.7</small>
         <h1>Live aviation</h1>
       </div>
       <span id="status" class="status-pill" role="status" aria-live="polite">Offline</span>
     </header>
 
     <section id="login" class="login-card" aria-label="Sign in">
-      <p class="section-copy">Sign in to view live aircraft, Operations and Replay+.</p>
+      <p class="section-copy">Sign in once to use live aircraft, Nearby, Airport Desk, Watchlists and Replay+.</p>
       <label><span>Username</span><input id="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" aria-describedby="loginMsg" placeholder="SkyTrace username"></label>
       <label><span>Password</span><input id="password" type="password" autocomplete="current-password" enterkeyhint="go" aria-describedby="loginMsg" placeholder="Password"></label>
       <button id="loginBtn" class="primary" type="button">Sign in</button>
-      <p id="loginMsg" class="muted" aria-live="polite">Use the same account as the SkyTrace desktop app.</p>
+      <p id="loginMsg" class="muted" aria-live="polite">SkyTrace remembers this device until your server session expires or you sign out.</p>
     </section>
 
     <section id="app" class="hidden app-shell" aria-label="Live aviation controls">
@@ -80,9 +83,14 @@
     <div id="installHint" class="install-hint hidden" role="note">Install on iPhone or iPad: use Share → Add to Home Screen.</div>
     <footer>OpenFreeMap © OpenMapTiles · Data from OpenStreetMap · Live aviation &amp; operations data</footer>
   </aside>
-  <script src="/app/airlines.js?v=34.8"></script>
-  <script src="/app/web.js?v=34.8"></script>
-  <script src="/app/web-mobile.js?v=34.8"></script>
+  <script src="/app/web-session-35.js?v=35.0.7"></script>
+  <script src="/app/airlines.js?v=35.0.7"></script>
+  <script src="/app/web.js?v=35.0.7"></script>
+  <script src="/app/web-mobile.js?v=35.0.7"></script>
+  <script src="/app/web-mobile-35.js?v=35.0.7"></script>
+  <script src="/app/web-mobile-35-fix.js?v=35.0.7"></script>
+  <script src="/app/web-live-recovery-35.js?v=35.0.7"></script>
+  <script src="/app/web-credits-35.js?v=35.0.7"></script>
   <script>
     (() => {
       const status = document.getElementById('status');

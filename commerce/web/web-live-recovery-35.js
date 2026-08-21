@@ -1,0 +1,130 @@
+(() => {
+  'use strict';
+
+  if (typeof refresh === 'undefined' || typeof flights === 'undefined' || typeof drawFlights === 'undefined') return;
+
+  const CACHE_KEY = 'skytrace.mobile35.lastFlights';
+  // Deliberately do not match our own "Reconnecting" UI state. Matching it
+  // would make the status MutationObserver rewrite the same status forever and
+  // starve WKWebView's main thread, which looks like a completely frozen app.
+  const FAILURE_RE = /fetch failed|provider is temporarily unreachable|upstream|timed out|network|refresh failed/i;
+  const EMPTY_HOLD_LIMIT = 2;
+  let consecutiveEmpty = 0;
+  let lastGoodFlights = Array.isArray(flights) && flights.length ? flights.slice() : [];
+  let lastGoodAt = lastGoodFlights.length ? Date.now() : 0;
+
+  function applyFlights(nextFlights) {
+    flights = nextFlights.slice();
+    flightByIcao = new Map(flights.map(flight => [String(flight?.icao24 || '').toLowerCase(), flight]));
+    render();
+    drawFlights();
+    const visible = document.getElementById('visible');
+    if (visible) visible.textContent = String(flights.length);
+  }
+
+  function cachedFlights() {
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      const age = Date.now() - Number(cached?.at || 0);
+      if (!Array.isArray(cached?.flights) || !cached.flights.length || age > 6 * 3600_000) return null;
+      return { flights: cached.flights, at: Number(cached.at || 0) };
+    } catch {
+      return null;
+    }
+  }
+
+  function markReconnecting(at = 0) {
+    const status = document.getElementById('status');
+    if (status) {
+      const title = 'Live feed temporarily unavailable — retrying automatically while keeping the last known aircraft visible';
+      if (status.textContent !== 'Reconnecting') status.textContent = 'Reconnecting';
+      if (status.title !== title) status.title = title;
+    }
+    const meta = document.getElementById('trafficMeta');
+    if (meta) {
+      const text = at ? `Last live ${new Date(at).toLocaleTimeString()} · retrying…` : 'Keeping last aircraft · retrying…';
+      if (meta.textContent !== text) meta.textContent = text;
+    }
+  }
+
+  function restoreFailureSnapshot() {
+    const status = document.getElementById('status');
+    const message = `${status?.textContent || ''} ${status?.title || ''}`;
+    if (!FAILURE_RE.test(message)) return false;
+
+    // A failed refresh does not mean the aircraft already on screen are bad.
+    // Keep them visible and shorten the long provider error in the status pill.
+    if (flights.length) {
+      if (!lastGoodFlights.length) lastGoodFlights = flights.slice();
+      if (!lastGoodAt) lastGoodAt = Date.now();
+      markReconnecting(lastGoodAt);
+      return true;
+    }
+
+    const cached = cachedFlights();
+    const replacement = lastGoodFlights.length ? { flights: lastGoodFlights, at: lastGoodAt || Date.now() } : cached;
+    if (!replacement?.flights?.length) {
+      markReconnecting(0);
+      return false;
+    }
+
+    applyFlights(replacement.flights);
+    markReconnecting(replacement.at || cached?.at || 0);
+    return true;
+  }
+
+  const previousRefresh = refresh;
+  refresh = async function skyTraceRefreshWithLiveRecovery(...args) {
+    const before = Array.isArray(flights) ? flights.slice() : [];
+    if (before.length) {
+      lastGoodFlights = before.slice();
+      if (!lastGoodAt) lastGoodAt = Date.now();
+    }
+
+    const result = await previousRefresh(...args);
+    const status = document.getElementById('status');
+    const statusMessage = `${status?.textContent || ''} ${status?.title || ''}`;
+    const failed = FAILURE_RE.test(statusMessage);
+
+    if (failed) {
+      restoreFailureSnapshot();
+      return result;
+    }
+
+    if (flights.length) {
+      consecutiveEmpty = 0;
+      lastGoodFlights = flights.slice();
+      lastGoodAt = Date.now();
+      return result;
+    }
+
+    // Some ADS-B upstream responses occasionally contain a valid but empty
+    // snapshot between populated refreshes. Do not wipe every aircraft from
+    // the map on a single 12-second refresh. Require three consecutive empty
+    // successful snapshots before accepting that the current map area is empty.
+    if (before.length) {
+      consecutiveEmpty += 1;
+      if (consecutiveEmpty <= EMPTY_HOLD_LIMIT) {
+        applyFlights(before);
+        if (status) {
+          status.textContent = 'Updating…';
+          status.title = `Empty live snapshot ${consecutiveEmpty}/${EMPTY_HOLD_LIMIT + 1}; keeping previous aircraft until confirmed`;
+        }
+        const meta = document.getElementById('trafficMeta');
+        if (meta) meta.textContent = 'Confirming live traffic…';
+        return result;
+      }
+    }
+
+    consecutiveEmpty = Math.min(consecutiveEmpty + 1, EMPTY_HOLD_LIMIT + 1);
+    return result;
+  };
+
+  const observer = new MutationObserver(() => restoreFailureSnapshot());
+  const status = document.getElementById('status');
+  if (status) observer.observe(status, { childList: true, subtree: true, characterData: true });
+
+  window.addEventListener('pageshow', () => setTimeout(restoreFailureSnapshot, 120));
+  window.addEventListener('online', () => setTimeout(() => refresh(), 100));
+  setTimeout(restoreFailureSnapshot, 900);
+})();
