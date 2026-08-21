@@ -2,47 +2,39 @@
   'use strict';
 
   const SESSION_KEY = 'skytrace.webToken';
-  const REMEMBER_KEY = 'skytrace.webToken.remembered.v35';
   const ENABLED_KEY = 'skytrace.rememberLogin.v35';
-  const originalSet = Storage.prototype.setItem;
-  const originalRemove = Storage.prototype.removeItem;
+  const SENTINEL = '__skytrace_cookie_session__';
 
-  if (localStorage.getItem(ENABLED_KEY) == null) originalSet.call(localStorage, ENABLED_KEY, '1');
+  // Remove the early Mobile 35 prototype that persisted the bearer token in
+  // localStorage. Persistent auth is now held only in the server-issued
+  // HttpOnly cookie; JavaScript stores a non-secret boot sentinel.
+  try { localStorage.removeItem('skytrace.webToken.remembered.v35'); } catch {}
+
+  if (localStorage.getItem(ENABLED_KEY) == null) localStorage.setItem(ENABLED_KEY, '1');
   const rememberEnabled = () => localStorage.getItem(ENABLED_KEY) !== '0';
 
   if (!sessionStorage.getItem(SESSION_KEY) && rememberEnabled()) {
-    const remembered = localStorage.getItem(REMEMBER_KEY);
-    if (remembered) originalSet.call(sessionStorage, SESSION_KEY, remembered);
+    sessionStorage.setItem(SESSION_KEY, SENTINEL);
   }
-
-  Storage.prototype.setItem = function skyTraceSetItem(key, value) {
-    originalSet.call(this, key, value);
-    if (this === sessionStorage && key === SESSION_KEY && rememberEnabled() && value) {
-      originalSet.call(localStorage, REMEMBER_KEY, String(value));
-    }
-    if (this === localStorage && key === ENABLED_KEY && String(value) === '0') {
-      originalRemove.call(localStorage, REMEMBER_KEY);
-    }
-  };
-
-  Storage.prototype.removeItem = function skyTraceRemoveItem(key) {
-    originalRemove.call(this, key);
-    if (this === sessionStorage && key === SESSION_KEY) originalRemove.call(localStorage, REMEMBER_KEY);
-  };
 
   window.skytraceRememberLogin = {
     enabled: rememberEnabled,
     setEnabled(value) {
-      originalSet.call(localStorage, ENABLED_KEY, value ? '1' : '0');
-      if (!value) originalRemove.call(localStorage, REMEMBER_KEY);
-      else {
-        const token = sessionStorage.getItem(SESSION_KEY);
-        if (token) originalSet.call(localStorage, REMEMBER_KEY, token);
-      }
+      localStorage.setItem(ENABLED_KEY, value ? '1' : '0');
+      if (value && !sessionStorage.getItem(SESSION_KEY)) sessionStorage.setItem(SESSION_KEY, SENTINEL);
+      if (!value && sessionStorage.getItem(SESSION_KEY) === SENTINEL) sessionStorage.removeItem(SESSION_KEY);
     },
-    forget() {
-      originalRemove.call(localStorage, REMEMBER_KEY);
-      originalRemove.call(sessionStorage, SESSION_KEY);
+    async forget() {
+      try { await fetch('/v1/auth/logout', { method: 'POST', credentials: 'same-origin', cache: 'no-store' }); } catch {}
+      sessionStorage.removeItem(SESSION_KEY);
+      localStorage.setItem(ENABLED_KEY, '0');
     }
   };
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const logout = document.getElementById('logoutBtn');
+    logout?.addEventListener('click', () => {
+      fetch('/v1/auth/logout', { method: 'POST', credentials: 'same-origin', cache: 'no-store' }).catch(() => {});
+    }, { capture: true });
+  });
 })();
