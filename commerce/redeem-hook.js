@@ -1,3 +1,6 @@
+// Prefer working IPv4 egress and retry transient public aviation upstream
+// failures before any API hook performs network work.
+import "./network35-hook.js";
 // Mobile 35 remembered sessions must wrap every downstream API hook so the
 // HttpOnly cookie is converted into the existing bearer-session contract
 // before account, Cloud, V3.4 or Airport Desk authentication runs.
