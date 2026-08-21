@@ -18,3 +18,6 @@ import "./pwa-hook.js";
 // HttpOnly cookie. A short client sentinel lets the existing web runtime boot
 // without exposing the persistent bearer token to JavaScript storage.
 import "./remember-session-hook.js";
+// Airport Desk is layered after the remembered-session wrapper so its account
+// gate sees the real cookie-backed session before serving airport intelligence.
+import "./mobile35-hook.js";
