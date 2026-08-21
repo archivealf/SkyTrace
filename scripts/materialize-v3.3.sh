@@ -58,22 +58,26 @@ const raw = String(process.env.SKYTRACE_COMMERCE_URL || "").trim().replace(/\/+$
 let url;
 try { url = new URL(raw); } catch { throw new Error("SKYTRACE_COMMERCE_URL must be a valid URL."); }
 if (url.protocol !== "https:") throw new Error("SKYTRACE_COMMERCE_URL must use HTTPS for packaged releases.");
-function replaceRequired(text, before, after, label) { if (!text.includes(before)) throw new Error(`Could not apply ${label} release patch.`); return text.replace(before, after); }
-for (const file of configFiles) { let text = fs.readFileSync(file, "utf8"); text = text.split("http://127.0.0.1:8787").join(raw); fs.writeFileSync(file, text); }
+for (const file of configFiles) {
+  let text = fs.readFileSync(file, "utf8");
+  text = text.split("http://127.0.0.1:8787").join(raw);
+  fs.writeFileSync(file, text);
+}
+
 let electron = fs.readFileSync(electronFile, "utf8");
-electron = replaceRequired(electron,
-`        {
-          label: "SkyTrace Project",
-          click: () => void shell.openExternal("https://github.com/archivealf/SkyTrace")
-        }`,
-`        {
+if (!electron.includes('label: "Data Licences & Attribution"')) {
+  const projectMarker = `        {
+          label: "SkyTrace Project",`;
+  if (!electron.includes(projectMarker)) {
+    throw new Error("Could not locate the SkyTrace Project Help menu entry for the attribution release patch.");
+  }
+  const attributionEntry = `        {
           label: "Data Licences & Attribution",
           click: () => void shell.openPath(path.join(__dirname, "ATTRIBUTION.md"))
         },
-        {
-          label: "SkyTrace Project",
-          click: () => void shell.openExternal("https://github.com/archivealf/SkyTrace")
-        }`, "data-attribution Help menu");
+`;
+  electron = electron.replace(projectMarker, attributionEntry + projectMarker);
+}
 fs.writeFileSync(electronFile, electron);
 console.log(`Configured packaged SkyTrace account service: ${raw}`);
 console.log("Commercial provider stack: ADSB.lol, Mictronics/VRS, MET Norway, NASA GIBS, AviationWeather.gov, OurAirports and OpenFreeMap.");
