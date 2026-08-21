@@ -1,6 +1,6 @@
 {
   "name": "skytrace-commerce",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "private": true,
   "type": "module",
   "description": "SkyTrace SQLite account, Stripe, codes, Cloud Replay, Operations, PWA web and admin backend.",
@@ -8,13 +8,13 @@
     "postinstall": "node scripts/vendor-web-maplibre.mjs",
     "vendor:web": "node scripts/vendor-web-maplibre.mjs",
     "start": "node scripts/vendor-web-maplibre.mjs && node --import ./redeem-hook.js server.js",
-    "check": "node --check server.js && node --check redeem-hook.js && node --check network35-hook.js && node --check platform-hook.js && node --check platform-preserve.js && node --check v34-hook.js && node --check admin-v34-hook.js && node --check pwa-hook.js && node --check remember-session-hook.js && node --check mobile35-hook.js && node --check codes.js && node --check admin.js && node --check monitor.js && node --check restore.js && node --check scripts/vendor-web-maplibre.mjs && node --check ../airlines.v2.2.js && node --check web/web-session-35.js && node --check web/web.js && node --check web/web-mobile.js && node --check web/web-mobile-35.js && node --check web/web-mobile-35-fix.js && node --check web/web-live-recovery-35.js && node --check web/web-credits-35.js && node --check web/sw.js && node --check web/admin-v34.js && node test-v34.mjs && node test-mobile35.mjs",
+    "check": "node --check server.js && node --check redeem-hook.js && node --check network35-hook.js && node --check platform-hook.js && node --check platform-preserve.js && node --check v34-hook.js && node --check admin-v34-hook.js && node --check pwa-hook.js && node --check remember-session-hook.js && node --check mobile35-hook.js && node --check codes.js && node --check admin.js && node --check monitor.js && node --check restore.js && node --check scripts/vendor-web-maplibre.mjs && node --check ../airlines.v2.2.js && node --check web/web-session-35.js && node --check web/web.js && node --check web/web-mobile.js && node --check web/web-mobile-35.js && node --check web/web-mobile-35-fix.js && node --check web/web-live-recovery-35.js && node --check web/web-credits-35.js && node --check web/sw.js && node --check web/admin-v34.js && node --check test-mobile35-ui.mjs && node test-v34.mjs && node test-mobile35.mjs && node test-mobile35-ui.mjs",
     "codes": "node codes.js",
     "admin": "node admin.js",
     "monitor": "node monitor.js",
     "restore": "node restore.js",
     "test:v34": "node test-v34.mjs",
-    "test:mobile35": "node test-mobile35.mjs"
+    "test:mobile35": "node test-mobile35.mjs && node test-mobile35-ui.mjs"
   },
   "engines": { "node": ">=22.13.0" },
   "dependencies": {
