@@ -63,6 +63,7 @@ const APP_ASSETS = new Map([
   ["/app/web-mobile-35-fix.css", ["web-mobile-35-fix.css", "text/css; charset=utf-8"]],
   ["/app/web-mobile-35-fix.js", ["web-mobile-35-fix.js", "text/javascript; charset=utf-8"]],
   ["/app/web-live-recovery-35.js", ["web-live-recovery-35.js", "text/javascript; charset=utf-8"]],
+  ["/app/web-credits-35.js", ["web-credits-35.js", "text/javascript; charset=utf-8"]],
   ["/app/vendor/maplibre-gl/maplibre-gl.js", ["vendor/maplibre-gl/maplibre-gl.js", "text/javascript; charset=utf-8"]],
   ["/app/vendor/maplibre-gl/maplibre-gl.css", ["vendor/maplibre-gl/maplibre-gl.css", "text/css; charset=utf-8"]],
   ["/app/vendor/maplibre-gl/version.txt", ["vendor/maplibre-gl/version.txt", "text/plain; charset=utf-8"]]
