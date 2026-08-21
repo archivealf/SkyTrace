@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SkyTrace">
-  <meta name="skytrace-web-build" content="35.0.1">
+  <meta name="skytrace-web-build" content="35.0.2">
   <script>
     (() => {
       const ipad = /iPad/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -25,14 +25,14 @@
   <link rel="manifest" href="/app/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
   <link rel="icon" href="/app/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/app/vendor/maplibre-gl/maplibre-gl.css?v=35.0.1">
-  <script src="/app/vendor/maplibre-gl/maplibre-gl.js?v=35.0.1"></script>
-  <link rel="stylesheet" href="/app/web.css?v=35.0.1">
-  <link rel="stylesheet" href="/app/web-mobile.css?v=35.0.1">
-  <link rel="stylesheet" href="/app/web-mobile-35.css?v=35.0.1">
-  <link rel="stylesheet" href="/app/web-mobile-35-fix.css?v=35.0.1">
+  <link rel="stylesheet" href="/app/vendor/maplibre-gl/maplibre-gl.css?v=35.0.2">
+  <script src="/app/vendor/maplibre-gl/maplibre-gl.js?v=35.0.2"></script>
+  <link rel="stylesheet" href="/app/web.css?v=35.0.2">
+  <link rel="stylesheet" href="/app/web-mobile.css?v=35.0.2">
+  <link rel="stylesheet" href="/app/web-mobile-35.css?v=35.0.2">
+  <link rel="stylesheet" href="/app/web-mobile-35-fix.css?v=35.0.2">
 </head>
-<body data-skytrace-web-build="35.0.1">
+<body data-skytrace-web-build="35.0.2">
   <div id="map" aria-label="Live aviation map"></div>
   <aside class="panel" aria-label="SkyTrace controls" aria-expanded="true">
     <button id="sheetHandle" class="sheet-handle" type="button" aria-label="Move controls" aria-expanded="true">
@@ -41,7 +41,7 @@
 
     <header class="panel-head">
       <div class="panel-title">
-        <small>SKYTRACE MOBILE · 35.0.1</small>
+        <small>SKYTRACE MOBILE · 35.0.2</small>
         <h1>Live aviation</h1>
       </div>
       <span id="status" class="status-pill" role="status" aria-live="polite">Offline</span>
@@ -82,12 +82,13 @@
     <div id="installHint" class="install-hint hidden" role="note">Install on iPhone or iPad: use Share → Add to Home Screen.</div>
     <footer>OpenFreeMap © OpenMapTiles · Data from OpenStreetMap · Live aviation &amp; operations data</footer>
   </aside>
-  <script src="/app/web-session-35.js?v=35.0.1"></script>
-  <script src="/app/airlines.js?v=35.0.1"></script>
-  <script src="/app/web.js?v=35.0.1"></script>
-  <script src="/app/web-mobile.js?v=35.0.1"></script>
-  <script src="/app/web-mobile-35.js?v=35.0.1"></script>
-  <script src="/app/web-mobile-35-fix.js?v=35.0.1"></script>
+  <script src="/app/web-session-35.js?v=35.0.2"></script>
+  <script src="/app/airlines.js?v=35.0.2"></script>
+  <script src="/app/web.js?v=35.0.2"></script>
+  <script src="/app/web-mobile.js?v=35.0.2"></script>
+  <script src="/app/web-mobile-35.js?v=35.0.2"></script>
+  <script src="/app/web-mobile-35-fix.js?v=35.0.2"></script>
+  <script src="/app/web-live-recovery-35.js?v=35.0.2"></script>
   <script>
     (() => {
       const status = document.getElementById('status');
