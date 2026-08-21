@@ -1,0 +1,95 @@
+/* SkyTrace iPhone / iPad 35.0 mobile product layer */
+:root{
+  --mobile35-safe-top:env(safe-area-inset-top,0px);
+  --mobile35-safe-right:env(safe-area-inset-right,0px);
+  --mobile35-safe-bottom:env(safe-area-inset-bottom,0px);
+  --mobile35-safe-left:env(safe-area-inset-left,0px);
+  --mobile35-accent:#7aa2ff;
+  --mobile35-panel:rgba(8,12,20,.94);
+  --mobile35-card:rgba(255,255,255,.055);
+  --mobile35-border:rgba(255,255,255,.10);
+  --mobile35-text:#f5f8ff;
+  --mobile35-muted:#9da8bb;
+  --mobile35-tab-h:68px;
+}
+html.skytrace-mobile-35{background:#8ea9dd}
+html.skytrace-mobile-35 body{overscroll-behavior:none}
+html.skytrace-mobile-35 .panel{will-change:height,transform;transition:height .26s cubic-bezier(.2,.8,.2,1),max-height .26s cubic-bezier(.2,.8,.2,1),transform .16s ease}
+html.skytrace-mobile-35 .panel.sheet35-no-animate{transition:none!important}
+html.skytrace-mobile-35 .panel.sheet35-dragging{transition:none!important;transform:translateY(var(--sheet35-drag-y,0))!important}
+
+.mobile35-topbar,.mobile35-tabs,.mobile35-follow-chip,.mobile35-toast{display:none}
+html.ios-device.skytrace-mobile-35 .mobile35-topbar,
+html.ios-device.skytrace-mobile-35 .mobile35-tabs{display:flex}
+
+.mobile35-topbar{position:fixed;z-index:30;top:calc(var(--mobile35-safe-top) + 9px);left:calc(var(--mobile35-safe-left) + 10px);right:calc(var(--mobile35-safe-right) + 10px);align-items:center;gap:8px;pointer-events:none}
+.mobile35-search-wrap{pointer-events:auto;min-width:0;flex:1;height:46px;display:flex;align-items:center;gap:8px;padding:0 7px 0 13px;border:1px solid rgba(255,255,255,.16);border-radius:16px;background:rgba(8,12,19,.82);backdrop-filter:blur(24px) saturate(1.35);-webkit-backdrop-filter:blur(24px) saturate(1.35);box-shadow:0 9px 30px rgba(0,0,0,.26)}
+.mobile35-search-icon{font-size:20px;line-height:1;color:#cbd5e8;transform:translateY(-1px)}
+.mobile35-search-wrap input{flex:1;min-width:0;height:42px;min-height:42px;padding:0;border:0!important;background:transparent!important;color:#f8fbff!important;box-shadow:none!important;font-size:15px!important;outline:0}
+.mobile35-search-wrap input::placeholder{color:#a9b4c8}
+.mobile35-search-wrap button,.mobile35-circle{border:0;background:transparent;color:#eaf0ff;box-shadow:none}
+.mobile35-search-wrap button{width:38px;min-width:38px;height:38px;min-height:38px;padding:0;border-radius:11px;font-size:20px}
+.mobile35-circle{pointer-events:auto;width:46px;min-width:46px;height:46px;min-height:46px;padding:0;border:1px solid rgba(255,255,255,.16);border-radius:16px;background:rgba(8,12,19,.82);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);font-size:22px;box-shadow:0 9px 30px rgba(0,0,0,.26)}
+.mobile35-circle:active,.mobile35-search-wrap button:active{transform:scale(.95)}
+
+.mobile35-tabs{position:fixed;z-index:35;left:0;right:0;bottom:0;height:calc(var(--mobile35-tab-h) + var(--mobile35-safe-bottom));padding:7px max(10px,var(--mobile35-safe-right)) var(--mobile35-safe-bottom) max(10px,var(--mobile35-safe-left));align-items:stretch;justify-content:space-around;gap:2px;background:linear-gradient(180deg,rgba(7,10,16,.84),rgba(5,8,13,.97));border-top:1px solid rgba(255,255,255,.09);backdrop-filter:blur(28px) saturate(1.4);-webkit-backdrop-filter:blur(28px) saturate(1.4)}
+.mobile35-tabs button{flex:1;min-width:0;min-height:52px;padding:4px;border:0;background:transparent;color:#8794aa;border-radius:13px;display:grid;place-items:center;align-content:center;gap:1px;box-shadow:none}
+.mobile35-tabs button span{font-size:21px;line-height:1;font-weight:500}.mobile35-tabs button b{font-size:9px;line-height:1.2;letter-spacing:.02em}
+.mobile35-tabs button.active{color:#f7f9ff;background:rgba(118,151,255,.12)}
+.mobile35-tabs button:active{transform:scale(.96)}
+
+.mobile35-follow-chip{display:flex;position:fixed;z-index:34;top:calc(var(--mobile35-safe-top) + 64px);left:50%;transform:translateX(-50%);align-items:center;gap:14px;min-width:min(260px,74vw);max-width:86vw;min-height:52px;padding:8px 12px 8px 14px;border:1px solid rgba(255,255,255,.16);border-radius:17px;background:rgba(7,12,20,.90);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);color:#f7f9ff;box-shadow:0 12px 38px rgba(0,0,0,.36)}
+.mobile35-follow-chip>span:first-child{display:grid;gap:2px;min-width:0;flex:1;text-align:left}.mobile35-follow-chip b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mobile35-follow-chip small{font-size:10px;color:#aab5c8}.mobile35-follow-chip>span:last-child{font-size:19px;color:#8db2ff}
+.mobile35-toast{display:block;position:fixed;z-index:60;left:50%;bottom:calc(var(--mobile35-safe-bottom) + var(--mobile35-tab-h) + 18px);transform:translate(-50%,14px);opacity:0;pointer-events:none;max-width:min(88vw,420px);padding:10px 14px;border:1px solid rgba(255,255,255,.13);border-radius:13px;background:rgba(6,9,15,.94);color:#f4f7fd;font-size:12px;box-shadow:0 12px 38px rgba(0,0,0,.38);transition:.18s ease}
+.mobile35-toast.show{opacity:1;transform:translate(-50%,0)}
+
+.mobile35-page{display:grid;gap:12px;color:var(--mobile35-text)}
+.mobile35-page-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.mobile35-page-head>div{min-width:0}.mobile35-page-head small{display:block;color:#8796ad;font-size:9px;font-weight:800;letter-spacing:.13em}.mobile35-page-head h2{margin:3px 0 0;font-size:20px;line-height:1.08;letter-spacing:-.02em}
+.mobile35-page-head>button,.mobile35-page-head select{min-height:38px;padding:7px 10px;border-radius:11px;font-size:11px}
+.mobile35-copy,.mobile35-footnote{margin:0;color:#9eabba;font-size:11px;line-height:1.45}.mobile35-footnote{padding:10px 2px 0}
+.mobile35-empty{display:grid;gap:12px;place-items:start;min-height:110px;padding:18px;border:1px dashed rgba(255,255,255,.13);border-radius:15px;color:#9ca9bc;font-size:12px;line-height:1.45}.mobile35-empty p{margin:0}
+
+.mobile35-nearby-list{display:grid;gap:7px}
+.mobile35-nearby-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:58px;padding:9px 11px;border:1px solid rgba(255,255,255,.085);border-radius:14px;background:rgba(255,255,255,.038);color:#f5f8ff;text-align:left}
+.mobile35-nearby-row>span{display:grid;gap:3px;min-width:0}.mobile35-nearby-row>span:last-child{text-align:right}.mobile35-nearby-row b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mobile35-nearby-row small{font-size:9.5px;color:#93a0b4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mobile35-nearby-row.watched{border-color:rgba(255,210,87,.4);box-shadow:0 0 0 1px rgba(255,210,87,.08) inset}
+.mobile35-aircraft-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:2px}.mobile35-aircraft-actions button{min-height:43px;border-radius:12px;font-size:11px;font-weight:700}.mobile35-aircraft-actions button.active{border-color:rgba(255,214,91,.45);background:rgba(255,201,63,.12);color:#ffe8a0}
+.flight.watched{border-color:rgba(255,210,87,.36)!important;box-shadow:0 0 0 1px rgba(255,210,87,.06) inset}.flight.watched::after{content:'★';align-self:center;color:#ffd75f;font-size:12px;margin-left:2px}.flight[hidden]{display:none!important}
+
+.mobile35-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.mobile35-form-grid label:last-child{grid-column:1/-1}
+.mobile35-page label,.mobile35-settings label{display:grid;gap:6px}.mobile35-page label>span,.mobile35-settings label>span{font-size:9px;font-weight:750;letter-spacing:.08em;color:#97a4b6;text-transform:uppercase}
+.mobile35-page input,.mobile35-page select,.mobile35-settings select{width:100%;min-height:44px;padding:9px 10px;border:1px solid rgba(255,255,255,.11);border-radius:12px;background:rgba(255,255,255,.05);color:#f7f9ff;font-size:16px;box-sizing:border-box}
+.mobile35-toggle{display:flex!important;align-items:center!important;gap:10px!important;min-height:46px;padding:9px 11px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.035)}
+.mobile35-toggle input{width:20px!important;height:20px!important;min-height:20px!important;flex:0 0 auto;padding:0!important}.mobile35-toggle span{font-size:11px!important;letter-spacing:0!important;text-transform:none!important;color:#dce4f3!important}
+.mobile35-menu{display:grid;gap:7px}.mobile35-menu button{display:grid;gap:3px;min-height:54px;padding:10px 12px;border:1px solid rgba(255,255,255,.08);border-radius:13px;background:rgba(255,255,255,.035);text-align:left;color:#f4f7fc}.mobile35-menu span{font-size:12px;font-weight:750}.mobile35-menu small{font-size:9.5px;color:#8f9daf}.mobile35-settings{display:grid;gap:8px;padding-top:2px}.mobile35-settings>label:not(.mobile35-toggle){display:grid;gap:6px}
+
+.mobile35-airport-search{display:grid;grid-template-columns:1fr auto;gap:8px}.mobile35-airport-search button{min-width:76px}.mobile35-airport-result{display:grid;gap:10px}.mobile35-airport-card{display:grid;gap:10px;padding:13px;border:1px solid rgba(255,255,255,.09);border-radius:15px;background:rgba(255,255,255,.035)}.mobile35-airport-card>small{color:#8ea0b8;font-size:9px;letter-spacing:.13em;font-weight:800}.mobile35-airport-card h3{margin:-4px 0 0;font-size:18px}.mobile35-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.mobile35-detail-grid>div{display:grid;gap:3px;padding:9px;border-radius:11px;background:rgba(255,255,255,.045)}.mobile35-detail-grid span{font-size:8px;color:#8d9aae;letter-spacing:.08em}.mobile35-detail-grid b{font-size:11px;line-height:1.3;overflow-wrap:anywhere}.mobile35-airport-list{display:grid;gap:5px}.mobile35-airport-list>b{font-size:10px}.mobile35-airport-list span{display:flex;justify-content:space-between;gap:12px;font-size:10px;color:#9da9bb}.mobile35-airport-list strong{color:#eff4ff}
+.mobile35-replay-controls{display:grid;grid-template-columns:44px 1fr 62px;gap:8px;align-items:center}.mobile35-replay-controls button{width:44px;min-width:44px;height:44px;min-height:44px;padding:0;border-radius:50%}.mobile35-replay-controls input[type=range]{min-height:30px;padding:0}.mobile35-replay-controls select{min-height:40px;padding:6px;font-size:12px}
+body.mobile35-tap .mobile35-tabs button.active{animation:mobile35Tap .16s ease}@keyframes mobile35Tap{50%{transform:scale(.95)}}
+
+html.mobile35-light{--mobile35-panel:rgba(244,248,255,.94);--mobile35-card:rgba(255,255,255,.78);--mobile35-border:rgba(24,38,63,.12);--mobile35-text:#101829;--mobile35-muted:#5f6c82}
+html.mobile35-light .panel{color:#101829!important;background:linear-gradient(180deg,rgba(247,250,255,.97),rgba(235,242,253,.95))!important;border-color:rgba(25,42,72,.14)!important}
+html.mobile35-light .drawer,html.mobile35-light .traffic-card,html.mobile35-light .login-card{background:rgba(255,255,255,.72)!important;border-color:rgba(25,42,72,.12)!important;color:#101829!important}
+html.mobile35-light .mobile35-tabs{background:linear-gradient(180deg,rgba(247,250,255,.88),rgba(235,242,252,.98));border-color:rgba(35,51,76,.11)}
+html.mobile35-light .mobile35-tabs button{color:#68768a}html.mobile35-light .mobile35-tabs button.active{color:#1a2d50;background:rgba(73,115,214,.11)}
+html.mobile35-light .mobile35-search-wrap,html.mobile35-light .mobile35-circle{background:rgba(247,250,255,.9);border-color:rgba(26,45,76,.13);color:#15213a}
+html.mobile35-light .mobile35-search-wrap input{color:#15213a!important}html.mobile35-light .mobile35-search-wrap input::placeholder{color:#68758a}
+html.mobile35-light .mobile35-page,html.mobile35-light .mobile35-menu button,html.mobile35-light .mobile35-page input,html.mobile35-light .mobile35-page select,html.mobile35-light .mobile35-settings select{color:#13203a}
+html.mobile35-light .mobile35-page input,html.mobile35-light .mobile35-page select,html.mobile35-light .mobile35-settings select,html.mobile35-light .mobile35-menu button,html.mobile35-light .mobile35-toggle,html.mobile35-light .mobile35-airport-card,html.mobile35-light .mobile35-nearby-row{background:rgba(255,255,255,.72);border-color:rgba(23,43,75,.12)}
+
+@media(max-width:700px) and (orientation:portrait){
+  html.ios-iphone.skytrace-mobile-35 .panel{bottom:calc(var(--mobile35-safe-bottom) + var(--mobile35-tab-h) + 8px)!important;max-height:calc(var(--skytrace-vvh,100dvh) - var(--mobile35-safe-top) - var(--mobile35-tab-h) - 84px)!important;transform:translateY(var(--sheet35-drag-y,0))}
+  html.ios-iphone.skytrace-mobile-35 .panel.sheet35-peek{height:126px!important;max-height:126px!important;padding-bottom:9px!important;overflow:hidden!important}
+  html.ios-iphone.skytrace-mobile-35 .panel.sheet35-half{height:min(56vh,520px)!important;max-height:calc(var(--skytrace-vvh,100dvh) - var(--mobile35-safe-top) - var(--mobile35-tab-h) - 84px)!important}
+  html.ios-iphone.skytrace-mobile-35 .panel.sheet35-full{height:calc(var(--skytrace-vvh,100dvh) - var(--mobile35-safe-top) - var(--mobile35-tab-h) - 86px)!important;max-height:calc(var(--skytrace-vvh,100dvh) - var(--mobile35-safe-top) - var(--mobile35-tab-h) - 86px)!important}
+  html.ios-iphone.skytrace-mobile-35 .panel.sheet35-peek .app-shell,html.ios-iphone.skytrace-mobile-35 .panel.sheet35-peek .login-card,html.ios-iphone.skytrace-mobile-35 .panel.sheet35-peek .install-hint,html.ios-iphone.skytrace-mobile-35 .panel.sheet35-peek footer{opacity:0;pointer-events:none}
+  html.ios-iphone.skytrace-mobile-35 .panel.sheet35-peek .panel-head{min-height:66px;padding-top:13px}
+  html.ios-iphone.skytrace-mobile-35 .panel.sheet35-peek .sheet-handle{height:38px;min-height:38px}
+  html.ios-iphone.skytrace-mobile-35 .drawer{max-height:none!important;overflow:auto!important}
+  html.ios-iphone.skytrace-mobile-35 .traffic-list{padding-bottom:8px}
+}
+@media(min-width:701px) and (max-width:1180px){
+  html.ios-ipad.skytrace-mobile-35 .mobile35-topbar{left:auto;width:min(460px,48vw)}
+  html.ios-ipad.skytrace-mobile-35 .mobile35-tabs{left:50%;right:auto;width:min(520px,62vw);transform:translateX(-50%);bottom:calc(var(--mobile35-safe-bottom) + 8px);height:60px;padding:5px 8px;border:1px solid rgba(255,255,255,.10);border-radius:20px}
+  html.ios-ipad.skytrace-mobile-35 .panel{bottom:calc(var(--mobile35-safe-bottom) + 82px)!important}
+}
