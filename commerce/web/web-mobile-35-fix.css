@@ -1,0 +1,58 @@
+/* SkyTrace Mobile 35.0.1 layout hotfix.
+   Dedicated tab pages own the panel body; the legacy traffic dashboard remains
+   visible only on the Map tab so Nearby/Replay/More cannot overlap it. */
+html.skytrace-mobile-35[data-mobile35-tab="nearby"] #app > .toolbar,
+html.skytrace-mobile-35[data-mobile35-tab="nearby"] #app > .stats,
+html.skytrace-mobile-35[data-mobile35-tab="nearby"] #app > .traffic-card,
+html.skytrace-mobile-35[data-mobile35-tab="replay"] #app > .toolbar,
+html.skytrace-mobile-35[data-mobile35-tab="replay"] #app > .stats,
+html.skytrace-mobile-35[data-mobile35-tab="replay"] #app > .traffic-card,
+html.skytrace-mobile-35[data-mobile35-tab="more"] #app > .toolbar,
+html.skytrace-mobile-35[data-mobile35-tab="more"] #app > .stats,
+html.skytrace-mobile-35[data-mobile35-tab="more"] #app > .traffic-card {
+  display:none!important;
+}
+
+html.skytrace-mobile-35[data-mobile35-tab="nearby"] #app,
+html.skytrace-mobile-35[data-mobile35-tab="replay"] #app,
+html.skytrace-mobile-35[data-mobile35-tab="more"] #app {
+  min-height:0!important;
+  height:100%;
+  overflow:hidden;
+}
+
+html.skytrace-mobile-35[data-mobile35-tab="nearby"] #drawer,
+html.skytrace-mobile-35[data-mobile35-tab="replay"] #drawer,
+html.skytrace-mobile-35[data-mobile35-tab="more"] #drawer {
+  display:block!important;
+  flex:1 1 auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  height:auto!important;
+  overflow:auto!important;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+
+html.skytrace-mobile-35[data-mobile35-tab="nearby"] .panel > footer,
+html.skytrace-mobile-35[data-mobile35-tab="replay"] .panel > footer,
+html.skytrace-mobile-35[data-mobile35-tab="more"] .panel > footer,
+html.skytrace-mobile-35[data-mobile35-tab="nearby"] .panel > .install-hint,
+html.skytrace-mobile-35[data-mobile35-tab="replay"] .panel > .install-hint,
+html.skytrace-mobile-35[data-mobile35-tab="more"] .panel > .install-hint {
+  display:none!important;
+}
+
+/* Keep page controls inside the visible sheet on narrow iPhones. */
+@media(max-width:700px) and (orientation:portrait){
+  html.ios-iphone.skytrace-mobile-35[data-mobile35-tab="nearby"] .panel,
+  html.ios-iphone.skytrace-mobile-35[data-mobile35-tab="replay"] .panel,
+  html.ios-iphone.skytrace-mobile-35[data-mobile35-tab="more"] .panel {
+    overflow:hidden!important;
+  }
+  html.ios-iphone.skytrace-mobile-35[data-mobile35-tab="nearby"] #drawer,
+  html.ios-iphone.skytrace-mobile-35[data-mobile35-tab="replay"] #drawer,
+  html.ios-iphone.skytrace-mobile-35[data-mobile35-tab="more"] #drawer {
+    padding-bottom:calc(var(--mobile35-safe-bottom) + 12px)!important;
+  }
+}
