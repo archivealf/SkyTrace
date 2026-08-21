@@ -1,6 +1,6 @@
-/* SkyTrace Mobile 35.0.1 layout hotfix.
-   Dedicated tab pages own the panel body; the legacy traffic dashboard remains
-   visible only on the Map tab so Nearby/Replay/More cannot overlap it. */
+/* SkyTrace Mobile 35.0.4 layout/touch hotfix.
+   Dedicated tab pages own the remaining sheet height; map controls are moved
+   away from the Mobile 35 top bar and bottom navigation. */
 html.skytrace-mobile-35[data-mobile35-tab="nearby"] #app > .toolbar,
 html.skytrace-mobile-35[data-mobile35-tab="nearby"] #app > .stats,
 html.skytrace-mobile-35[data-mobile35-tab="nearby"] #app > .traffic-card,
@@ -16,9 +16,13 @@ html.skytrace-mobile-35[data-mobile35-tab="more"] #app > .traffic-card {
 html.skytrace-mobile-35[data-mobile35-tab="nearby"] #app,
 html.skytrace-mobile-35[data-mobile35-tab="replay"] #app,
 html.skytrace-mobile-35[data-mobile35-tab="more"] #app {
+  display:flex!important;
+  flex:1 1 auto!important;
+  flex-direction:column!important;
   min-height:0!important;
-  height:100%;
-  overflow:hidden;
+  height:auto!important;
+  max-height:none!important;
+  overflow:hidden!important;
 }
 
 html.skytrace-mobile-35[data-mobile35-tab="nearby"] #drawer,
@@ -29,7 +33,9 @@ html.skytrace-mobile-35[data-mobile35-tab="more"] #drawer {
   min-height:0!important;
   max-height:none!important;
   height:auto!important;
-  overflow:auto!important;
+  margin:0!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
   overscroll-behavior:contain;
   -webkit-overflow-scrolling:touch;
 }
@@ -43,16 +49,93 @@ html.skytrace-mobile-35[data-mobile35-tab="more"] .panel > .install-hint {
   display:none!important;
 }
 
+/* The Mobile 35 search bar occupies the top safe-area lane. Keep MapLibre's
+   navigation buttons underneath it instead of visually stacking the controls. */
+html.ios-device.skytrace-mobile-35 .maplibregl-ctrl-top-right {
+  top:calc(var(--mobile35-safe-top) + 66px)!important;
+  right:max(8px,var(--mobile35-safe-right))!important;
+}
+
+html.ios-device.skytrace-mobile-35 .maplibregl-ctrl-bottom-left {
+  left:max(8px,var(--mobile35-safe-left))!important;
+  bottom:calc(var(--mobile35-safe-bottom) + var(--mobile35-tab-h) + 12px)!important;
+}
+
+/* Make only actual controls in the floating top bar intercept map taps. */
+html.ios-device.skytrace-mobile-35 .mobile35-topbar {
+  pointer-events:none!important;
+}
+html.ios-device.skytrace-mobile-35 .mobile35-search-wrap,
+html.ios-device.skytrace-mobile-35 .mobile35-circle,
+html.ios-device.skytrace-mobile-35 .mobile35-search-wrap * {
+  pointer-events:auto;
+}
+
+/* Prevent narrow content from forcing the sheet wider or into neighbouring UI. */
+html.skytrace-mobile-35 .mobile35-page,
+html.skytrace-mobile-35 .mobile35-page-head,
+html.skytrace-mobile-35 .mobile35-nearby-list,
+html.skytrace-mobile-35 .mobile35-menu,
+html.skytrace-mobile-35 .mobile35-settings,
+html.skytrace-mobile-35 .mobile35-replay-controls,
+html.skytrace-mobile-35 .mobile35-airport-search {
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+}
+html.skytrace-mobile-35 .mobile35-page-head > * {
+  min-width:0!important;
+}
+html.skytrace-mobile-35 .mobile35-page button,
+html.skytrace-mobile-35 .mobile35-page input,
+html.skytrace-mobile-35 .mobile35-page select {
+  max-width:100%;
+  box-sizing:border-box;
+}
+
 /* Keep page controls inside the visible sheet on narrow iPhones. */
 @media(max-width:700px) and (orientation:portrait){
   html.ios-iphone.skytrace-mobile-35[data-mobile35-tab="nearby"] .panel,
   html.ios-iphone.skytrace-mobile-35[data-mobile35-tab="replay"] .panel,
   html.ios-iphone.skytrace-mobile-35[data-mobile35-tab="more"] .panel {
+    display:flex!important;
+    flex-direction:column!important;
     overflow:hidden!important;
   }
+
   html.ios-iphone.skytrace-mobile-35[data-mobile35-tab="nearby"] #drawer,
   html.ios-iphone.skytrace-mobile-35[data-mobile35-tab="replay"] #drawer,
   html.ios-iphone.skytrace-mobile-35[data-mobile35-tab="more"] #drawer {
-    padding-bottom:calc(var(--mobile35-safe-bottom) + 12px)!important;
+    padding-bottom:16px!important;
+  }
+
+  html.ios-iphone.skytrace-mobile-35 .mobile35-page {
+    gap:10px;
+  }
+  html.ios-iphone.skytrace-mobile-35 .mobile35-page-head h2 {
+    font-size:18px;
+  }
+  html.ios-iphone.skytrace-mobile-35 .mobile35-nearby-row {
+    min-width:0;
+  }
+  html.ios-iphone.skytrace-mobile-35 .mobile35-nearby-row > span {
+    max-width:58%;
+  }
+  html.ios-iphone.skytrace-mobile-35 .mobile35-nearby-row > span:last-child {
+    max-width:42%;
+  }
+}
+
+@media(max-width:390px) and (orientation:portrait){
+  html.ios-iphone.skytrace-mobile-35 .mobile35-replay-controls {
+    grid-template-columns:42px minmax(0,1fr) 56px!important;
+    gap:6px!important;
+  }
+  html.ios-iphone.skytrace-mobile-35 .mobile35-page-head {
+    gap:8px;
+  }
+  html.ios-iphone.skytrace-mobile-35 .mobile35-page-head > button,
+  html.ios-iphone.skytrace-mobile-35 .mobile35-page-head > select {
+    max-width:42%;
   }
 }
