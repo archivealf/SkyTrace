@@ -4,7 +4,10 @@
   if (typeof refresh === 'undefined' || typeof flights === 'undefined' || typeof drawFlights === 'undefined') return;
 
   const CACHE_KEY = 'skytrace.mobile35.lastFlights';
-  const FAILURE_RE = /fetch failed|provider is temporarily unreachable|upstream|timed out|network|refresh failed|reconnect/i;
+  // Deliberately do not match our own "Reconnecting" UI state. Matching it
+  // would make the status MutationObserver rewrite the same status forever and
+  // starve WKWebView's main thread, which looks like a completely frozen app.
+  const FAILURE_RE = /fetch failed|provider is temporarily unreachable|upstream|timed out|network|refresh failed/i;
   const EMPTY_HOLD_LIMIT = 2;
   let consecutiveEmpty = 0;
   let lastGoodFlights = Array.isArray(flights) && flights.length ? flights.slice() : [];
@@ -33,11 +36,15 @@
   function markReconnecting(at = 0) {
     const status = document.getElementById('status');
     if (status) {
-      status.textContent = 'Reconnecting';
-      status.title = 'Live feed temporarily unavailable — retrying automatically while keeping the last known aircraft visible';
+      const title = 'Live feed temporarily unavailable — retrying automatically while keeping the last known aircraft visible';
+      if (status.textContent !== 'Reconnecting') status.textContent = 'Reconnecting';
+      if (status.title !== title) status.title = title;
     }
     const meta = document.getElementById('trafficMeta');
-    if (meta) meta.textContent = at ? `Last live ${new Date(at).toLocaleTimeString()} · retrying…` : 'Keeping last aircraft · retrying…';
+    if (meta) {
+      const text = at ? `Last live ${new Date(at).toLocaleTimeString()} · retrying…` : 'Keeping last aircraft · retrying…';
+      if (meta.textContent !== text) meta.textContent = text;
+    }
   }
 
   function restoreFailureSnapshot() {
