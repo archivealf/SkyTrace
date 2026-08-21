@@ -14,3 +14,7 @@ import "./admin-v34-hook.js";
 // PWA/iOS assets are served by a small final wrapper so account/API responses
 // remain untouched and are never cached by the web-app service worker.
 import "./pwa-hook.js";
+// Mobile 35 remembers successful browser/iOS sessions using a same-site,
+// HttpOnly cookie. A short client sentinel lets the existing web runtime boot
+// without exposing the persistent bearer token to JavaScript storage.
+import "./remember-session-hook.js";
