@@ -1,17 +1,22 @@
 {
   "name": "skytrace-commerce",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "type": "module",
   "description": "SkyTrace SQLite account, Stripe, codes, Cloud Replay, Operations, PWA web and admin backend.",
   "scripts": {
-    "start": "node --import ./redeem-hook.js server.js",
-    "check": "node --check server.js && node --check redeem-hook.js && node --check platform-hook.js && node --check platform-preserve.js && node --check v34-hook.js && node --check admin-v34-hook.js && node --check pwa-hook.js && node --check codes.js && node --check admin.js && node --check monitor.js && node --check restore.js && node --check ../airlines.v2.2.js && node --check web/web.js && node --check web/web-mobile.js && node --check web/sw.js && node --check web/admin-v34.js && node test-v34.mjs",
+    "postinstall": "node scripts/vendor-web-maplibre.mjs",
+    "vendor:web": "node scripts/vendor-web-maplibre.mjs",
+    "start": "node scripts/vendor-web-maplibre.mjs && node --import ./redeem-hook.js server.js",
+    "check": "node --check server.js && node --check redeem-hook.js && node --check platform-hook.js && node --check platform-preserve.js && node --check v34-hook.js && node --check admin-v34-hook.js && node --check pwa-hook.js && node --check codes.js && node --check admin.js && node --check monitor.js && node --check restore.js && node --check scripts/vendor-web-maplibre.mjs && node --check ../airlines.v2.2.js && node --check web/web-session-35.js && node --check web/web.js && node --check web/web-mobile.js && node --check web/web-mobile-35.js && node --check web/sw.js && node --check web/admin-v34.js && node test-v34.mjs",
     "codes": "node codes.js",
     "admin": "node admin.js",
     "monitor": "node monitor.js",
     "restore": "node restore.js",
     "test:v34": "node test-v34.mjs"
   },
-  "engines": { "node": ">=22.13.0" }
+  "engines": { "node": ">=22.13.0" },
+  "dependencies": {
+    "maplibre-gl": "5"
+  }
 }
