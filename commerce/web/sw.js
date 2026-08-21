@@ -1,11 +1,16 @@
-const CACHE = "skytrace-web-v34-8";
+const CACHE = "skytrace-web-v35-0";
 const SHELL = [
   "/app/",
-  "/app/web.css?v=34.8",
-  "/app/web-mobile.css?v=34.8",
-  "/app/airlines.js?v=34.8",
-  "/app/web.js?v=34.8",
-  "/app/web-mobile.js?v=34.8",
+  "/app/web.css?v=35.0",
+  "/app/web-mobile.css?v=35.0",
+  "/app/web-mobile-35.css?v=35.0",
+  "/app/web-session-35.js?v=35.0",
+  "/app/airlines.js?v=35.0",
+  "/app/web.js?v=35.0",
+  "/app/web-mobile.js?v=35.0",
+  "/app/web-mobile-35.js?v=35.0",
+  "/app/vendor/maplibre-gl/maplibre-gl.css?v=35.0",
+  "/app/vendor/maplibre-gl/maplibre-gl.js?v=35.0",
   "/app/manifest.webmanifest",
   "/app/icon.svg",
   "/app/apple-touch-icon.png"
@@ -50,5 +55,21 @@ self.addEventListener("fetch", event => {
       if (request.mode === "navigate") return (await cache.match("/app/")) || Response.error();
       return Response.error();
     }
+  })());
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const target = event.notification?.data?.url || "/app/";
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of windows) {
+      if ("focus" in client) {
+        await client.focus();
+        if ("navigate" in client) await client.navigate(target);
+        return;
+      }
+    }
+    if (self.clients.openWindow) await self.clients.openWindow(target);
   })());
 });
