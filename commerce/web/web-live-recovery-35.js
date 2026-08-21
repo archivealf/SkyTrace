@@ -4,10 +4,11 @@
   if (typeof refresh === 'undefined' || typeof flights === 'undefined' || typeof drawFlights === 'undefined') return;
 
   const CACHE_KEY = 'skytrace.mobile35.lastFlights';
-  const FAILURE_RE = /fetch failed|provider is temporarily unreachable|upstream|timed out|network|refresh failed/i;
+  const FAILURE_RE = /fetch failed|provider is temporarily unreachable|upstream|timed out|network|refresh failed|reconnect/i;
   const EMPTY_HOLD_LIMIT = 2;
   let consecutiveEmpty = 0;
   let lastGoodFlights = Array.isArray(flights) && flights.length ? flights.slice() : [];
+  let lastGoodAt = lastGoodFlights.length ? Date.now() : 0;
 
   function applyFlights(nextFlights) {
     flights = nextFlights.slice();
@@ -29,44 +30,64 @@
     }
   }
 
+  function markReconnecting(at = 0) {
+    const status = document.getElementById('status');
+    if (status) {
+      status.textContent = 'Reconnecting';
+      status.title = 'Live feed temporarily unavailable — retrying automatically while keeping the last known aircraft visible';
+    }
+    const meta = document.getElementById('trafficMeta');
+    if (meta) meta.textContent = at ? `Last live ${new Date(at).toLocaleTimeString()} · retrying…` : 'Keeping last aircraft · retrying…';
+  }
+
   function restoreFailureSnapshot() {
-    if (flights.length) return false;
     const status = document.getElementById('status');
     const message = `${status?.textContent || ''} ${status?.title || ''}`;
     if (!FAILURE_RE.test(message)) return false;
 
+    // A failed refresh does not mean the aircraft already on screen are bad.
+    // Keep them visible and shorten the long provider error in the status pill.
+    if (flights.length) {
+      if (!lastGoodFlights.length) lastGoodFlights = flights.slice();
+      if (!lastGoodAt) lastGoodAt = Date.now();
+      markReconnecting(lastGoodAt);
+      return true;
+    }
+
     const cached = cachedFlights();
-    const replacement = lastGoodFlights.length ? { flights: lastGoodFlights, at: Date.now() } : cached;
-    if (!replacement?.flights?.length) return false;
+    const replacement = lastGoodFlights.length ? { flights: lastGoodFlights, at: lastGoodAt || Date.now() } : cached;
+    if (!replacement?.flights?.length) {
+      markReconnecting(0);
+      return false;
+    }
 
     applyFlights(replacement.flights);
-    if (status) {
-      status.textContent = 'Holding traffic';
-      status.title = 'Live refresh failed — keeping the last known aircraft on the map';
-    }
-    const meta = document.getElementById('trafficMeta');
-    if (meta) meta.textContent = cached?.at ? `Last good ${new Date(cached.at).toLocaleTimeString()}` : 'Keeping last live snapshot';
+    markReconnecting(replacement.at || cached?.at || 0);
     return true;
   }
 
   const previousRefresh = refresh;
   refresh = async function skyTraceRefreshWithLiveRecovery(...args) {
     const before = Array.isArray(flights) ? flights.slice() : [];
-    if (before.length) lastGoodFlights = before.slice();
+    if (before.length) {
+      lastGoodFlights = before.slice();
+      if (!lastGoodAt) lastGoodAt = Date.now();
+    }
 
     const result = await previousRefresh(...args);
     const status = document.getElementById('status');
     const statusMessage = `${status?.textContent || ''} ${status?.title || ''}`;
     const failed = FAILURE_RE.test(statusMessage);
 
-    if (flights.length) {
-      consecutiveEmpty = 0;
-      lastGoodFlights = flights.slice();
+    if (failed) {
+      restoreFailureSnapshot();
       return result;
     }
 
-    if (failed) {
-      restoreFailureSnapshot();
+    if (flights.length) {
+      consecutiveEmpty = 0;
+      lastGoodFlights = flights.slice();
+      lastGoodAt = Date.now();
       return result;
     }
 
