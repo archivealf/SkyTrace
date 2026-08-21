@@ -1,0 +1,271 @@
+#!/usr/bin/env bash
+set -eEuo pipefail
+
+OWNER="archivealf"
+REPO="SkyTrace"
+APP_NAME="SkyTrace"
+EXPECTED_VERSION="3.5.0"
+EXPECTED_BUNDLE_ID="io.skytrace.desktop"
+BUILD_LABEL="SkyTrace V3.5 Product Preview R4.8 Third-Party Audit-Fixed"
+SOURCE_REV="d2ba542ee8e09f68e8bc7c617b188fdc827ffa7d"
+PORTABLE_NODE_VERSION="22.23.2"
+
+INSTALL_DIR="$HOME/Applications"
+APP_PATH="$INSTALL_DIR/$APP_NAME.app"
+SOURCE_ZIP="https://github.com/${OWNER}/${REPO}/archive/${SOURCE_REV}.zip"
+LOG_DIR="$HOME/Library/Logs/SkyTrace"
+LOG_FILE="$LOG_DIR/installer.log"
+RUNTIME_LOG="$LOG_DIR/desktop.log"
+DATA_DIR="$HOME/Library/Application Support/SkyTrace"
+LEGACY_LOGIN_PLIST="$HOME/Library/LaunchAgents/io.skytrace.desktop.login.plist"
+READY_MARKER="renderer-ready: health=true shell=true degraded=false auth=true runtime=true"
+
+: "${SKYTRACE_COMMERCE_URL:=https://skytrace.duckdns.org}"
+export SKYTRACE_COMMERCE_URL
+export npm_config_audit=false npm_config_fund=false npm_config_update_notifier=false
+
+case "$(uname -m)" in
+  arm64) ARCH="arm64"; ARCH_LABEL="Apple Silicon"; NODE_DIST_ARCH="arm64" ;;
+  x86_64) ARCH="x64"; ARCH_LABEL="Intel"; NODE_DIST_ARCH="x64" ;;
+  *) echo "Unsupported Mac architecture: $(uname -m)" >&2; exit 1 ;;
+esac
+
+if [[ -t 1 && "${TERM:-dumb}" != "dumb" ]]; then
+  BOLD=$'\033[1m'; DIM=$'\033[2m'; GREEN=$'\033[32m'; RED=$'\033[31m'; RESET=$'\033[0m'
+else
+  BOLD=""; DIM=""; GREEN=""; RED=""; RESET=""
+fi
+
+TMP="$(mktemp -d)"
+SOURCE_DIR=""
+mkdir -p "$INSTALL_DIR" "$LOG_DIR"
+: > "$LOG_FILE"
+trap 'rm -rf "$TMP"' EXIT
+
+fail() {
+  local label="${1:-Installation}"
+  printf '\n%s%s failed.%s\n' "$RED$BOLD" "$label" "$RESET" >&2
+  printf 'Installer log: %s\n' "$LOG_FILE" >&2
+  if [[ -f "$RUNTIME_LOG" ]]; then
+    printf '\n%sRuntime log:%s\n' "$DIM" "$RESET" >&2
+    tail -n 60 "$RUNTIME_LOG" | sed 's/^/  /' >&2 || true
+  fi
+  printf '\n%sLast installer log lines:%s\n' "$DIM" "$RESET" >&2
+  tail -n 50 "$LOG_FILE" | sed 's/^/  /' >&2 || true
+  exit 1
+}
+
+run_step() {
+  local number="$1" label="$2" status=0 started="$SECONDS"
+  shift 2
+  printf '  %s[%s/8]%s %-31s' "$DIM" "$number" "$RESET" "$label"
+  printf '\n--- [%s/8] %s ---\n' "$number" "$label" >> "$LOG_FILE"
+  if "$@" >> "$LOG_FILE" 2>&1; then
+    printf ' %s✓%s %ss\n' "$GREEN" "$RESET" "$((SECONDS-started))"
+    return 0
+  else
+    status=$?
+  fi
+  printf ' %sfailed%s\n' "$RED" "$RESET" >&2
+  return "$status"
+}
+
+node_is_supported() {
+  command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 &&
+  node -e 'const [M,m]=process.versions.node.split(".").map(Number);process.exit(M>22||(M===22&&m>=12)?0:1)' >/dev/null 2>&1
+}
+
+prepare_runtime() {
+  if node_is_supported; then
+    printf 'Using system Node %s\n' "$(node --version)"
+    return 0
+  fi
+  local archive="node-v${PORTABLE_NODE_VERSION}-darwin-${NODE_DIST_ARCH}.tar.gz"
+  local base="https://nodejs.org/dist/v${PORTABLE_NODE_VERSION}"
+  local archive_path="$TMP/$archive" sums_path="$TMP/SHASUMS256.txt" expected actual
+  curl --fail --location --silent --show-error "$base/$archive" -o "$archive_path" || return
+  curl --fail --location --silent --show-error "$base/SHASUMS256.txt" -o "$sums_path" || return
+  expected="$(awk -v name="$archive" '$2==name{print $1;exit}' "$sums_path")"
+  [[ -n "$expected" ]] || return 1
+  actual="$(shasum -a 256 "$archive_path" | awk '{print $1}')"
+  [[ "$actual" == "$expected" ]] || return 1
+  tar -xzf "$archive_path" -C "$TMP" || return
+  export PATH="$TMP/node-v${PORTABLE_NODE_VERSION}-darwin-${NODE_DIST_ARCH}/bin:$PATH"
+  node_is_supported || return
+  printf 'Using verified temporary Node %s\n' "$(node --version)"
+}
+
+download_source() {
+  curl --fail --location --silent --show-error "$SOURCE_ZIP" -o "$TMP/source.zip" || return
+  mkdir -p "$TMP/source" || return
+  ditto -x -k "$TMP/source.zip" "$TMP/source" || return
+  SOURCE_DIR="$(find "$TMP/source" -maxdepth 1 -type d -name 'SkyTrace-*' -print -quit)"
+  [[ -n "$SOURCE_DIR" && -d "$SOURCE_DIR" ]] || return 1
+  grep -F 'Product Preview R4.8 packaged-map runtime with third-party vendor audit boundary' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
+  grep -F 'fix-v36-maplibre.mjs' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
+  grep -F 'vendor-maplibre.mjs' "$SOURCE_DIR/scripts/materialize-v3.5.sh" >/dev/null || return 1
+  grep -F '"node_modules", "vendor"' "$SOURCE_DIR/scripts/audit-runtime.mjs" >/dev/null || return 1
+  grep -F '/vendor/maplibre-gl/maplibre-gl.js' "$SOURCE_DIR/src/build/fix-v36-maplibre.mjs" >/dev/null || return 1
+  grep -F 'needVersionFile' "$SOURCE_DIR/src/build/verify-v36.mjs" >/dev/null || return 1
+  grep -F 'semantic VERSION validation' "$SOURCE_DIR/src/build/verify-v36.mjs" >/dev/null || return 1
+  grep -F 'MapLibre path into Forge-excluded node_modules' "$SOURCE_DIR/src/build/verify-v36.mjs" >/dev/null || return 1
+  grep -F 'SkyTrace Timeline' "$SOURCE_DIR/src/renderer/v36-product.js" >/dev/null || return 1
+  grep -F 'evaluateWatchlists' "$SOURCE_DIR/src/renderer/v36-product.js" >/dev/null || return 1
+  grep -F 'evaluateGeofences' "$SOURCE_DIR/src/renderer/v36-product.js" >/dev/null || return 1
+  grep -F 'setInterval(ensureWorkspace, 750)' "$SOURCE_DIR/src/renderer/v36-detached.js" >/dev/null || return 1
+  grep -F 'Launch at Login was removed from SkyTrace' "$SOURCE_DIR/src/build/apply-v36.mjs" >/dev/null || return 1
+  grep -F 'legacy login plist cleanup' "$SOURCE_DIR/src/build/verify-v36.mjs" >/dev/null || return 1
+  grep -F 'margin-left:64px!important' "$SOURCE_DIR/src/renderer/mac-ui-fixes.css" >/dev/null || return 1
+  if grep -F 'Launch at Login' "$SOURCE_DIR/src/renderer/settings/mac-settings.html" >/dev/null; then return 1; fi
+  if grep -F 'getLaunchAtLogin' "$SOURCE_DIR/src/desktop/mac-native-preload.cjs" >/dev/null; then return 1; fi
+  if grep -F 'setLaunchAtLogin' "$SOURCE_DIR/src/desktop/mac-native-preload.cjs" >/dev/null; then return 1; fi
+  printf 'Pinned source revision: %s\n' "$SOURCE_REV"
+}
+
+prepare_release() {
+  cd "$SOURCE_DIR" || return
+  bash scripts/materialize-v3.5.sh || return
+  node scripts/harden-commercial-build.mjs || return
+  node src/build/verify-v35.mjs || return
+  node src/build/verify-v35-ui.mjs || return
+  node src/build/verify-v36.mjs || return
+  node scripts/audit-runtime.mjs || return
+}
+
+install_dependencies() {
+  cd "$SOURCE_DIR" || return
+  npm install --no-audit --no-fund --loglevel=error || return
+  test -s vendor/maplibre-gl/maplibre-gl.js || return 1
+  test -s vendor/maplibre-gl/maplibre-gl.css || return 1
+  test -s vendor/maplibre-gl/VERSION || return 1
+  grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$' vendor/maplibre-gl/VERSION || return 1
+}
+
+download_data() { cd "$SOURCE_DIR" && npm run --silent data; }
+
+verify_release() {
+  cd "$SOURCE_DIR" || return
+  npm run --silent check || return
+  node src/build/verify-v35.mjs || return
+  node src/build/verify-v35-ui.mjs || return
+  node src/build/verify-v36.mjs || return
+  node scripts/audit-runtime.mjs || return
+}
+
+build_application() {
+  cd "$SOURCE_DIR" || return
+  npm run --silent icon:mac || return
+  npm run --silent package -- --arch="$ARCH" || return
+  find out -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit | grep -q .
+}
+
+stop_existing_app() {
+  osascript -e 'tell application "SkyTrace" to quit' >/dev/null 2>&1 || true
+  for _ in {1..10}; do
+    pgrep -x SkyTrace >/dev/null 2>&1 || return 0
+    sleep 0.2
+  done
+  pkill -x SkyTrace >/dev/null 2>&1 || true
+}
+
+clear_disposable_caches() {
+  mkdir -p "$DATA_DIR"
+  for name in "Cache" "Code Cache" "GPUCache" "DawnCache" "Service Worker" "blob_storage"; do
+    rm -rf "$DATA_DIR/$name"
+  done
+}
+
+cleanup_removed_login_item() {
+  rm -f "$LEGACY_LOGIN_PLIST"
+}
+
+smoke_test() {
+  local executable="$APP_PATH/Contents/MacOS/SkyTrace" pid ready=0
+  [[ -x "$executable" ]] || return 1
+  rm -f "$RUNTIME_LOG"
+  SKYTRACE_SMOKE_TEST=1 "$executable" >> "$LOG_FILE" 2>&1 &
+  pid=$!
+  for _ in {1..70}; do
+    if [[ -f "$RUNTIME_LOG" ]] && grep -F "$READY_MARKER" "$RUNTIME_LOG" >/dev/null; then ready=1; break; fi
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 0.5
+  done
+  if [[ "$ready" != 1 ]]; then
+    kill "$pid" >/dev/null 2>&1 || true
+    wait "$pid" >/dev/null 2>&1 || true
+    return 1
+  fi
+  wait "$pid" || return
+  grep -F "$READY_MARKER" "$RUNTIME_LOG" >/dev/null
+}
+
+install_application() {
+  cd "$SOURCE_DIR" || return
+  local found_app plist asar version bundle
+  found_app="$(find out -maxdepth 4 -name "${APP_NAME}.app" -type d -print -quit)"
+  [[ -n "$found_app" ]] || return 1
+  plist="$found_app/Contents/Info.plist"
+  asar="$found_app/Contents/Resources/app.asar"
+  version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist" 2>/dev/null || true)"
+  bundle="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist" 2>/dev/null || true)"
+  [[ "$version" == "$EXPECTED_VERSION" && "$bundle" == "$EXPECTED_BUNDLE_ID" && -f "$asar" ]] || return 1
+  for marker in \
+    'mac-startup-runtime.js' \
+    'health-auth-runtime-shell-ready' \
+    'mac-ui-fixes.js' \
+    'margin-left:64px!important' \
+    'v36-product.js' \
+    'SkyTrace Timeline' \
+    'evaluateWatchlists' \
+    'evaluateGeofences' \
+    'pointInPolygon' \
+    'showOnboarding' \
+    'showWhatsNewIfNeeded' \
+    'setInterval(ensureWorkspace, 750)' \
+    'skytrace:file:save-text' \
+    'skytrace:system:open-external' \
+    'Launch at Login was removed from SkyTrace' \
+    'io.skytrace.desktop.login.plist' \
+    '/vendor/maplibre-gl/maplibre-gl.js' \
+    '/vendor/maplibre-gl/maplibre-gl.css'; do
+    grep -aF "$marker" "$asar" >/dev/null || { echo "Missing packaged Product Preview R4.8 marker: $marker"; return 1; }
+  done
+  stop_existing_app || return
+  cleanup_removed_login_item || return
+  clear_disposable_caches || return
+  rm -rf "$APP_PATH"
+  ditto "$found_app" "$APP_PATH" || return
+  smoke_test
+}
+
+case "$SKYTRACE_COMMERCE_URL" in https://*) ;; *) echo 'SKYTRACE_COMMERCE_URL must use HTTPS.' >&2; exit 1 ;; esac
+
+printf '\n%sSkyTrace Installer%s\n' "$BOLD" "$RESET"
+printf '%s────────────────────────────────────────%s\n' "$DIM" "$RESET"
+printf '  Release       %s\n' "$BUILD_LABEL"
+printf '  Source        %.12s\n' "$SOURCE_REV"
+printf '  Mac           %s\n' "$ARCH_LABEL"
+printf '  Signing       Unsigned / no Apple subscription required\n'
+printf '  Login item    Removed\n'
+printf '  Map runtime   Vendored / packaged locally\n'
+printf '  Destination   ~/Applications/SkyTrace.app\n'
+printf '%s────────────────────────────────────────%s\n\n' "$DIM" "$RESET"
+
+run_step 1 "Build runtime" prepare_runtime || fail "Build runtime"
+run_step 2 "Download pinned release" download_source || fail "Download pinned release"
+run_step 3 "Prepare SkyTrace" prepare_release || fail "Prepare SkyTrace"
+run_step 4 "Install + vendor MapLibre" install_dependencies || fail "Install dependencies"
+run_step 5 "Aviation data" download_data || fail "Aviation data"
+run_step 6 "Verify Product Preview" verify_release || fail "Verify Product Preview"
+run_step 7 "Build application" build_application || fail "Build application"
+run_step 8 "Install + R4.8 startup test" install_application || fail "Install + R4.8 startup test"
+
+printf '\n%s✓ SkyTrace V3.5 Product Preview R4.8 passed its audited startup test%s\n' "$GREEN$BOLD" "$RESET"
+printf '  Version       %s\n' "$EXPECTED_VERSION"
+printf '  Architecture  %s\n' "$ARCH_LABEL"
+printf '  Login item    Removed\n'
+printf '  Map runtime   Vendored / packaged locally\n'
+printf '  Location      ~/Applications/SkyTrace.app\n'
+printf '  Runtime log   ~/Library/Logs/SkyTrace/desktop.log\n'
+printf 'Opening SkyTrace...\n\n'
+open -n "$APP_PATH"

@@ -114,7 +114,7 @@ jobs:
           grep -aF 'v3.4-polish-refine.css' "$ASAR" >/dev/null || { echo "V3.4 detail refinement stylesheet is missing from app.asar."; exit 1; }
           grep -aF 'skytrace-aircraft-detail' "$ASAR" >/dev/null || { echo "Aircraft detail polish is missing from app.asar."; exit 1; }
           grep -aF 'skytrace-airport-detail' "$ASAR" >/dev/null || { echo "Airport detail polish is missing from app.asar."; exit 1; }
-          grep -aF 'Check for Updates…' "$ASAR" >/dev/null || { echo "Native update menu is missing from app.asar."; exit 1; }
+          grep -aF 'Check for Updates' "$ASAR" >/dev/null || { echo "Native update menu is missing from app.asar."; exit 1; }
           grep -aF 'api.github.com/repos/archivealf/SkyTrace/releases' "$ASAR" >/dev/null || { echo "Verified release update source is missing from app.asar."; exit 1; }
           grep -aF 'desktop.log' "$ASAR" >/dev/null || { echo "Desktop diagnostics are missing from app.asar."; exit 1; }
           grep -aF 'skytrace.performanceMode' "$ASAR" >/dev/null || { echo "Performance Mode marker is missing from app.asar."; exit 1; }

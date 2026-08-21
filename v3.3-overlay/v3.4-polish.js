@@ -21,7 +21,13 @@
         -webkit-mask-image:radial-gradient(circle at center,#000 0%,transparent 61%);
         transform:perspective(700px) rotateX(64deg) translateY(15%);transform-origin:center;
       }
-      .skytrace-startup.done{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
+      .skytrace-startup.done,
+      .skytrace-startup.hidden,
+      .skytrace-startup[hidden],
+      .skytrace-startup[aria-hidden="true"],
+      .skytrace-startup[data-loading="false"]{
+        opacity:0!important;visibility:hidden!important;pointer-events:none!important;display:none!important
+      }
       .skytrace-startup.done .startup-progress i{animation:none!important;width:100%!important;transform:none!important;background:#9fb1ff!important}
       .performance-mode .skytrace-startup{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
       @media(prefers-reduced-transparency:reduce){.skytrace-startup{background:#07090d!important}}
@@ -61,10 +67,84 @@
     return null;
   }
 
+  function finishStartup(reason = "ready") {
+    const loading = findStartupRoot();
+    if (!loading) return false;
+    if (loading.dataset.skytraceFinished === "true") return true;
+    loading.dataset.skytraceFinished = "true";
+    loading.dataset.skytraceFinishReason = reason;
+    loading.classList.add("done");
+    loading.setAttribute("aria-hidden", "true");
+    loading.setAttribute("data-loading", "false");
+    setTimeout(() => {
+      try { loading.remove(); } catch {}
+    }, 520);
+    return true;
+  }
+
+  function shellLooksReady() {
+    return Boolean(
+      document.querySelector(".flightdeck-rail") ||
+      document.querySelector("#sidebar") ||
+      document.querySelector(".maplibregl-map") ||
+      document.querySelector("#map")
+    );
+  }
+
+  async function apiLooksReady() {
+    try {
+      const response = await fetch("/api/health", { cache: "no-store", credentials: "same-origin" });
+      if (!response.ok) return false;
+      const payload = await response.json().catch(() => null);
+      return payload?.ok !== false;
+    } catch {
+      return false;
+    }
+  }
+
+  function startStartupWatchdog() {
+    if (window.__skytraceStartupWatchdogInstalled) return;
+    window.__skytraceStartupWatchdogInstalled = true;
+    const started = Date.now();
+    let checking = false;
+
+    const tick = async () => {
+      const loading = findStartupRoot();
+      if (!loading || loading.dataset.skytraceFinished === "true") return;
+
+      const hiddenByLegacyRuntime =
+        loading.hidden ||
+        loading.classList.contains("hidden") ||
+        loading.getAttribute("aria-hidden") === "true" ||
+        loading.getAttribute("data-loading") === "false";
+      if (hiddenByLegacyRuntime) return void finishStartup("legacy-runtime");
+
+      const elapsed = Date.now() - started;
+      if (!checking && shellLooksReady() && elapsed >= 900) {
+        checking = true;
+        const apiReady = await apiLooksReady();
+        checking = false;
+        if (apiReady) return void finishStartup("health-and-shell-ready");
+      }
+
+      const status = loading.querySelector(".startup-status");
+      if (status && elapsed > 12000) status.textContent = "SkyTrace is taking longer than expected…";
+      if (status && elapsed > 22000) status.textContent = "Checking local aviation service…";
+
+      setTimeout(tick, elapsed < 6000 ? 250 : 700);
+    };
+
+    setTimeout(tick, 300);
+    window.addEventListener("load", () => setTimeout(tick, 100), { once: true });
+  }
+
   function polishStartup() {
     const loading = findStartupRoot();
     if (!loading) return false;
-    if (loading.dataset.skytracePolished === "true") return true;
+    if (loading.dataset.skytracePolished === "true") {
+      startStartupWatchdog();
+      return true;
+    }
 
     ensureStartupRootStyles();
     loading.dataset.skytracePolished = "true";
@@ -83,6 +163,7 @@
         <div class="startup-progress" aria-hidden="true"><i></i></div>
         <div class="startup-caption">Map · Traffic · Weather · Operations</div>
       </div>`;
+    startStartupWatchdog();
     return true;
   }
 
@@ -142,6 +223,7 @@
   function boot() {
     const found = polishStartup();
     polishStaticUi();
+    startStartupWatchdog();
     return found;
   }
 

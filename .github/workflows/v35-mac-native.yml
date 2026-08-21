@@ -1,0 +1,204 @@
+name: Build SkyTrace V3.5 Mac Native
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - v3.5-mac-native
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v35-mac-native-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  mac-native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+            label: Apple-Silicon
+          - runner: macos-15-intel
+            arch: x64
+            label: Intel
+    runs-on: ${{ matrix.runner }}
+    env:
+      SKYTRACE_COMMERCE_URL: ${{ vars.SKYTRACE_COMMERCE_URL }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate account service URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${SKYTRACE_COMMERCE_URL:-}" ]]; then
+            echo "Repository variable SKYTRACE_COMMERCE_URL is required."
+            exit 1
+          fi
+          [[ "$SKYTRACE_COMMERCE_URL" == https://* ]] || { echo "SKYTRACE_COMMERCE_URL must use HTTPS."; exit 1; }
+
+      - name: Materialize V3.5 Product Preview R4.8
+        run: bash scripts/materialize-v3.5.sh
+
+      - name: Enforce commercial provider isolation
+        run: node scripts/harden-commercial-build.mjs
+
+      - name: Verify audited feature set
+        run: |
+          node src/build/verify-v35.mjs
+          node src/build/verify-v35-ui.mjs
+          node src/build/verify-v36.mjs
+          node scripts/audit-runtime.mjs
+
+      - name: Install dependencies and vendor MapLibre
+        run: npm install --no-audit --no-fund
+
+      - name: Verify vendored MapLibre assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s vendor/maplibre-gl/maplibre-gl.js
+          test -s vendor/maplibre-gl/maplibre-gl.css
+          test -s vendor/maplibre-gl/VERSION
+          grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$' vendor/maplibre-gl/VERSION
+          grep -F '/vendor/maplibre-gl/maplibre-gl.js' index.html >/dev/null
+          grep -F '/vendor/maplibre-gl/maplibre-gl.css' index.html >/dev/null
+          ! grep -F '/node_modules/maplibre-gl/' index.html >/dev/null
+
+      - name: Download aviation reference data
+        run: npm run data
+
+      - name: Build Mac icon
+        run: npm run icon:mac
+
+      - name: Syntax and runtime checks
+        run: npm run check
+
+      - name: Re-verify materialized runtime
+        run: |
+          node src/build/verify-v35.mjs
+          node src/build/verify-v35-ui.mjs
+          node src/build/verify-v36.mjs
+          node scripts/audit-runtime.mjs
+
+      - name: Package SkyTrace.app
+        run: npx electron-forge package --platform=darwin --arch=${{ matrix.arch }}
+
+      - name: Inspect packaged Product Preview payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$(find out -maxdepth 3 -name 'SkyTrace.app' -type d -print -quit)"
+          [[ -n "$APP" ]] || { echo "SkyTrace.app was not found."; exit 1; }
+          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
+          [[ "$VERSION" == "3.5.0" ]] || { echo "Unexpected version: $VERSION"; exit 1; }
+          ASAR="$APP/Contents/Resources/app.asar"
+          [[ -f "$ASAR" ]] || { echo "app.asar missing"; exit 1; }
+          for marker in \
+            'mac-startup-runtime.js' \
+            'mac-startup-guard.js' \
+            'health-auth-runtime-shell-ready' \
+            'mac-ui-fixes.js' \
+            'skytrace-layer-toggle' \
+            'margin-left:64px!important' \
+            'v36-product.js' \
+            'SkyTrace Timeline' \
+            'evaluateWatchlists' \
+            'evaluateGeofences' \
+            'pointInPolygon' \
+            'showOnboarding' \
+            'showWhatsNewIfNeeded' \
+            'setInterval(ensureWorkspace, 750)' \
+            'skytrace:file:save-text' \
+            'skytrace:system:open-external' \
+            'Launch at Login was removed from SkyTrace' \
+            'io.skytrace.desktop.login.plist' \
+            '/vendor/maplibre-gl/maplibre-gl.js' \
+            '/vendor/maplibre-gl/maplibre-gl.css'; do
+            grep -aF "$marker" "$ASAR" >/dev/null || { echo "Missing Product Preview R4.8 marker: $marker"; exit 1; }
+          done
+          echo "Product Preview R4.8 packages vendored MapLibre; third-party vendor code is checked by dedicated dependency verifiers rather than SkyTrace source-style loop rules."
+
+      - name: Launch packaged app startup smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$(find out -maxdepth 3 -name 'SkyTrace.app' -type d -print -quit)"
+          LOG="$HOME/Library/Logs/SkyTrace/desktop.log"
+          STDOUT_LOG="$RUNNER_TEMP/skytrace-packaged-startup.log"
+          READY_MARKER='renderer-ready: health=true shell=true degraded=false auth=true runtime=true'
+          mkdir -p "$(dirname "$LOG")"
+          rm -f "$LOG" "$STDOUT_LOG"
+
+          SKYTRACE_SMOKE_TEST=1 "$APP/Contents/MacOS/SkyTrace" >"$STDOUT_LOG" 2>&1 &
+          PID=$!
+          READY=0
+          for _ in {1..70}; do
+            if [[ -f "$LOG" ]] && grep -F "$READY_MARKER" "$LOG" >/dev/null; then
+              READY=1
+              break
+            fi
+            if ! kill -0 "$PID" 2>/dev/null; then
+              break
+            fi
+            sleep 0.5
+          done
+
+          if [[ "$READY" != "1" ]]; then
+            echo "Packaged SkyTrace never reported a fully healthy authenticated renderer/runtime startup."
+            echo "--- desktop.log ---"
+            cat "$LOG" 2>/dev/null || true
+            echo "--- process output ---"
+            cat "$STDOUT_LOG" 2>/dev/null || true
+            kill "$PID" 2>/dev/null || true
+            wait "$PID" 2>/dev/null || true
+            exit 1
+          fi
+
+          wait "$PID"
+          echo "Packaged SkyTrace reached a healthy renderer, authorized local API and vendored local MapLibre runtime."
+
+      - name: Create ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$(find out -maxdepth 3 -name 'SkyTrace.app' -type d -print -quit)"
+          ZIP="SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
+          shasum -a 256 "$ZIP" > "$ZIP.sha256"
+
+      - name: Create DMG
+        run: npx electron-forge make --platform=darwin --arch=${{ matrix.arch }}
+
+      - name: Collect DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          DMG="$(find out/make -name '*.dmg' -type f -print -quit)"
+          [[ -n "$DMG" ]] || { echo "DMG was not produced."; exit 1; }
+          cp "$DMG" "SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.dmg"
+          shasum -a 256 "SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.dmg" > "SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.dmg.sha256"
+
+      - name: Upload unsigned Mac artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SkyTrace-3.5.0-Mac-Native-${{ matrix.label }}
+          path: |
+            SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.zip
+            SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.zip.sha256
+            SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.dmg
+            SkyTrace-3.5.0-Mac-Native-${{ matrix.arch }}.dmg.sha256
+          if-no-files-found: error

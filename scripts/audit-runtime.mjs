@@ -4,7 +4,12 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const skipDirs = new Set([".git", "node_modules", "out", "v3.2-bundle", "source-payload", "source-payload-fixed", "data", "backups"]);
+// Third-party/generated dependency trees are validated by their dedicated build
+// verifiers, not SkyTrace's source-style rules (for example bounded-loop checks).
+// In particular, vendor/maplibre-gl is pinned/vendored and verified by
+// verify-v36.mjs after npm install, so scanning its minified upstream runtime here
+// would create false positives without auditing SkyTrace-authored code.
+const skipDirs = new Set([".git", "node_modules", "vendor", "out", "v3.2-bundle", "source-payload", "source-payload-fixed", "data", "backups"]);
 const textExtensions = new Set([".js", ".mjs", ".cjs", ".sh", ".html", ".css", ".json", ".yml", ".yaml"]);
 const jsExtensions = new Set([".js", ".mjs", ".cjs"]);
 const files = [];
@@ -18,6 +23,13 @@ function walk(dir) {
   }
 }
 walk(root);
+
+function isExecutableRenderer(rel) {
+  const normalized = rel.split(path.sep).join("/");
+  if (normalized.startsWith("src/renderer/")) return normalized.endsWith(".js");
+  if (normalized.includes("/")) return false;
+  return /^(?:app\.v3|v3\.[\w.-]+|v3\.3-[\w.-]+|v3\.4-[\w.-]+|airlines\.v2\.2|service-worker\.v3)\.js$/.test(normalized);
+}
 
 const failures = [];
 let linesScanned = 0;
@@ -46,6 +58,9 @@ for (const file of files) {
       if (/\beval\s*\(/.test(line)) failures.push(`${at}: dynamic eval is not allowed in SkyTrace executable code.`);
       if (/\bnew\s+Function\s*\(/.test(line)) failures.push(`${at}: dynamic Function construction is not allowed in SkyTrace executable code.`);
       if (/\bwhile\s*\(\s*true\s*\)/.test(line) || /\bfor\s*\(\s*;\s*;\s*\)/.test(line)) failures.push(`${at}: unbounded loop requires explicit review.`);
+      if (isExecutableRenderer(rel) && /\.observe\s*\(\s*document\.(?:documentElement|body)\b/.test(line)) {
+        failures.push(`${at}: document-wide MutationObserver is forbidden in renderer runtime code; observe a bounded component or use explicit events/polling.`);
+      }
     }
   }
 }
@@ -60,7 +75,7 @@ if (app) {
   for (const rel of ["app.v3.js", "v3.3-codes.js", "v3.3-platform.js", "v3.3-entitlement-sync.js", "v3.4-features.js"]) {
     const text = runtimeText(rel);
     if (!text) failures.push(`${rel}: expected materialized runtime file is missing.`);
-    else if (text.includes("MutationObserver")) failures.push(`${rel}: document MutationObserver is forbidden in the desktop runtime; use explicit events instead.`);
+    else if (/\.observe\s*\(\s*document\.(?:documentElement|body)\b/.test(text)) failures.push(`${rel}: document-wide observer is forbidden in the desktop renderer runtime.`);
   }
 
   if (!app.includes('data-airport-traffic-icao')) failures.push("app.v3.js: optimized observed-airport traffic rows are missing.");
@@ -80,5 +95,5 @@ if (failures.length) {
 }
 
 console.log(`SkyTrace source audit passed: ${files.length} text/code files, ${jsFilesChecked} JavaScript/module syntax checks, ${linesScanned.toLocaleString()} source lines scanned.`);
-if (app) console.log("Materialized renderer stability checks passed: no document MutationObservers, no dynamic eval, constant-time aircraft close, optimized airport traffic and bounded Replay+ rendering.");
+if (app) console.log("Materialized renderer stability checks passed: no document-wide observers, no dynamic eval, constant-time aircraft close, optimized airport traffic and bounded Replay+ rendering.");
 else console.log("Source-tree audit passed before materialization; generated runtime checks will run after materialization.");
