@@ -6,6 +6,7 @@
   const FILTER_KEY = 'skytrace.mobile35.filters';
   const AIRCRAFT_LAYERS = ['aircraft-icons', 'aircraft-labels', 'aircraft-hit'];
   let repairQueued = false;
+  let touchStart = null;
 
   function readFilters() {
     try {
@@ -108,6 +109,75 @@
     requestAnimationFrame(repairAircraft);
   }
 
+  function nearestAircraft(point, radius = 62) {
+    let nearest = null;
+    let nearestDistance = radius * radius;
+    for (const flight of flights) {
+      const lat = Number(flight?.latitude);
+      const lon = Number(flight?.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      let projected;
+      try { projected = map.project([lon, lat]); } catch { continue; }
+      const dx = projected.x - point.x;
+      const dy = projected.y - point.y;
+      const distance = dx * dx + dy * dy;
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = flight;
+      }
+    }
+    return nearest;
+  }
+
+  function openAircraft(flight) {
+    if (!flight || typeof selectFlight !== 'function') return false;
+    const id = icao(flight);
+    if (!id) return false;
+    if (typeof selectedIcao !== 'undefined' && selectedIcao === id && document.documentElement.classList.contains('detail-open')) return true;
+
+    // If a tab page is open, switch back to Map first so its drawer/layout rules
+    // cannot hide or clip the aircraft detail sheet.
+    if (document.documentElement.dataset.mobile35Tab && document.documentElement.dataset.mobile35Tab !== 'map') {
+      document.querySelector('#mobile35Tabs [data-tab="map"]')?.click();
+    }
+    requestAnimationFrame(() => selectFlight(flight));
+    return true;
+  }
+
+  function installReliableAircraftTap() {
+    const canvas = map.getCanvas?.();
+    if (!canvas || canvas.dataset.skytraceAircraftTap35 === '1') return;
+    canvas.dataset.skytraceAircraftTap35 = '1';
+
+    // A larger coarse-pointer hit radius makes the custom aircraft silhouettes
+    // practical to tap on an iPhone without changing their visual size.
+    map.on('click', event => {
+      const flight = nearestAircraft(event.point, 64);
+      if (flight) openAircraft(flight);
+    });
+
+    canvas.addEventListener('pointerdown', event => {
+      if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+      touchStart = { id: event.pointerId, x: event.clientX, y: event.clientY, at: performance.now() };
+    }, { passive: true });
+
+    canvas.addEventListener('pointercancel', () => { touchStart = null; }, { passive: true });
+    canvas.addEventListener('pointerup', event => {
+      if (!touchStart || event.pointerId !== touchStart.id) return;
+      const start = touchStart;
+      touchStart = null;
+      const dx = event.clientX - start.x;
+      const dy = event.clientY - start.y;
+      if (dx * dx + dy * dy > 14 * 14 || performance.now() - start.at > 700) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const flight = nearestAircraft({ x: event.clientX - rect.left, y: event.clientY - rect.top }, 68);
+      if (!flight) return;
+      event.preventDefault();
+      openAircraft(flight);
+    }, { passive: false });
+  }
+
   const previousDrawFlights = drawFlights;
   drawFlights = function skyTraceDrawFlightsVisibilityFix() {
     const result = previousDrawFlights();
@@ -115,15 +185,15 @@
     return result;
   };
 
-  map.on('load', queueRepair);
+  map.on('load', () => { queueRepair(); installReliableAircraftTap(); });
   map.on('idle', queueRepair);
   map.on('styledata', queueRepair);
-  window.addEventListener('pageshow', queueRepair);
+  window.addEventListener('pageshow', () => { queueRepair(); installReliableAircraftTap(); });
   window.addEventListener('online', queueRepair);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) queueRepair(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { queueRepair(); installReliableAircraftTap(); } });
 
   // Repair any filter left at "__none__" during the first empty pre-refresh render.
-  setTimeout(queueRepair, 80);
+  setTimeout(() => { queueRepair(); installReliableAircraftTap(); }, 80);
   setTimeout(queueRepair, 600);
   setTimeout(queueRepair, 1800);
 })();
